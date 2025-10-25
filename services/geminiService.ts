@@ -1,0 +1,126 @@
+
+import { GoogleGenAI, GenerateContentResponse, Type } from "@google/genai";
+import { DivergenceData, GhostPatternData, OptionsStrategy } from '../types';
+
+// Assume API_KEY is set in the environment
+const API_KEY = process.env.API_KEY;
+if (!API_KEY) {
+  console.warn("API_KEY environment variable not set. App may not function correctly.");
+}
+export const ai = new GoogleGenAI({ apiKey: API_KEY });
+
+const fileToGenerativePart = async (file: File) => {
+  const base64EncodedDataPromise = new Promise<string>((resolve) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve((reader.result as string).split(',')[1]);
+    reader.readAsDataURL(file);
+  });
+  return {
+    inlineData: { data: await base64EncodedDataPromise, mimeType: file.type },
+  };
+};
+
+export const analyzeStockData = async (prompt: string): Promise<GenerateContentResponse> => {
+    const responseSchema = {
+      type: Type.OBJECT,
+      properties: {
+        analysisSummary: { type: Type.STRING },
+        divergenceData: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              timeframe: { type: Type.STRING },
+              bullish: { type: Type.NUMBER },
+              bearish: { type: Type.NUMBER },
+            },
+          },
+        },
+        ghostPatternData: {
+          type: Type.OBJECT,
+          properties: {
+            score: { type: Type.NUMBER },
+            patternType: { type: Type.STRING },
+            correlation: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  x: { type: Type.STRING },
+                  y: { type: Type.NUMBER },
+                },
+              },
+            },
+          },
+        },
+        optionsStrategy: {
+          type: Type.OBJECT,
+          properties: {
+            strategyName: { type: Type.STRING },
+            symbol: { type: Type.STRING },
+            probabilityOfProfit: { type: Type.NUMBER },
+            expectedMove: { type: Type.STRING },
+            breakevenPoints: {
+                type: Type.ARRAY,
+                items: { type: Type.STRING }
+            },
+          },
+        },
+      },
+    };
+
+  const fullPrompt = `
+    You are a world-class financial analyst AI with access to up-to-the-minute market data. Based on the following user request, provide a detailed analysis using the most recent financial information available.
+    User request: "${prompt}"
+    
+    Return your response in the specified JSON format. If a particular analysis (divergence, ghost pattern, options) is not requested, return null for that field.
+    For divergenceData, provide data for at least 4 recent timeframes (e.g., 1H, 4H, 1D, 1W).
+    For ghostPatternData, provide a correlation series with at least 10 recent data points.
+  `;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-pro",
+      contents: fullPrompt,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: responseSchema,
+        thinkingConfig: { thinkingBudget: 32768 }
+      },
+    });
+    return response;
+  } catch (error) {
+    console.error("Error in complex analysis:", error);
+    throw error;
+  }
+};
+
+export const searchWithGrounding = async (prompt: string): Promise<GenerateContentResponse> => {
+    try {
+        const response = await ai.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: `Answer the following financial question based on the latest information from the web: "${prompt}"`,
+            config: {
+                tools: [{googleSearch: {}}],
+            },
+        });
+        return response;
+    } catch (error) {
+        console.error("Error in search grounding:", error);
+        throw error;
+    }
+};
+
+export const analyzeImage = async (prompt: string, image: File): Promise<GenerateContentResponse> => {
+    try {
+        const imagePart = await fileToGenerativePart(image);
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: { parts: [{ text: prompt }, imagePart] },
+        });
+        return response;
+    } catch (error) {
+        console.error("Error analyzing image:", error);
+        throw error;
+    }
+};

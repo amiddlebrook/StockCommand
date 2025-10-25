@@ -1,0 +1,7 @@
+{
+  "name": "AI Stock Analyzer",
+  "description": "An adaptive AI environment where users can analyze stocks and options through natural conversation. The AI generates data tables, divergence counts, visual patterns, and strategy suggestions dynamically.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
