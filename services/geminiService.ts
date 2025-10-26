@@ -2,11 +2,35 @@
 import { GoogleGenAI, GenerateContentResponse, Type } from "@google/genai";
 import { DivergenceData, GhostPatternData, OptionsStrategy } from '../types';
 
-// Assume API_KEY is set in the environment
-const API_KEY = process.env.API_KEY;
+// Resolve the Gemini API key from different environments (Vite, Node, window)
+const resolveApiKey = (): string | undefined => {
+  const maybeImportMeta = typeof import.meta !== 'undefined' ? (import.meta as ImportMeta) : undefined;
+  const fromVite = maybeImportMeta?.env?.VITE_API_KEY;
+  if (typeof fromVite === 'string' && fromVite.length > 0) {
+    return fromVite;
+  }
+
+  if (typeof process !== 'undefined') {
+    const fromProcess = process.env?.VITE_API_KEY ?? process.env?.API_KEY;
+    if (typeof fromProcess === 'string' && fromProcess.length > 0) {
+      return fromProcess;
+    }
+  }
+
+  const globalKey = (globalThis as { API_KEY?: unknown }).API_KEY;
+  if (typeof globalKey === 'string' && globalKey.length > 0) {
+    return globalKey;
+  }
+
+  return undefined;
+};
+
+const API_KEY = resolveApiKey();
+
 if (!API_KEY) {
-  console.warn("API_KEY environment variable not set. App may not function correctly.");
+  console.warn("Gemini API key not found. Set VITE_API_KEY for client builds or API_KEY for server builds.");
 }
+
 export const ai = new GoogleGenAI({ apiKey: API_KEY });
 
 const fileToGenerativePart = async (file: File) => {
