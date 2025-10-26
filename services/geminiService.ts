@@ -103,7 +103,8 @@ export const analyzeStockData = async (prompt: string): Promise<GenerateContentR
   `;
 
   try {
-    const response = await ai.models.generateContent({
+    const client = ensureClient();
+    const response = await client.models.generateContent({
       model: "gemini-2.5-pro",
       contents: fullPrompt,
       config: {
@@ -121,7 +122,8 @@ export const analyzeStockData = async (prompt: string): Promise<GenerateContentR
 
 export const searchWithGrounding = async (prompt: string): Promise<GenerateContentResponse> => {
     try {
-        const response = await ai.models.generateContent({
+        const client = ensureClient();
+        const response = await client.models.generateContent({
             model: "gemini-2.5-flash",
             contents: `Answer the following financial question based on the latest information from the web: "${prompt}"`,
             config: {
@@ -138,7 +140,8 @@ export const searchWithGrounding = async (prompt: string): Promise<GenerateConte
 export const analyzeImage = async (prompt: string, image: File): Promise<GenerateContentResponse> => {
     try {
         const imagePart = await fileToGenerativePart(image);
-        const response = await ai.models.generateContent({
+        const client = ensureClient();
+        const response = await client.models.generateContent({
             model: 'gemini-2.5-flash',
             contents: { parts: [{ text: prompt }, imagePart] },
         });
