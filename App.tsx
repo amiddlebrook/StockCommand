@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import type { Chat } from '@google/genai';
+import type { Chat, GoogleGenAI } from '@google/genai';
 import { Header } from './components/Header';
 import { ChatInput } from './components/ChatInput';
 import { ChatMessage } from './components/ChatMessage';
@@ -79,6 +79,22 @@ const App: React.FC = () => {
   const audioChunksRef = useRef<Blob[]>([]);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const chatSessionRef = useRef<Chat | null>(null);
+
+  const ensureGeminiClient = () => {
+    const existing = geminiClientRef.current;
+    if (existing) {
+      return existing;
+    }
+
+    const next = getGeminiClient();
+    geminiClientRef.current = next;
+
+    if (next && !geminiReady) {
+      setGeminiReady(true);
+    }
+
+    return next;
+  };
 
   useEffect(() => {
     chatContainerRef.current?.scrollTo({
