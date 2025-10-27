@@ -2,12 +2,81 @@
 import { GoogleGenAI, GenerateContentResponse, Type } from "@google/genai";
 import { DivergenceData, GhostPatternData, OptionsStrategy } from '../types';
 
-// Assume API_KEY is set in the environment
-const API_KEY = process.env.API_KEY;
-if (!API_KEY) {
-  console.warn("API_KEY environment variable not set. App may not function correctly.");
+// Resolve the Gemini API key from different environments (Vite, Node, window)
+const resolveApiKey = (): string | undefined => {
+  const maybeImportMeta = typeof import.meta !== 'undefined' ? (import.meta as ImportMeta) : undefined;
+  const fromVite = maybeImportMeta?.env?.VITE_API_KEY;
+  if (typeof fromVite === 'string' && fromVite.length > 0) {
+    return fromVite;
+  }
+
+  if (typeof process !== 'undefined') {
+    const fromProcess = process.env?.VITE_API_KEY ?? process.env?.API_KEY;
+    if (typeof fromProcess === 'string' && fromProcess.length > 0) {
+      return fromProcess;
+    }
+  }
+
+  const globalKey = (globalThis as { API_KEY?: unknown }).API_KEY;
+  if (typeof globalKey === 'string' && globalKey.length > 0) {
+    return globalKey;
+  }
+
+  return undefined;
+};
+
+let cachedClient: GoogleGenAI | null = null;
+let missingKeyWarned = false;
+
+const loadClient = (): GoogleGenAI | null => {
+  if (cachedClient) {
+    return cachedClient;
+  }
+
+  const apiKey = resolveApiKey();
+  if (!apiKey) {
+    if (!missingKeyWarned) {
+      console.warn("Gemini API key not found. Set VITE_API_KEY for client builds or API_KEY for server builds.");
+      missingKeyWarned = true;
+    }
+
+    return null;
+  }
+
+  cachedClient = new GoogleGenAI({ apiKey });
+  return cachedClient;
+};
+
+export const getGeminiClient = (): GoogleGenAI | null => loadClient();
+
+export function isGeminiConfigured(): boolean {
+  const apiKey = resolveApiKey();
+  return typeof apiKey === "string" && apiKey.length > 0;
 }
-export const ai = new GoogleGenAI({ apiKey: API_KEY });
+
+const ensureClient = (): GoogleGenAI => {
+  const client = loadClient();
+  if (!client) {
+    throw new Error("Gemini API key is not configured");
+  }
+
+  return client;
+};
+
+export const ai: GoogleGenAI = new Proxy({} as GoogleGenAI, {
+  get(_target, prop, receiver) {
+    const client = ensureClient();
+    const value = Reflect.get(client as Record<PropertyKey, unknown>, prop, receiver);
+    if (typeof value === 'function') {
+      return value.bind(client);
+    }
+    return value;
+  },
+  has(_target, prop) {
+    const client = ensureClient();
+    return prop in client;
+  },
+});
 
 const fileToGenerativePart = async (file: File) => {
   const base64EncodedDataPromise = new Promise<string>((resolve) => {
@@ -79,7 +148,8 @@ export const analyzeStockData = async (prompt: string): Promise<GenerateContentR
   `;
 
   try {
-    const response = await ai.models.generateContent({
+    const client = ensureClient();
+    const response = await client.models.generateContent({
       model: "gemini-2.5-pro",
       contents: fullPrompt,
       config: {
@@ -97,7 +167,8 @@ export const analyzeStockData = async (prompt: string): Promise<GenerateContentR
 
 export const searchWithGrounding = async (prompt: string): Promise<GenerateContentResponse> => {
     try {
-        const response = await ai.models.generateContent({
+        const client = ensureClient();
+        const response = await client.models.generateContent({
             model: "gemini-2.5-flash",
             contents: `Answer the following financial question based on the latest information from the web: "${prompt}"`,
             config: {
@@ -114,7 +185,8 @@ export const searchWithGrounding = async (prompt: string): Promise<GenerateConte
 export const analyzeImage = async (prompt: string, image: File): Promise<GenerateContentResponse> => {
     try {
         const imagePart = await fileToGenerativePart(image);
-        const response = await ai.models.generateContent({
+        const client = ensureClient();
+        const response = await client.models.generateContent({
             model: 'gemini-2.5-flash',
             contents: { parts: [{ text: prompt }, imagePart] },
         });
