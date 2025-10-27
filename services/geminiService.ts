@@ -25,57 +25,13 @@ const resolveApiKey = (): string | undefined => {
   return undefined;
 };
 
-let cachedClient: GoogleGenAI | null = null;
-let missingKeyWarned = false;
+const API_KEY = resolveApiKey();
 
-const loadClient = (): GoogleGenAI | null => {
-  if (cachedClient) {
-    return cachedClient;
-  }
-
-  const apiKey = resolveApiKey();
-  if (!apiKey) {
-    if (!missingKeyWarned) {
-      console.warn("Gemini API key not found. Set VITE_API_KEY for client builds or API_KEY for server builds.");
-      missingKeyWarned = true;
-    }
-
-    return null;
-  }
-
-  cachedClient = new GoogleGenAI({ apiKey });
-  return cachedClient;
-};
-
-export const getGeminiClient = (): GoogleGenAI | null => loadClient();
-
-export function isGeminiConfigured(): boolean {
-  return loadClient() !== null;
+if (!API_KEY) {
+  console.warn("Gemini API key not found. Set VITE_API_KEY for client builds or API_KEY for server builds.");
 }
 
-const ensureClient = (): GoogleGenAI => {
-  const client = loadClient();
-  if (!client) {
-    throw new Error("Gemini API key is not configured");
-  }
-
-  return client;
-};
-
-export const ai: GoogleGenAI = new Proxy({} as GoogleGenAI, {
-  get(_target, prop, receiver) {
-    const client = ensureClient();
-    const value = Reflect.get(client as Record<PropertyKey, unknown>, prop, receiver);
-    if (typeof value === 'function') {
-      return value.bind(client);
-    }
-    return value;
-  },
-  has(_target, prop) {
-    const client = ensureClient();
-    return prop in client;
-  },
-});
+export const ai = new GoogleGenAI({ apiKey: API_KEY });
 
 const fileToGenerativePart = async (file: File) => {
   const base64EncodedDataPromise = new Promise<string>((resolve) => {
