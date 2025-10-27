@@ -6,7 +6,7 @@ import { ChatMessage } from './components/ChatMessage';
 import { Toolbox } from './components/Toolbox';
 import { TextWidget } from './components/TextWidget';
 import { ChatMessage as ChatMessageType, Source } from './types';
-import { analyzeStockData, searchWithGrounding, analyzeImage, getGeminiClient, isGeminiConfigured } from './services/geminiService';
+import { analyzeStockData, searchWithGrounding, analyzeImage, ai, isGeminiConfigured } from './services/geminiService';
 import { StockDivergenceChart } from './components/StockDivergenceChart';
 import { GhostPatternChart } from './components/GhostPatternChart';
 import { OptionsStrategyCard } from './components/OptionsStrategyCard';
@@ -59,21 +59,12 @@ const initialWidgets: AnalysisWidget[] = [
 ];
 
 const App: React.FC = () => {
-  const geminiClientRef = useRef<GoogleGenAI | null>(null);
-  const [geminiReady, setGeminiReady] = useState(() => isGeminiConfigured());
-  if (geminiReady && !geminiClientRef.current) {
-    geminiClientRef.current = getGeminiClient();
-  }
-  useEffect(() => {
-    if (geminiReady && !geminiClientRef.current) {
-      geminiClientRef.current = getGeminiClient();
-    }
-  }, [geminiReady]);
+  const geminiReady = isGeminiConfigured;
   const [messages, setMessages] = useState<ChatMessageType[]>([
     {
       id: 'init',
       role: 'model',
-      content: geminiClientRef.current
+      content: geminiReady
         ? "Welcome! I've preloaded some analysis in the dashboard. Use the toolbox for more or ask me a question."
         : "Gemini API access isn't configured yet. Add your VITE_API_KEY to enable live analysis and chat features.",
     },
@@ -119,8 +110,7 @@ const App: React.FC = () => {
     const widgetId = `${featureType}-${symbol}-${Date.now()}`;
 
     try {
-      const client = ensureGeminiClient();
-      if (!client) {
+      if (!geminiReady || !ai) {
         throw new Error('Gemini API key is not configured');
       }
 
@@ -204,8 +194,8 @@ const App: React.FC = () => {
         const response = await analyzeImage(prompt, image);
         responseText = response.text;
       } else {
-        const client = ensureGeminiClient();
-        if (!client) {
+        const client = ai;
+        if (!geminiReady || !client) {
           throw new Error('Gemini API key is not configured');
         }
 
