@@ -62,6 +62,16 @@ const initialWidgets: AnalysisWidget[] = [
 const App: React.FC = () => {
   const geminiClientRef = useRef<GoogleGenAI | null>(null);
   const [geminiReady, setGeminiReady] = useState(() => isGeminiConfigured());
+
+  useEffect(() => {
+    const ready = isGeminiConfigured();
+    setGeminiReady(ready);
+
+    if (ready && !geminiClientRef.current) {
+      geminiClientRef.current = getGeminiClient();
+    }
+  }, []);
+
   if (geminiReady && !geminiClientRef.current) {
     geminiClientRef.current = getGeminiClient();
   }
@@ -106,6 +116,40 @@ const App: React.FC = () => {
     }
 
     return next;
+  };
+
+  useEffect(() => {
+    if (!geminiReady) {
+      geminiClientRef.current = null;
+      chatSessionRef.current = null;
+    }
+  }, [geminiReady]);
+
+  const ensureGeminiClient = () => {
+    if (!geminiReady) {
+      const readyNow = isGeminiConfigured();
+      setGeminiReady(readyNow);
+      if (!readyNow) {
+        return null;
+      }
+    }
+
+    if (!geminiClientRef.current) {
+      geminiClientRef.current = getGeminiClient();
+    }
+
+    if (!geminiClientRef.current) {
+      if (geminiReady) {
+        setGeminiReady(false);
+      }
+      return null;
+    }
+
+    if (!geminiReady) {
+      setGeminiReady(true);
+    }
+
+    return geminiClientRef.current;
   };
 
   useEffect(() => {

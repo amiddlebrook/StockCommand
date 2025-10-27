@@ -49,6 +49,10 @@ const loadClient = (): GoogleGenAI | null => {
 
 export const getGeminiClient = (): GoogleGenAI | null => loadClient();
 
+export const isGeminiConfigured = (): boolean => {
+  const apiKey = resolveApiKey();
+  return typeof apiKey === 'string' && apiKey.length > 0;
+};
 export function isGeminiConfigured(): boolean {
   const apiKey = resolveApiKey();
   return typeof apiKey === "string" && apiKey.length > 0;
