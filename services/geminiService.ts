@@ -25,40 +25,13 @@ const resolveApiKey = (): string | undefined => {
   return undefined;
 };
 
-let cachedClient: GoogleGenAI | null = null;
-let missingKeyWarned = false;
+const API_KEY = resolveApiKey();
 
-const loadClient = (): GoogleGenAI | null => {
-  if (cachedClient) {
-    return cachedClient;
-  }
+if (!API_KEY) {
+  console.warn("Gemini API key not found. Set VITE_API_KEY for client builds or API_KEY for server builds.");
+}
 
-  const apiKey = resolveApiKey();
-  if (!apiKey) {
-    if (!missingKeyWarned) {
-      console.warn("Gemini API key not found. Set VITE_API_KEY for client builds or API_KEY for server builds.");
-      missingKeyWarned = true;
-    }
-
-    return null;
-  }
-
-  cachedClient = new GoogleGenAI({ apiKey });
-  return cachedClient;
-};
-
-export const getGeminiClient = (): GoogleGenAI | null => loadClient();
-
-export const isGeminiConfigured = (): boolean => loadClient() !== null;
-
-const ensureClient = (): GoogleGenAI => {
-  const client = loadClient();
-  if (!client) {
-    throw new Error("Gemini API key is not configured");
-  }
-
-  return client;
-};
+export const ai = new GoogleGenAI({ apiKey: API_KEY });
 
 const fileToGenerativePart = async (file: File) => {
   const base64EncodedDataPromise = new Promise<string>((resolve) => {
