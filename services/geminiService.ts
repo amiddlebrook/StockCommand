@@ -31,18 +31,7 @@ if (!API_KEY) {
   console.warn("Gemini API key not found. Set VITE_API_KEY for client builds or API_KEY for server builds.");
 }
 
-const aiClient = API_KEY ? new GoogleGenAI({ apiKey: API_KEY }) : null;
-
-export const ai = aiClient;
-export const isGeminiConfigured = (): boolean => aiClient !== null;
-
-const ensureClient = (): GoogleGenAI => {
-  if (!aiClient) {
-    throw new Error("Gemini API key is not configured");
-  }
-
-  return aiClient;
-};
+export const ai = new GoogleGenAI({ apiKey: API_KEY });
 
 const fileToGenerativePart = async (file: File) => {
   const base64EncodedDataPromise = new Promise<string>((resolve) => {

@@ -59,7 +59,7 @@ const initialWidgets: AnalysisWidget[] = [
 ];
 
 const App: React.FC = () => {
-  const geminiReady = isGeminiConfigured();
+  const geminiReady = isGeminiConfigured;
   const [messages, setMessages] = useState<ChatMessageType[]>([
     {
       id: 'init',
