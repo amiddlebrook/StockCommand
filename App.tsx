@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import type { Chat } from '@google/genai';
+import type { Chat, GoogleGenAI } from '@google/genai';
 import { Header } from './components/Header';
 import { ChatInput } from './components/ChatInput';
 import { ChatMessage } from './components/ChatMessage';
 import { Toolbox } from './components/Toolbox';
 import { TextWidget } from './components/TextWidget';
 import { ChatMessage as ChatMessageType, Source } from './types';
-import { analyzeStockData, searchWithGrounding, analyzeImage, ai } from './services/geminiService';
+import { analyzeStockData, searchWithGrounding, analyzeImage, getGeminiClient, isGeminiConfigured } from './services/geminiService';
 import { StockDivergenceChart } from './components/StockDivergenceChart';
 import { GhostPatternChart } from './components/GhostPatternChart';
 import { OptionsStrategyCard } from './components/OptionsStrategyCard';
@@ -20,6 +20,9 @@ type AnalysisWidget = {
   title: string;
   data: any;
 };
+
+const GEMINI_READY_MESSAGE = "Welcome! I've preloaded some analysis in the dashboard. Use the toolbox for more or ask me a question.";
+const GEMINI_MISSING_MESSAGE = "Gemini API access isn't configured yet. Add your VITE_API_KEY to enable live analysis and chat features.";
 
 const initialWidgets: AnalysisWidget[] = [
   {
@@ -59,11 +62,35 @@ const initialWidgets: AnalysisWidget[] = [
 ];
 
 const App: React.FC = () => {
+  const geminiClientRef = useRef<GoogleGenAI | null>(null);
+  const chatSessionRef = useRef<Chat | null>(null);
+  const [geminiReady, setGeminiReady] = useState(() => isGeminiConfigured());
+
+  useEffect(() => {
+    const ready = isGeminiConfigured();
+    setGeminiReady(ready);
+  }, []);
+
+  useEffect(() => {
+    if (!geminiReady) {
+      geminiClientRef.current = null;
+      chatSessionRef.current = null;
+      return;
+    }
+
+    const client = getGeminiClient();
+    if (!client) {
+      setGeminiReady(false);
+      return;
+    }
+
+    geminiClientRef.current = client;
+  }, [geminiReady]);
   const [messages, setMessages] = useState<ChatMessageType[]>([
     {
       id: 'init',
       role: 'model',
-      content: "Welcome! I've preloaded some analysis in the dashboard. Use the toolbox for more or ask me a question.",
+      content: geminiReady ? GEMINI_READY_MESSAGE : GEMINI_MISSING_MESSAGE,
     },
   ]);
   const [isChatLoading, setIsChatLoading] = useState(false);
@@ -71,11 +98,53 @@ const App: React.FC = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [widgets, setWidgets] = useState<AnalysisWidget[]>(initialWidgets);
   const [mobileView, setMobileView] = useState<'toolbox' | 'dashboard' | 'chat'>('toolbox');
-  
+
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const chatContainerRef = useRef<HTMLDivElement>(null);
-  const chatSessionRef = useRef<Chat | null>(null);
+
+  useEffect(() => {
+    setMessages(prev => {
+      if (prev.length === 0) {
+        return prev;
+      }
+
+      const [first, ...rest] = prev;
+      if (first.id !== 'init') {
+        return prev;
+      }
+
+      const desiredContent = geminiReady ? GEMINI_READY_MESSAGE : GEMINI_MISSING_MESSAGE;
+      if (first.content === desiredContent) {
+        return prev;
+      }
+
+      return [{ ...first, content: desiredContent }, ...rest];
+    });
+  }, [geminiReady]);
+
+  const ensureGeminiClient = () => {
+    let ready = geminiReady;
+
+    if (!ready) {
+      ready = isGeminiConfigured();
+      if (!ready) {
+        return null;
+      }
+      setGeminiReady(true);
+    }
+
+    if (!geminiClientRef.current) {
+      const client = getGeminiClient();
+      if (!client) {
+        setGeminiReady(false);
+        return null;
+      }
+      geminiClientRef.current = client;
+    }
+
+    return geminiClientRef.current;
+  };
 
   useEffect(() => {
     chatContainerRef.current?.scrollTo({
@@ -91,7 +160,12 @@ const App: React.FC = () => {
     const widgetId = `${featureType}-${symbol}-${Date.now()}`;
 
     try {
-        const promptMap: { [key: string]: string } = {
+      const client = ensureGeminiClient();
+      if (!client) {
+        throw new Error('Gemini API key is not configured');
+      }
+
+      const promptMap: { [key: string]: string } = {
             'Divergence Analysis': `Run a stock divergence analysis for ${symbol}.`,
             'Ghost Pattern': `Detect ghost patterns for ${symbol}.`,
             'Options Strategy': `Suggest an options strategy for ${symbol}.`,
@@ -129,7 +203,11 @@ const App: React.FC = () => {
 
     } catch (error) {
         console.error(`Error during ${featureType} analysis:`, error);
-        newWidget = { id: widgetId, type: 'error', title: `Error: ${featureType} for ${symbol}`, data: { text: "Failed to generate analysis. Please try again." } };
+        const message =
+          error instanceof Error && error.message.includes('API key')
+            ? 'Gemini API access is not configured. Add your VITE_API_KEY to enable this feature.'
+            : 'Failed to generate analysis. Please try again.';
+        newWidget = { id: widgetId, type: 'error', title: `Error: ${featureType} for ${symbol}`, data: { text: message } };
         setWidgets(prev => [newWidget, ...prev]);
     } finally {
         setIsDashboardLoading(false);
@@ -161,27 +239,32 @@ const App: React.FC = () => {
     try {
       let responseText = '';
       let sources: Source[] | undefined;
-      
+
       if (image) {
         const prompt = message || "Analyze this image.";
         const response = await analyzeImage(prompt, image);
         responseText = response.text;
       } else {
+        const client = ensureGeminiClient();
+        if (!client) {
+          throw new Error('Gemini API key is not configured');
+        }
+
         if (!chatSessionRef.current) {
-            const historyForAPI = messages
-              .filter(m => (m.role === 'user' || m.role === 'model') && !m.isLoading)
-              .map(m => ({
-                role: m.role as 'user' | 'model',
-                parts: [{ text: m.content }],
-              }));
-              
-            chatSessionRef.current = ai.chats.create({
-                model: 'gemini-2.5-flash',
-                history: historyForAPI,
-                config: {
-                    tools: [{ googleSearch: {} }],
-                },
-            });
+          const historyForAPI = messages
+            .filter(m => (m.role === 'user' || m.role === 'model') && !m.isLoading)
+            .map(m => ({
+              role: m.role as 'user' | 'model',
+              parts: [{ text: m.content }],
+            }));
+
+          chatSessionRef.current = client.chats.create({
+            model: 'gemini-2.5-flash',
+            history: historyForAPI,
+            config: {
+              tools: [{ googleSearch: {} }],
+            },
+          });
         }
         const stream = await chatSessionRef.current.sendMessageStream({ message: message });
         for await (const chunk of stream) {
@@ -214,7 +297,10 @@ const App: React.FC = () => {
       const errorMessage: ChatMessageType = {
         id: modelResponseId,
         role: 'model',
-        content: 'An error occurred. Please check the console.',
+        content:
+          error instanceof Error && error.message.includes('API key')
+            ? 'Gemini API access is not configured. Add your VITE_API_KEY to enable chat and analysis features.'
+            : 'An error occurred. Please check the console.',
         isLoading: false,
       };
        setMessages(prev => prev.map(msg => 
