@@ -21,6 +21,9 @@ type AnalysisWidget = {
   data: any;
 };
 
+const GEMINI_READY_MESSAGE = "Welcome! I've preloaded some analysis in the dashboard. Use the toolbox for more or ask me a question.";
+const GEMINI_MISSING_MESSAGE = "Gemini API access isn't configured yet. Add your VITE_API_KEY to enable live analysis and chat features.";
+
 const initialWidgets: AnalysisWidget[] = [
   {
     id: 'init-divergence-tsla',
@@ -60,11 +63,28 @@ const initialWidgets: AnalysisWidget[] = [
 
 const App: React.FC = () => {
   const geminiClientRef = useRef<GoogleGenAI | null>(null);
+  const chatSessionRef = useRef<Chat | null>(null);
   const [geminiReady, setGeminiReady] = useState(() => isGeminiConfigured());
 
   useEffect(() => {
     const ready = isGeminiConfigured();
     setGeminiReady(ready);
+  }, []);
+
+  useEffect(() => {
+    if (!geminiReady) {
+      geminiClientRef.current = null;
+      chatSessionRef.current = null;
+      return;
+    }
+
+    const client = getGeminiClient();
+    if (!client) {
+      setGeminiReady(false);
+      return;
+    }
+
+    geminiClientRef.current = client;
 
     if (ready && !geminiClientRef.current) {
       geminiClientRef.current = getGeminiClient();
@@ -80,6 +100,7 @@ const App: React.FC = () => {
     {
       id: 'init',
       role: 'model',
+      content: geminiReady ? GEMINI_READY_MESSAGE : GEMINI_MISSING_MESSAGE,
       content: geminiReady
         ? "Welcome! I've preloaded some analysis in the dashboard. Use the toolbox for more or ask me a question."
         : "Gemini API access isn't configured yet. Add your VITE_API_KEY to enable live analysis and chat features.",
@@ -90,11 +111,53 @@ const App: React.FC = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [widgets, setWidgets] = useState<AnalysisWidget[]>(initialWidgets);
   const [mobileView, setMobileView] = useState<'toolbox' | 'dashboard' | 'chat'>('toolbox');
-  
+
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const chatContainerRef = useRef<HTMLDivElement>(null);
-  const chatSessionRef = useRef<Chat | null>(null);
+
+  useEffect(() => {
+    setMessages(prev => {
+      if (prev.length === 0) {
+        return prev;
+      }
+
+      const [first, ...rest] = prev;
+      if (first.id !== 'init') {
+        return prev;
+      }
+
+      const desiredContent = geminiReady ? GEMINI_READY_MESSAGE : GEMINI_MISSING_MESSAGE;
+      if (first.content === desiredContent) {
+        return prev;
+      }
+
+      return [{ ...first, content: desiredContent }, ...rest];
+    });
+  }, [geminiReady]);
+
+  const ensureGeminiClient = () => {
+    let ready = geminiReady;
+
+    if (!ready) {
+      ready = isGeminiConfigured();
+      if (!ready) {
+        return null;
+      }
+      setGeminiReady(true);
+    }
+
+    if (!geminiClientRef.current) {
+      const client = getGeminiClient();
+      if (!client) {
+        setGeminiReady(false);
+        return null;
+      }
+      geminiClientRef.current = client;
+    }
+
+    return geminiClientRef.current;
+  };
 
   const ensureGeminiClient = () => {
     const existing = geminiClientRef.current;
