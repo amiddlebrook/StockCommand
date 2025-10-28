@@ -85,12 +85,25 @@ const App: React.FC = () => {
     }
 
     geminiClientRef.current = client;
+
+    if (ready && !geminiClientRef.current) {
+      geminiClientRef.current = getGeminiClient();
+    }
+  }, []);
+
+  useEffect(() => {
+    if (geminiReady && !geminiClientRef.current) {
+      geminiClientRef.current = getGeminiClient();
+    }
   }, [geminiReady]);
   const [messages, setMessages] = useState<ChatMessageType[]>([
     {
       id: 'init',
       role: 'model',
       content: geminiReady ? GEMINI_READY_MESSAGE : GEMINI_MISSING_MESSAGE,
+      content: geminiReady
+        ? "Welcome! I've preloaded some analysis in the dashboard. Use the toolbox for more or ask me a question."
+        : "Gemini API access isn't configured yet. Add your VITE_API_KEY to enable live analysis and chat features.",
     },
   ]);
   const [isChatLoading, setIsChatLoading] = useState(false);
@@ -141,6 +154,90 @@ const App: React.FC = () => {
         return null;
       }
       geminiClientRef.current = client;
+    }
+
+    return geminiClientRef.current;
+  };
+
+  const ensureGeminiClient = () => {
+    const existing = geminiClientRef.current;
+    if (existing) {
+      return existing;
+    }
+
+    const next = getGeminiClient();
+    geminiClientRef.current = next;
+
+    if (next && !geminiReady) {
+      setGeminiReady(true);
+    }
+
+    return next;
+  };
+
+  useEffect(() => {
+    if (!geminiReady) {
+      geminiClientRef.current = null;
+      chatSessionRef.current = null;
+    }
+  }, [geminiReady]);
+
+  const ensureGeminiClient = () => {
+    if (!geminiReady) {
+      const readyNow = isGeminiConfigured();
+      setGeminiReady(readyNow);
+      if (!readyNow) {
+        return null;
+      }
+    }
+
+    if (!geminiClientRef.current) {
+      geminiClientRef.current = getGeminiClient();
+    }
+
+    if (!geminiClientRef.current) {
+      if (geminiReady) {
+        setGeminiReady(false);
+      }
+      return null;
+    }
+
+    if (!geminiReady) {
+      setGeminiReady(true);
+    }
+
+    return geminiClientRef.current;
+  };
+
+  useEffect(() => {
+    if (!geminiReady) {
+      geminiClientRef.current = null;
+      chatSessionRef.current = null;
+    }
+  }, [geminiReady]);
+
+  const ensureGeminiClient = () => {
+    if (!geminiReady) {
+      const readyNow = isGeminiConfigured();
+      setGeminiReady(readyNow);
+      if (!readyNow) {
+        return null;
+      }
+    }
+
+    if (!geminiClientRef.current) {
+      geminiClientRef.current = getGeminiClient();
+    }
+
+    if (!geminiClientRef.current) {
+      if (geminiReady) {
+        setGeminiReady(false);
+      }
+      return null;
+    }
+
+    if (!geminiReady) {
+      setGeminiReady(true);
     }
 
     return geminiClientRef.current;
