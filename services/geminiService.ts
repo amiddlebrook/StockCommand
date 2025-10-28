@@ -49,13 +49,9 @@ const loadClient = (): GoogleGenAI | null => {
 
 export const getGeminiClient = (): GoogleGenAI | null => loadClient();
 
-export const isGeminiConfigured = (): boolean => {
-  const apiKey = resolveApiKey();
-  return typeof apiKey === 'string' && apiKey.length > 0;
-};
 export function isGeminiConfigured(): boolean {
   const apiKey = resolveApiKey();
-  return typeof apiKey === "string" && apiKey.length > 0;
+  return typeof apiKey === 'string' && apiKey.length > 0;
 }
 
 const ensureClient = (): GoogleGenAI => {
@@ -81,13 +77,6 @@ export const ai: GoogleGenAI = new Proxy({} as GoogleGenAI, {
     return prop in client;
   },
 });
-const API_KEY = resolveApiKey();
-
-if (!API_KEY) {
-  console.warn("Gemini API key not found. Set VITE_API_KEY for client builds or API_KEY for server builds.");
-}
-
-export const ai = new GoogleGenAI({ apiKey: API_KEY });
 
 const fileToGenerativePart = async (file: File) => {
   const base64EncodedDataPromise = new Promise<string>((resolve) => {

@@ -7,7 +7,6 @@ import { Toolbox } from './components/Toolbox';
 import { TextWidget } from './components/TextWidget';
 import { ChatMessage as ChatMessageType, Source } from './types';
 import { analyzeStockData, searchWithGrounding, analyzeImage, getGeminiClient, isGeminiConfigured } from './services/geminiService';
-import { analyzeStockData, searchWithGrounding, analyzeImage, ai, isGeminiConfigured } from './services/geminiService';
 import { StockDivergenceChart } from './components/StockDivergenceChart';
 import { GhostPatternChart } from './components/GhostPatternChart';
 import { OptionsStrategyCard } from './components/OptionsStrategyCard';
@@ -72,20 +71,15 @@ const App: React.FC = () => {
     }
   }, []);
 
-  if (geminiReady && !geminiClientRef.current) {
-    geminiClientRef.current = getGeminiClient();
-  }
   useEffect(() => {
     if (geminiReady && !geminiClientRef.current) {
       geminiClientRef.current = getGeminiClient();
     }
   }, [geminiReady]);
-  const geminiReady = isGeminiConfigured;
   const [messages, setMessages] = useState<ChatMessageType[]>([
     {
       id: 'init',
       role: 'model',
-      content: geminiClientRef.current
       content: geminiReady
         ? "Welcome! I've preloaded some analysis in the dashboard. Use the toolbox for more or ask me a question."
         : "Gemini API access isn't configured yet. Add your VITE_API_KEY to enable live analysis and chat features.",
@@ -153,6 +147,40 @@ const App: React.FC = () => {
   };
 
   useEffect(() => {
+    if (!geminiReady) {
+      geminiClientRef.current = null;
+      chatSessionRef.current = null;
+    }
+  }, [geminiReady]);
+
+  const ensureGeminiClient = () => {
+    if (!geminiReady) {
+      const readyNow = isGeminiConfigured();
+      setGeminiReady(readyNow);
+      if (!readyNow) {
+        return null;
+      }
+    }
+
+    if (!geminiClientRef.current) {
+      geminiClientRef.current = getGeminiClient();
+    }
+
+    if (!geminiClientRef.current) {
+      if (geminiReady) {
+        setGeminiReady(false);
+      }
+      return null;
+    }
+
+    if (!geminiReady) {
+      setGeminiReady(true);
+    }
+
+    return geminiClientRef.current;
+  };
+
+  useEffect(() => {
     chatContainerRef.current?.scrollTo({
       top: chatContainerRef.current.scrollHeight,
       behavior: 'smooth',
@@ -168,7 +196,6 @@ const App: React.FC = () => {
     try {
       const client = ensureGeminiClient();
       if (!client) {
-      if (!geminiReady || !ai) {
         throw new Error('Gemini API key is not configured');
       }
 
@@ -254,8 +281,6 @@ const App: React.FC = () => {
       } else {
         const client = ensureGeminiClient();
         if (!client) {
-        const client = ai;
-        if (!geminiReady || !client) {
           throw new Error('Gemini API key is not configured');
         }
 
