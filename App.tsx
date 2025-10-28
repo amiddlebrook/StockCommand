@@ -108,7 +108,7 @@ const App: React.FC = () => {
   }, [geminiReady]);
   const [messages, setMessages] = useState<ChatMessageType[]>([
     {
-      id: 'init',
+      id: 'welcome',
       role: 'model',
       content: geminiReady ? GEMINI_READY_MESSAGE : GEMINI_MISSING_MESSAGE,
       content: geminiReady
@@ -254,7 +254,12 @@ const App: React.FC = () => {
   };
 
   useEffect(() => {
-    chatContainerRef.current?.scrollTo({
+    setGeminiConfigured(isGeminiConfigured());
+  }, []);
+
+  useEffect(() => {
+    if (!chatContainerRef.current) return;
+    chatContainerRef.current.scrollTo({
       top: chatContainerRef.current.scrollHeight,
       behavior: 'smooth',
     });
@@ -348,20 +353,18 @@ const App: React.FC = () => {
     }
   };
 
-  const handleSendMessage = async (message: string, image?: File) => {
+  const handleSendMessage = (message: string, image?: File) => {
     if (!message.trim() && !image) return;
 
     const userMessage: ChatMessageType = {
-      id: Date.now().toString(),
+      id: `user-${Date.now()}`,
       role: 'user',
       content: message,
     };
 
-    setIsChatLoading(true);
-
-    const modelResponseId = (Date.now() + 1).toString();
+    const modelMessageId = `model-${Date.now() + 1}`;
     const loadingMessage: ChatMessageType = {
-      id: modelResponseId,
+      id: modelMessageId,
       role: 'model',
       content: '',
       isLoading: true,
@@ -438,7 +441,7 @@ const App: React.FC = () => {
       setMessages(prev => prev.map(msg => (msg.id === modelResponseId ? errorMessage : msg)));
     } finally {
       setIsChatLoading(false);
-    }
+    }, 400);
   };
 
   const handleStartRecording = async () => {
@@ -489,8 +492,7 @@ const App: React.FC = () => {
     setWidgets(prev => prev.filter(w => w.id !== id));
   };
 
-  const renderWidget = (widget: AnalysisWidget) => {
-    const props = { id: widget.id, onRemove: removeWidget };
+  const renderWidget = (widget: OfflineWidget) => {
     switch (widget.type) {
       case 'divergence':
         return <StockDivergenceChart data={widget.data} {...props} />;
@@ -509,12 +511,18 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-black text-gray-200 font-mono">
+    <div className="min-h-screen bg-black text-gray-200 flex flex-col">
       <Header />
       <div className="flex-1 md:grid md:grid-cols-12">
         <div className={`border-r border-gray-800 overflow-y-auto md:col-span-3 xl:col-span-2 ${mobileView === 'toolbox' ? 'block' : 'hidden'} md:block`}>
           <Toolbox onAnalysisRequested={handleAnalysisRequest} isLoading={isDashboardLoading} />
         </div>
+      </div>
+
+      <div className="flex-1 grid grid-cols-1 md:grid-cols-12 xl:grid-cols-[260px_minmax(0,_1fr)_340px]">
+        <aside className={`border-r border-gray-900 hidden md:block md:col-span-3 xl:col-auto ${isDashboardLoading ? 'opacity-70' : ''}`}>
+          <Toolbox onAnalysisRequested={handleAnalysisRequested} isLoading={isDashboardLoading} />
+        </aside>
 
         <main className={`overflow-y-auto p-4 md:p-6 space-y-4 md:space-y-6 relative md:col-span-6 xl:col-span-7 ${mobileView === 'dashboard' ? 'block' : 'hidden'} md:block`}>
           {isDashboardLoading && (
@@ -554,6 +562,8 @@ const App: React.FC = () => {
           />
         </aside>
       </div>
+
+      <div className="md:hidden h-16" />
       <MobileNav activeView={mobileView} setActiveView={setMobileView} />
     </div>
   );
