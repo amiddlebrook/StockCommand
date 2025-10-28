@@ -96,6 +96,56 @@ const App: React.FC = () => {
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const chatSessionRef = useRef<Chat | null>(null);
 
+  const ensureGeminiClient = () => {
+    const existing = geminiClientRef.current;
+    if (existing) {
+      return existing;
+    }
+
+    const next = getGeminiClient();
+    geminiClientRef.current = next;
+
+    if (next && !geminiReady) {
+      setGeminiReady(true);
+    }
+
+    return next;
+  };
+
+  useEffect(() => {
+    if (!geminiReady) {
+      geminiClientRef.current = null;
+      chatSessionRef.current = null;
+    }
+  }, [geminiReady]);
+
+  const ensureGeminiClient = () => {
+    if (!geminiReady) {
+      const readyNow = isGeminiConfigured();
+      setGeminiReady(readyNow);
+      if (!readyNow) {
+        return null;
+      }
+    }
+
+    if (!geminiClientRef.current) {
+      geminiClientRef.current = getGeminiClient();
+    }
+
+    if (!geminiClientRef.current) {
+      if (geminiReady) {
+        setGeminiReady(false);
+      }
+      return null;
+    }
+
+    if (!geminiReady) {
+      setGeminiReady(true);
+    }
+
+    return geminiClientRef.current;
+  };
+
   useEffect(() => {
     if (!geminiReady) {
       geminiClientRef.current = null;
