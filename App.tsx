@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import type { Chat, GoogleGenAI } from '@google/genai';
 import { Header } from './components/Header';
 import { ChatInput } from './components/ChatInput';
@@ -17,62 +17,15 @@ import { MobileNav } from './components/MobileNav';
 const GEMINI_READY_MESSAGE = "Welcome! I've preloaded some analysis in the dashboard. Use the toolbox for more or ask me a question.";
 const GEMINI_MISSING_MESSAGE = "Gemini API access isn't configured yet. Add your VITE_API_KEY to enable live analysis and chat features.";
 
-const FALLBACK_DIVERGENCE = [
-  { timeframe: '1D', bullish: 7, bearish: 4 },
-  { timeframe: '1W', bullish: 18, bearish: 9 },
-  { timeframe: '1M', bullish: 26, bearish: 11 },
-  { timeframe: '3M', bullish: 34, bearish: 15 },
-];
-
-const FALLBACK_GHOST_PATTERN = {
-  score: 0.79,
-  patternType: 'Institutional Accumulation',
-  correlation: [
-    { x: 'Day 1', y: 98 },
-    { x: 'Day 2', y: 101 },
-    { x: 'Day 3', y: 100 },
-    { x: 'Day 4', y: 104 },
-    { x: 'Day 5', y: 106 },
-    { x: 'Day 6', y: 109 },
-    { x: 'Day 7', y: 111 },
-    { x: 'Day 8', y: 112 },
-    { x: 'Day 9', y: 113 },
-    { x: 'Day 10', y: 117 },
-  ],
-};
-
-const FALLBACK_OPTIONS_STRATEGY = {
-  strategyName: 'Bull Call Spread',
-  symbol: 'DEMO',
-  probabilityOfProfit: 63,
-  expectedMove: '$8.50',
-  breakevenPoints: ['198.50', '212.00'],
-};
-
-const FALLBACK_NEWS = `**Offline Market Snapshot**\n\n` +
-  `While live Gemini analysis is unavailable, here's a curated look at recent macro themes: \n\n` +
-  `• Inflation pressures eased across major economies last quarter, supporting risk-on sentiment.\n` +
-  `• Cloud, semiconductor, and AI infrastructure names continue to lead gains.\n` +
-  `• Energy equities lag as crude prices consolidate following a multi-month rally.\n\n` +
-  `Connect Gemini to replace this card with live research powered by the latest filings, transcripts, and news.\n`;
-
-const FALLBACK_PROFILE = (symbol: string) =>
-  `**${symbol} (Offline Overview)**\n\n` +
-  `You're viewing demo insights. Add a VITE_API_KEY to unlock live fundamentals, earnings recaps, and valuation snapshots.\n\n` +
-  `In the meantime, focus on liquidity, recent price structure, and catalyst calendars when researching ${symbol}.`;
-
-const OFFLINE_CHAT_RESPONSES = [
-  "I'm running in offline preview mode right now. Connect Gemini to chat with the real analyst copilot.",
-  "Tip: Add VITE_API_KEY to your worker or .env file. Once Gemini is live you can ask about tickers, macro themes, or upload charts.",
-  "You still have access to the toolbox demo widgets—try the Divergence or Options tiles while Gemini is offline.",
-];
-
 type AnalysisWidget = {
   id: string;
   type: 'divergence' | 'ghost' | 'options' | 'news' | 'profile' | 'comparison' | 'error';
   title: string;
   data: any;
 };
+
+const GEMINI_READY_MESSAGE = "Welcome! I've preloaded some analysis in the dashboard. Use the toolbox for more or ask me a question.";
+const GEMINI_MISSING_MESSAGE = "Gemini API access isn't configured yet. Add your VITE_API_KEY to enable live analysis and chat features.";
 
 const initialWidgets: AnalysisWidget[] = [
   {
@@ -121,13 +74,46 @@ const initialWidgets: AnalysisWidget[] = [
 const App: React.FC = () => {
   const geminiClientRef = useRef<GoogleGenAI | null>(null);
   const chatSessionRef = useRef<Chat | null>(null);
-  const initialGeminiReady = isGeminiConfigured();
-  const [geminiReady, setGeminiReady] = useState(initialGeminiReady);
-  const [messages, setMessages] = useState<ChatMessageType[]>(() => [
+  const [geminiReady, setGeminiReady] = useState(() => isGeminiConfigured());
+
+  useEffect(() => {
+    const ready = isGeminiConfigured();
+    setGeminiReady(ready);
+  }, []);
+
+  useEffect(() => {
+    if (!geminiReady) {
+      geminiClientRef.current = null;
+      chatSessionRef.current = null;
+      return;
+    }
+
+    const client = getGeminiClient();
+    if (!client) {
+      setGeminiReady(false);
+      return;
+    }
+
+    geminiClientRef.current = client;
+
+    if (ready && !geminiClientRef.current) {
+      geminiClientRef.current = getGeminiClient();
+    }
+  }, []);
+
+  useEffect(() => {
+    if (geminiReady && !geminiClientRef.current) {
+      geminiClientRef.current = getGeminiClient();
+    }
+  }, [geminiReady]);
+  const [messages, setMessages] = useState<ChatMessageType[]>([
     {
       id: 'init',
       role: 'model',
-      content: initialGeminiReady ? GEMINI_READY_MESSAGE : GEMINI_MISSING_MESSAGE,
+      content: geminiReady ? GEMINI_READY_MESSAGE : GEMINI_MISSING_MESSAGE,
+      content: geminiReady
+        ? "Welcome! I've preloaded some analysis in the dashboard. Use the toolbox for more or ask me a question."
+        : "Gemini API access isn't configured yet. Add your VITE_API_KEY to enable live analysis and chat features.",
     },
   ]);
   const [isChatLoading, setIsChatLoading] = useState(false);
@@ -140,113 +126,35 @@ const App: React.FC = () => {
   const audioChunksRef = useRef<Blob[]>([]);
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
-  const createFallbackWidget = useCallback(
-    (featureType: string, symbol: string): AnalysisWidget => {
-      switch (featureType) {
-        case 'Divergence Analysis':
-          return {
-            id: `fallback-divergence-${symbol}-${Date.now()}`,
-            type: 'divergence',
-            title: `Divergence: ${symbol}`,
-            data: FALLBACK_DIVERGENCE.map(point => ({ ...point })),
-          };
-        case 'Ghost Pattern':
-          return {
-            id: `fallback-ghost-${symbol}-${Date.now()}`,
-            type: 'ghost',
-            title: `Ghost Pattern: ${symbol}`,
-            data: { ...FALLBACK_GHOST_PATTERN },
-          };
-        case 'Options Strategy':
-          return {
-            id: `fallback-options-${symbol}-${Date.now()}`,
-            type: 'options',
-            title: `Options Strategy: ${symbol}`,
-            data: { ...FALLBACK_OPTIONS_STRATEGY, symbol },
-          };
-        case 'Financial News':
-        case 'Market Overview':
-          return {
-            id: `fallback-news-${symbol}-${Date.now()}`,
-            type: 'profile',
-            title: `${featureType}: ${symbol}`,
-            data: { text: FALLBACK_NEWS, sources: [] },
-          };
-        case 'Company Profile':
-        case 'Peer Comparison':
-          return {
-            id: `fallback-profile-${symbol}-${Date.now()}`,
-            type: 'profile',
-            title: `${featureType}: ${symbol}`,
-            data: { text: FALLBACK_PROFILE(symbol), sources: [] },
-          };
-        case 'Sentiment Analysis':
-          return {
-            id: `fallback-sentiment-${symbol}-${Date.now()}`,
-            type: 'profile',
-            title: `Sentiment Analysis: ${symbol}`,
-            data: {
-              text:
-                `**Offline Sentiment Preview**\n\n` +
-                `${symbol} has shown resilient price action recently. Plug Gemini in to see real-time news sentiment scores, social momentum, and cross-asset signals.`,
-              sources: [],
-            },
-          };
-        case 'Technical Indicators':
-          return {
-            id: `fallback-technical-${symbol}-${Date.now()}`,
-            type: 'profile',
-            title: `Technical Indicators: ${symbol}`,
-            data: {
-              text:
-                `**Offline Technical Snapshot**\n\n` +
-                `RSI is hovering near 52, MACD is crossing upward, and Bollinger Bands are tightening. These are sample values—connect Gemini for live calculations on ${symbol}.`,
-              sources: [],
-            },
-          };
-        case 'Earnings Analysis':
-          return {
-            id: `fallback-earnings-${symbol}-${Date.now()}`,
-            type: 'profile',
-            title: `Earnings Analysis: ${symbol}`,
-            data: {
-              text:
-                `**Offline Earnings Brief**\n\n` +
-                `${symbol} recently reported double-digit revenue growth with expanding margins in this demo snapshot. Add Gemini to pull actual results, surprises, and transcript takeaways automatically.`,
-              sources: [],
-            },
-          };
-        default:
-          return {
-            id: `fallback-generic-${symbol}-${Date.now()}`,
-            type: 'error',
-            title: `Offline Preview: ${featureType}`,
-            data: {
-              text: `This tool is in offline mode. Configure Gemini to unlock live analysis for ${symbol}.`,
-              sources: [],
-            },
-          };
+  useEffect(() => {
+    setMessages(prev => {
+      if (prev.length === 0) {
+        return prev;
       }
-    },
-    [],
-  );
 
-  const pushFallbackWidget = useCallback(
-    (featureType: string, symbol: string) => {
-      const widget = createFallbackWidget(featureType, symbol);
-      setWidgets(prev => [widget, ...prev]);
-    },
-    [createFallbackWidget],
-  );
+      const [first, ...rest] = prev;
+      if (first.id !== 'init') {
+        return prev;
+      }
 
-  const ensureGeminiClient = useCallback(() => {
-    const readyNow = isGeminiConfigured();
+      const desiredContent = geminiReady ? GEMINI_READY_MESSAGE : GEMINI_MISSING_MESSAGE;
+      if (first.content === desiredContent) {
+        return prev;
+      }
 
-    if (!readyNow) {
-      setGeminiReady(false);
-      geminiClientRef.current = null;
-      chatSessionRef.current = null;
-      return null;
+      return [{ ...first, content: desiredContent }, ...rest];
+    });
+  }, [geminiReady]);
+
+  const ensureGeminiClient = () => {
+    let ready = geminiReady;
+
+    if (!ready) {
+      ready = isGeminiConfigured();
+      if (!ready) {
+        return null;
+      }
+      setGeminiReady(true);
     }
 
     if (!geminiClientRef.current) {
@@ -258,83 +166,92 @@ const App: React.FC = () => {
       geminiClientRef.current = client;
     }
 
-    if (!geminiReady) {
+    return geminiClientRef.current;
+  };
+
+  const ensureGeminiClient = () => {
+    const existing = geminiClientRef.current;
+    if (existing) {
+      return existing;
+    }
+
+    const next = getGeminiClient();
+    geminiClientRef.current = next;
+
+    if (next && !geminiReady) {
       setGeminiReady(true);
     }
 
-    return geminiClientRef.current;
-  }, [geminiReady]);
-
-  useEffect(() => {
-    setGeminiReady(isGeminiConfigured());
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === 'undefined' || typeof document === 'undefined') {
-      return;
-    }
-
-    const recheckConfiguration = () => {
-      setGeminiReady(isGeminiConfigured());
-    };
-
-    window.addEventListener('focus', recheckConfiguration);
-    document.addEventListener('visibilitychange', recheckConfiguration);
-
-    return () => {
-      window.removeEventListener('focus', recheckConfiguration);
-      document.removeEventListener('visibilitychange', recheckConfiguration);
-    };
-  }, []);
+    return next;
+  };
 
   useEffect(() => {
     if (!geminiReady) {
       geminiClientRef.current = null;
       chatSessionRef.current = null;
-      setMessages([
-        {
-          id: 'init',
-          role: 'model',
-          content: GEMINI_MISSING_MESSAGE,
-        },
-      ]);
-      return;
+    }
+  }, [geminiReady]);
+
+  const ensureGeminiClient = () => {
+    if (!geminiReady) {
+      const readyNow = isGeminiConfigured();
+      setGeminiReady(readyNow);
+      if (!readyNow) {
+        return null;
+      }
     }
 
-    const client = ensureGeminiClient();
-    if (!client) {
-      return;
+    if (!geminiClientRef.current) {
+      geminiClientRef.current = getGeminiClient();
     }
 
-    setMessages(prev => {
-      if (prev.length === 0) {
-        return [
-          {
-            id: 'init',
-            role: 'model',
-            content: GEMINI_READY_MESSAGE,
-          },
-        ];
+    if (!geminiClientRef.current) {
+      if (geminiReady) {
+        setGeminiReady(false);
       }
+      return null;
+    }
 
-      const [first, ...rest] = prev;
-      if (first.id !== 'init') {
-        return prev;
+    if (!geminiReady) {
+      setGeminiReady(true);
+    }
+
+    return geminiClientRef.current;
+  };
+
+  useEffect(() => {
+    if (!geminiReady) {
+      geminiClientRef.current = null;
+      chatSessionRef.current = null;
+    }
+  }, [geminiReady]);
+
+  const ensureGeminiClient = () => {
+    if (!geminiReady) {
+      const readyNow = isGeminiConfigured();
+      setGeminiReady(readyNow);
+      if (!readyNow) {
+        return null;
       }
+    }
 
-      if (first.content === GEMINI_READY_MESSAGE) {
-        return prev;
+    if (!geminiClientRef.current) {
+      geminiClientRef.current = getGeminiClient();
+    }
+
+    if (!geminiClientRef.current) {
+      if (geminiReady) {
+        setGeminiReady(false);
       }
+      return null;
+    }
 
-      return [
-        {
-          ...first,
-          content: GEMINI_READY_MESSAGE,
-        },
-        ...rest,
-      ];
-    });
-  }, [geminiReady, ensureGeminiClient]);
+    if (!geminiReady) {
+      setGeminiReady(true);
+    }
+
+    return geminiClientRef.current;
+  };
 
   useEffect(() => {
     chatContainerRef.current?.scrollTo({
@@ -351,28 +268,21 @@ const App: React.FC = () => {
     try {
       const client = ensureGeminiClient();
       if (!client) {
-        pushFallbackWidget(featureType, symbol);
-        return;
+        throw new Error('Gemini API key is not configured');
       }
 
       const promptMap: { [key: string]: string } = {
-        'Divergence Analysis': `Run a stock divergence analysis for ${symbol}.`,
-        'Ghost Pattern': `Detect ghost patterns for ${symbol}.`,
-        'Options Strategy': `Suggest an options strategy for ${symbol}.`,
-        'Financial News': `Get the latest financial news for ${symbol}.`,
-        'Company Profile': `Provide a detailed company profile for ${symbol}.`,
-        'Peer Comparison': `Provide a peer comparison for ${symbol}.`,
-        'Sentiment Analysis': `Provide a sentiment analysis for ${symbol} based on recent news and social media.`,
-        'Technical Indicators': `Calculate key technical indicators (like RSI, MACD, Bollinger Bands) for ${symbol}.`,
-        'Earnings Analysis': `Analyze the latest earnings report for ${symbol}.`,
-        'Market Overview': `Provide a general market overview and how ${symbol} fits into the current landscape.`,
-      };
-
-      const prompt = promptMap[featureType];
-
-      if (!prompt) {
-        throw new Error(`Unsupported analysis type: ${featureType}`);
-      }
+            'Divergence Analysis': `Run a stock divergence analysis for ${symbol}.`,
+            'Ghost Pattern': `Detect ghost patterns for ${symbol}.`,
+            'Options Strategy': `Suggest an options strategy for ${symbol}.`,
+            'Financial News': `Get the latest financial news for ${symbol}.`,
+            'Company Profile': `Provide a detailed company profile for ${symbol}.`,
+            'Peer Comparison': `Provide a peer comparison for ${symbol}.`,
+            'Sentiment Analysis': `Provide a sentiment analysis for ${symbol} based on recent news and social media.`,
+            'Technical Indicators': `Calculate key technical indicators (like RSI, MACD, Bollinger Bands) for ${symbol}.`,
+            'Earnings Analysis': `Analyze the latest earnings report for ${symbol}.`,
+            'Market Overview': `Provide a general market overview and how ${symbol} fits into the current landscape.`
+        };
 
       if (['Divergence Analysis', 'Ghost Pattern', 'Options Strategy'].includes(featureType)) {
         const response = await analyzeStockData(prompt);
@@ -426,18 +336,13 @@ const App: React.FC = () => {
         setWidgets(prev => [widget, ...prev]);
       }
     } catch (error) {
-      console.error(`Error during ${featureType} analysis:`, error);
-      if (error instanceof Error && error.message.includes('API key')) {
-        pushFallbackWidget(featureType, symbol);
-      } else {
-        const errorWidget: AnalysisWidget = {
-          id: widgetId,
-          type: 'error',
-          title: `Error: ${featureType} for ${symbol}`,
-          data: { text: 'Failed to generate analysis. Please try again.' },
-        };
-        setWidgets(prev => [errorWidget, ...prev]);
-      }
+        console.error(`Error during ${featureType} analysis:`, error);
+        const message =
+          error instanceof Error && error.message.includes('API key')
+            ? 'Gemini API access is not configured. Add your VITE_API_KEY to enable this feature.'
+            : 'Failed to generate analysis. Please try again.';
+        newWidget = { id: widgetId, type: 'error', title: `Error: ${featureType} for ${symbol}`, data: { text: message } };
+        setWidgets(prev => [newWidget, ...prev]);
     } finally {
       setIsDashboardLoading(false);
     }
@@ -469,28 +374,13 @@ const App: React.FC = () => {
       let sources: Source[] | undefined;
 
       if (image) {
-        if (!geminiReady) {
-          responseText =
-            "I'm in offline demo mode, so I can't inspect images yet. Connect Gemini to unlock chart and document analysis.";
-        } else {
-          const prompt = message || 'Analyze this image.';
-          const response = await analyzeImage(prompt, image);
-          responseText = response.text;
-        }
+        const prompt = message || 'Analyze this image.';
+        const response = await analyzeImage(prompt, image);
+        responseText = response.text;
       } else {
         const client = ensureGeminiClient();
         if (!client) {
-          const offlineIndex =
-            messages.filter(m => m.role === 'model' && !m.isLoading).length % OFFLINE_CHAT_RESPONSES.length;
-          responseText = OFFLINE_CHAT_RESPONSES[offlineIndex];
-          const offlineMessage: ChatMessageType = {
-            id: modelResponseId,
-            role: 'model',
-            content: responseText,
-            isLoading: false,
-          };
-          setMessages(prev => prev.map(msg => (msg.id === modelResponseId ? offlineMessage : msg)));
-          return;
+          throw new Error('Gemini API key is not configured');
         }
 
         if (!chatSessionRef.current) {
@@ -536,25 +426,16 @@ const App: React.FC = () => {
       setMessages(prev => prev.map(msg => (msg.id === modelResponseId ? newBotMessage : msg)));
     } catch (error) {
       console.error('Error handling message:', error);
-      if (error instanceof Error && error.message.includes('API key')) {
-        const offlineIndex =
-          messages.filter(m => m.role === 'model' && !m.isLoading).length % OFFLINE_CHAT_RESPONSES.length;
-        const offlineMessage: ChatMessageType = {
-          id: modelResponseId,
-          role: 'model',
-          content: OFFLINE_CHAT_RESPONSES[offlineIndex],
-          isLoading: false,
-        };
-        setMessages(prev => prev.map(msg => (msg.id === modelResponseId ? offlineMessage : msg)));
-      } else {
-        const errorMessage: ChatMessageType = {
-          id: modelResponseId,
-          role: 'model',
-          content: 'An error occurred. Please check the console.',
-          isLoading: false,
-        };
-        setMessages(prev => prev.map(msg => (msg.id === modelResponseId ? errorMessage : msg)));
-      }
+      const errorMessage: ChatMessageType = {
+        id: modelResponseId,
+        role: 'model',
+        content:
+          error instanceof Error && error.message.includes('API key')
+            ? 'Gemini API access is not configured. Add your VITE_API_KEY to enable chat and analysis features.'
+            : 'An error occurred. Please check the console.',
+        isLoading: false,
+      };
+      setMessages(prev => prev.map(msg => (msg.id === modelResponseId ? errorMessage : msg)));
     } finally {
       setIsChatLoading(false);
     }
