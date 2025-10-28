@@ -1,202 +1,45 @@
-import type { DivergenceData, GhostPatternData, OptionsStrategy, Source } from '../types';
+import { GoogleGenAI, Type, type GenerateContentResponse } from '@google/genai';
+import type { DivergenceData, GhostPatternData, OptionsStrategy } from '../types';
 
-export type OfflineWidgetType = 'divergence' | 'ghost' | 'options' | 'profile';
+type WidgetKind = 'divergence' | 'ghost' | 'options' | 'profile' | 'news' | 'comparison' | 'error';
 
-// Resolve the Gemini API key from different environments (Vite, Node, window)
-const resolveApiKey = (): string | undefined => {
-  const maybeImportMeta = typeof import.meta !== 'undefined' ? (import.meta as ImportMeta) : undefined;
-  const fromVite = maybeImportMeta?.env?.VITE_API_KEY;
-  if (typeof fromVite === 'string' && fromVite.length > 0) {
-    return fromVite;
-  }
-
-  if (typeof process !== 'undefined') {
-    const fromProcess = process.env?.VITE_API_KEY ?? process.env?.API_KEY;
-    if (typeof fromProcess === 'string' && fromProcess.length > 0) {
-      return fromProcess;
-    }
-  }
-
-  const globalKey = (globalThis as { API_KEY?: unknown }).API_KEY;
-  if (typeof globalKey === 'string' && globalKey.length > 0) {
-    return globalKey;
-  }
-
-  return undefined;
+export type AnalysisWidget = {
+  id: string;
+  type: WidgetKind;
+  title: string;
+  data: any;
 };
 
-let cachedClient: GoogleGenAI | null = null;
-let missingKeyWarned = false;
+const DIVERGENCE_DEMO: DivergenceData[] = [
+  { timeframe: '1H', bullish: 5, bearish: 2 },
+  { timeframe: '4H', bullish: 8, bearish: 6 },
+  { timeframe: '1D', bullish: 12, bearish: 10 },
+  { timeframe: '1W', bullish: 15, bearish: 5 },
+];
 
-const loadClient = (): GoogleGenAI | null => {
-  if (cachedClient) {
-    return cachedClient;
-  }
-
-  const apiKey = resolveApiKey();
-  if (!apiKey) {
-    if (!missingKeyWarned) {
-      console.warn("Gemini API key not found. Set VITE_API_KEY for client builds or API_KEY for server builds.");
-      missingKeyWarned = true;
-    }
-
-    return null;
-  }
-
-  cachedClient = new GoogleGenAI({ apiKey });
-  return cachedClient;
+const GHOST_DEMO: GhostPatternData = {
+  score: 0.87,
+  patternType: 'Inverse Index Correlation',
+  correlation: [
+    { x: 'Day 1', y: 100 },
+    { x: 'Day 2', y: 102 },
+    { x: 'Day 3', y: 101 },
+    { x: 'Day 4', y: 105 },
+    { x: 'Day 5', y: 103 },
+    { x: 'Day 6', y: 108 },
+    { x: 'Day 7', y: 110 },
+    { x: 'Day 8', y: 109 },
+    { x: 'Day 9', y: 112 },
+    { x: 'Day 10', y: 115 },
+  ],
 };
 
-export const getGeminiClient = (): GoogleGenAI | null => loadClient();
-
-export function isGeminiConfigured(): boolean {
-  const apiKey = resolveApiKey();
-  return typeof apiKey === 'string' && apiKey.length > 0;
-}
-
-const ensureClient = (): GoogleGenAI => {
-  const client = loadClient();
-  if (!client) {
-    throw new Error("Gemini API key is not configured");
-  }
-
-  return client;
-};
-
-export const ai: GoogleGenAI = new Proxy({} as GoogleGenAI, {
-  get(_target, prop, receiver) {
-    const client = ensureClient();
-    const value = Reflect.get(client as Record<PropertyKey, unknown>, prop, receiver);
-    if (typeof value === 'function') {
-      return value.bind(client);
-    }
-    return value;
-  },
-  has(_target, prop) {
-    const client = ensureClient();
-    return prop in client;
-  },
-});
-
-const fileToGenerativePart = async (file: File) => {
-  const base64EncodedDataPromise = new Promise<string>((resolve) => {
-    const reader = new FileReader();
-    reader.onloadend = () => resolve((reader.result as string).split(',')[1]);
-    reader.readAsDataURL(file);
-  });
-  return {
-    inlineData: { data: await base64EncodedDataPromise, mimeType: file.type },
-  };
-};
-
-export const analyzeStockData = async (prompt: string): Promise<GenerateContentResponse> => {
-    const responseSchema = {
-      type: Type.OBJECT,
-      properties: {
-        analysisSummary: { type: Type.STRING },
-        divergenceData: {
-          type: Type.ARRAY,
-          items: {
-            type: Type.OBJECT,
-            properties: {
-              timeframe: { type: Type.STRING },
-              bullish: { type: Type.NUMBER },
-              bearish: { type: Type.NUMBER },
-            },
-          },
-        },
-        ghostPatternData: {
-          type: Type.OBJECT,
-          properties: {
-            score: { type: Type.NUMBER },
-            patternType: { type: Type.STRING },
-            correlation: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  x: { type: Type.STRING },
-                  y: { type: Type.NUMBER },
-                },
-              },
-            },
-          },
-        },
-        optionsStrategy: {
-          type: Type.OBJECT,
-          properties: {
-            strategyName: { type: Type.STRING },
-            symbol: { type: Type.STRING },
-            probabilityOfProfit: { type: Type.NUMBER },
-            expectedMove: { type: Type.STRING },
-            breakevenPoints: {
-                type: Type.ARRAY,
-                items: { type: Type.STRING }
-            },
-          },
-        },
-      },
-    };
-
-  const fullPrompt = `
-    You are a world-class financial analyst AI with access to up-to-the-minute market data. Based on the following user request, provide a detailed analysis using the most recent financial information available.
-    User request: "${prompt}"
-    
-    Return your response in the specified JSON format. If a particular analysis (divergence, ghost pattern, options) is not requested, return null for that field.
-    For divergenceData, provide data for at least 4 recent timeframes (e.g., 1H, 4H, 1D, 1W).
-    For ghostPatternData, provide a correlation series with at least 10 recent data points.
-  `;
-
-  try {
-    const client = ensureClient();
-    const response = await client.models.generateContent({
-      model: "gemini-2.5-pro",
-      contents: fullPrompt,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: responseSchema,
-        thinkingConfig: { thinkingBudget: 32768 }
-      },
-    });
-    return response;
-  } catch (error) {
-    console.error("Error in complex analysis:", error);
-    throw error;
-  }
-
-export const searchWithGrounding = async (prompt: string): Promise<GenerateContentResponse> => {
-    try {
-        const client = ensureClient();
-        const response = await client.models.generateContent({
-            model: "gemini-2.5-flash",
-            contents: `Answer the following financial question based on the latest information from the web: "${prompt}"`,
-            config: {
-                tools: [{googleSearch: {}}],
-            },
-        });
-        return response;
-    } catch (error) {
-        console.error("Error in search grounding:", error);
-        throw error;
-    }
-  }
-
-  return undefined;
-};
-
-export const analyzeImage = async (prompt: string, image: File): Promise<GenerateContentResponse> => {
-    try {
-        const imagePart = await fileToGenerativePart(image);
-        const client = ensureClient();
-        const response = await client.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: { parts: [{ text: prompt }, imagePart] },
-        });
-        return response;
-    } catch (error) {
-        console.error("Error analyzing image:", error);
-        throw error;
-    }
+const OPTIONS_DEMO: OptionsStrategy = {
+  strategyName: 'Bull Call Spread',
+  symbol: 'TSLA',
+  probabilityOfProfit: 0.64,
+  expectedMove: '+4.20%',
+  breakevenPoints: ['$250.00', '$265.00'],
 };
 
 const OFFLINE_NEWS_COPY = `**Offline Market Snapshot**\n\n` +
@@ -220,10 +63,175 @@ const TECHNICAL_COPY = (symbol: string) =>
 const EARNINGS_COPY = (symbol: string) =>
   `**Offline Earnings Brief**\n\n${symbol} recently reported double-digit revenue growth with expanding margins in this preview. Add Gemini to pull actual results, surprises, and transcript highlights automatically.`;
 
+type MaybeGeminiClient = GoogleGenAI | null;
+
+let cachedClient: MaybeGeminiClient = null;
+let missingKeyWarned = false;
+
+const resolveApiKey = (): string | undefined => {
+  const maybeImportMeta = typeof import.meta !== 'undefined' ? (import.meta as ImportMeta) : undefined;
+  const fromVite = maybeImportMeta?.env?.VITE_API_KEY;
+  if (typeof fromVite === 'string' && fromVite.length > 0) {
+    return fromVite;
+  }
+
+  if (typeof process !== 'undefined') {
+    const fromProcess = process.env?.VITE_API_KEY ?? process.env?.API_KEY ?? process.env?.GEMINI_API_KEY;
+    if (typeof fromProcess === 'string' && fromProcess.length > 0) {
+      return fromProcess;
+    }
+  }
+
+  const globalKey = (globalThis as { API_KEY?: unknown }).API_KEY;
+  if (typeof globalKey === 'string' && globalKey.length > 0) {
+    return globalKey;
+  }
+
+  return undefined;
+};
+
+export const isGeminiConfigured = (): boolean => Boolean(resolveApiKey());
+
+export const getGeminiClient = (): MaybeGeminiClient => {
+  if (cachedClient) {
+    return cachedClient;
+  }
+
+  const apiKey = resolveApiKey();
+  if (!apiKey) {
+    if (!missingKeyWarned) {
+      console.warn('Gemini API key not found. Set VITE_API_KEY for client builds or API_KEY for server builds.');
+      missingKeyWarned = true;
+    }
+    return null;
+  }
+
+  try {
+    cachedClient = new GoogleGenAI({ apiKey });
+  } catch (error) {
+    console.error('Failed to initialise Gemini client:', error);
+    cachedClient = null;
+  }
+
+  return cachedClient;
+};
+
+const ensureClient = (): GoogleGenAI => {
+  const client = getGeminiClient();
+  if (!client) {
+    throw new Error('Gemini API key is not configured');
+  }
+  return client;
+};
+
+export const analyzeStockData = async (prompt: string): Promise<GenerateContentResponse> => {
+  const responseSchema = {
+    type: Type.OBJECT,
+    properties: {
+      analysisSummary: { type: Type.STRING },
+      divergenceData: {
+        type: Type.ARRAY,
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            timeframe: { type: Type.STRING },
+            bullish: { type: Type.NUMBER },
+            bearish: { type: Type.NUMBER },
+          },
+        },
+      },
+      ghostPatternData: {
+        type: Type.OBJECT,
+        properties: {
+          score: { type: Type.NUMBER },
+          patternType: { type: Type.STRING },
+          correlation: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                x: { type: Type.STRING },
+                y: { type: Type.NUMBER },
+              },
+            },
+          },
+        },
+      },
+      optionsStrategy: {
+        type: Type.OBJECT,
+        properties: {
+          strategyName: { type: Type.STRING },
+          symbol: { type: Type.STRING },
+          probabilityOfProfit: { type: Type.NUMBER },
+          expectedMove: { type: Type.STRING },
+          breakevenPoints: {
+            type: Type.ARRAY,
+            items: { type: Type.STRING },
+          },
+        },
+      },
+    },
+  } as const;
+
+  const fullPrompt = `You are a world-class financial analyst AI with access to up-to-the-minute market data. Based on the following user request, provide a detailed analysis using the most recent financial information available.\n\nUser request: "${prompt}"\n\nReturn your response in the specified JSON format. If a particular analysis (divergence, ghost pattern, options) is not requested, return null for that field. For divergenceData, provide data for at least 4 recent timeframes (e.g., 1H, 4H, 1D, 1W). For ghostPatternData, provide a correlation series with at least 10 recent data points.`;
+
+  const client = ensureClient();
+  return client.models.generateContent({
+    model: 'gemini-2.5-pro',
+    contents: fullPrompt,
+    config: {
+      responseMimeType: 'application/json',
+      responseSchema,
+      thinkingConfig: { thinkingBudget: 32768 },
+    },
+  });
+};
+
+export const searchWithGrounding = async (prompt: string): Promise<GenerateContentResponse> => {
+  const client = ensureClient();
+  return client.models.generateContent({
+    model: 'gemini-2.5-flash',
+    contents: `Answer the following financial question based on the latest information from the web: "${prompt}"`,
+    config: {
+      tools: [{ googleSearch: {} }],
+    },
+  });
+};
+
+const fileToGenerativePart = async (file: File) => {
+  const base64EncodedDataPromise = new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const result = reader.result;
+      if (typeof result === 'string') {
+        const [, base64] = result.split(',', 2);
+        resolve(base64 ?? '');
+      } else {
+        reject(new Error('Failed to read file data.'));
+      }
+    };
+    reader.onerror = () => reject(reader.error ?? new Error('Unknown file read error'));
+    reader.readAsDataURL(file);
+  });
+
+  return {
+    inlineData: { data: await base64EncodedDataPromise, mimeType: file.type },
+  };
+};
+
+export const analyzeImage = async (prompt: string, image: File): Promise<GenerateContentResponse> => {
+  const client = ensureClient();
+  const imagePart = await fileToGenerativePart(image);
+  return client.models.generateContent({
+    model: 'gemini-2.5-flash',
+    contents: { parts: [{ text: prompt }, imagePart] },
+  });
+};
+
 export const OFFLINE_CHAT_RESPONSES: readonly string[] = [
   "I'm running in offline preview mode right now. Connect Gemini to chat with the live analyst copilot.",
-  "Tip: Add VITE_API_KEY to your worker or .env file. Once Gemini is live you can ask about tickers, macro themes, or upload charts.",
-  "You still have access to the toolbox demo widgets—try the Divergence or Options tiles while Gemini is offline.",
+  'Tip: Add VITE_API_KEY to your worker or .env file. Once Gemini is live you can ask about tickers, macro themes, or upload charts.',
+  'You still have access to the toolbox demo widgets—try the Divergence or Options tiles while Gemini is offline.',
 ];
 
 export const getOfflineChatResponse = (messageIndex: number): string => {
@@ -232,9 +240,9 @@ export const getOfflineChatResponse = (messageIndex: number): string => {
 };
 
 export const getOfflineImageResponse = (): string =>
-  "Image understanding is paused in offline mode. Connect Gemini to unlock chart and document analysis.";
+  'Image understanding is paused in offline mode. Connect Gemini to unlock chart and document analysis.';
 
-export const createOfflineWidget = (featureType: string, symbol: string): OfflineWidget => {
+export const createOfflineWidget = (featureType: string, symbol: string): AnalysisWidget => {
   const idSuffix = `${symbol}-${Date.now()}`;
 
   switch (featureType) {
@@ -306,12 +314,12 @@ export const createOfflineWidget = (featureType: string, symbol: string): Offlin
   }
 };
 
-export const getOfflineDashboardSeed = (): OfflineWidget[] => [
+export const getOfflineDashboardSeed = (): AnalysisWidget[] => [
   {
     id: 'seed-divergence-tsla',
     type: 'divergence',
     title: 'Divergence: TSLA',
-    data: DIVERGENCE_DEMO.map(point => ({ ...point, timeframe: point.timeframe })),
+    data: DIVERGENCE_DEMO.map(point => ({ ...point })),
   },
   {
     id: 'seed-ghost-nvda',
