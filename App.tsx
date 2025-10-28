@@ -14,6 +14,9 @@ import { Icon } from './components/Icon';
 import { LoadingSpinner } from './components/LoadingSpinner';
 import { MobileNav } from './components/MobileNav';
 
+const GEMINI_READY_MESSAGE = "Welcome! I've preloaded some analysis in the dashboard. Use the toolbox for more or ask me a question.";
+const GEMINI_MISSING_MESSAGE = "Gemini API access isn't configured yet. Add your VITE_API_KEY to enable live analysis and chat features.";
+
 type AnalysisWidget = {
   id: string;
   type: 'divergence' | 'ghost' | 'options' | 'news' | 'profile' | 'comparison' | 'error';
@@ -34,7 +37,7 @@ const initialWidgets: AnalysisWidget[] = [
       { timeframe: '4H', bullish: 8, bearish: 6 },
       { timeframe: '1D', bullish: 12, bearish: 10 },
       { timeframe: '1W', bullish: 15, bearish: 5 },
-    ]
+    ],
   },
   {
     id: 'init-ghost-nvda',
@@ -44,21 +47,28 @@ const initialWidgets: AnalysisWidget[] = [
       score: 0.87,
       patternType: 'Inverse Index Correlation',
       correlation: [
-        { x: 'Day 1', y: 100 }, { x: 'Day 2', y: 102 }, { x: 'Day 3', y: 101 }, { x: 'Day 4', y: 105 },
-        { x: 'Day 5', y: 103 }, { x: 'Day 6', y: 108 }, { x: 'Day 7', y: 110 }, { x: 'Day 8', y: 109 },
-        { x: 'Day 9', y: 112 }, { x: 'Day 10', y: 115 },
-      ]
-    }
+        { x: 'Day 1', y: 100 },
+        { x: 'Day 2', y: 102 },
+        { x: 'Day 3', y: 101 },
+        { x: 'Day 4', y: 105 },
+        { x: 'Day 5', y: 103 },
+        { x: 'Day 6', y: 108 },
+        { x: 'Day 7', y: 110 },
+        { x: 'Day 8', y: 109 },
+        { x: 'Day 9', y: 112 },
+        { x: 'Day 10', y: 115 },
+      ],
+    },
   },
   {
-      id: 'init-news-market',
-      type: 'profile',
-      title: 'Recent Market Overview',
-      data: {
-          text: `**Global Markets Rally on Positive Inflation Data**\n\nMajor global indices saw significant gains this week as new inflation reports from the US and Europe came in lower than expected. The S&P 500 is up 2.5% on the week, while the STOXX 600 has climbed 1.8%. This has eased fears of further aggressive interest rate hikes from central banks.\n\n**Tech Sector Leads the Charge**\n\nThe technology sector was a primary driver of the rally, with semiconductor stocks like NVDA and AMD posting strong performance. The positive sentiment is fueled by hopes that a more stable economic environment will boost consumer and enterprise spending.`,
-          sources: []
-      }
-  }
+    id: 'init-news-market',
+    type: 'profile',
+    title: 'Recent Market Overview',
+    data: {
+      text: `**Global Markets Rally on Positive Inflation Data**\n\nMajor global indices saw significant gains this week as new inflation reports from the US and Europe came in lower than expected. The S&P 500 is up 2.5% on the week, while the STOXX 600 has climbed 1.8%. This has eased fears of further aggressive interest rate hikes from central banks.\n\n**Tech Sector Leads the Charge**\n\nThe technology sector was a primary driver of the rally, with semiconductor stocks like NVDA and AMD posting strong performance. The positive sentiment is fueled by hopes that a more stable economic environment will boost consumer and enterprise spending.`,
+      sources: [],
+    },
+  },
 ];
 
 const App: React.FC = () => {
@@ -253,7 +263,6 @@ const App: React.FC = () => {
   const handleAnalysisRequest = async (featureType: string, symbol: string) => {
     setIsDashboardLoading(true);
     setMobileView('dashboard');
-    let newWidget: AnalysisWidget | null = null;
     const widgetId = `${featureType}-${symbol}-${Date.now()}`;
 
     try {
@@ -275,29 +284,57 @@ const App: React.FC = () => {
             'Market Overview': `Provide a general market overview and how ${symbol} fits into the current landscape.`
         };
 
-        const prompt = promptMap[featureType];
-        
-        if (['Divergence Analysis', 'Ghost Pattern', 'Options Strategy'].includes(featureType)) {
-            const response = await analyzeStockData(prompt);
-            const jsonData = JSON.parse(response.text);
-            if (featureType === 'Divergence Analysis' && jsonData.divergenceData) {
-                newWidget = { id: widgetId, type: 'divergence', title: `Divergence: ${symbol}`, data: jsonData.divergenceData };
-            } else if (featureType === 'Ghost Pattern' && jsonData.ghostPatternData) {
-                newWidget = { id: widgetId, type: 'ghost', title: `Ghost Pattern: ${symbol}`, data: jsonData.ghostPatternData };
-            } else if (featureType === 'Options Strategy' && jsonData.optionsStrategy) {
-                newWidget = { id: widgetId, type: 'options', title: `Options Strategy: ${symbol}`, data: jsonData.optionsStrategy };
-            }
-        } else {
-            const response = await searchWithGrounding(prompt);
-            newWidget = { id: widgetId, type: 'profile', title: `${featureType}: ${symbol}`, data: { text: response.text, sources: response.candidates?.[0]?.groundingMetadata?.groundingChunks } };
+      if (['Divergence Analysis', 'Ghost Pattern', 'Options Strategy'].includes(featureType)) {
+        const response = await analyzeStockData(prompt);
+        const jsonData = JSON.parse(response.text);
+
+        if (featureType === 'Divergence Analysis' && jsonData.divergenceData) {
+          const widget: AnalysisWidget = {
+            id: widgetId,
+            type: 'divergence',
+            title: `Divergence: ${symbol}`,
+            data: jsonData.divergenceData,
+          };
+          setWidgets(prev => [widget, ...prev]);
+          return;
         }
 
-        if (newWidget) {
-            setWidgets(prev => [newWidget, ...prev]);
-        } else {
-             throw new Error("No data returned from analysis.");
+        if (featureType === 'Ghost Pattern' && jsonData.ghostPatternData) {
+          const widget: AnalysisWidget = {
+            id: widgetId,
+            type: 'ghost',
+            title: `Ghost Pattern: ${symbol}`,
+            data: jsonData.ghostPatternData,
+          };
+          setWidgets(prev => [widget, ...prev]);
+          return;
         }
 
+        if (featureType === 'Options Strategy' && jsonData.optionsStrategy) {
+          const widget: AnalysisWidget = {
+            id: widgetId,
+            type: 'options',
+            title: `Options Strategy: ${symbol}`,
+            data: jsonData.optionsStrategy,
+          };
+          setWidgets(prev => [widget, ...prev]);
+          return;
+        }
+
+        throw new Error('No data returned from analysis.');
+      } else {
+        const response = await searchWithGrounding(prompt);
+        const widget: AnalysisWidget = {
+          id: widgetId,
+          type: 'profile',
+          title: `${featureType}: ${symbol}`,
+          data: {
+            text: response.text,
+            sources: response.candidates?.[0]?.groundingMetadata?.groundingChunks,
+          },
+        };
+        setWidgets(prev => [widget, ...prev]);
+      }
     } catch (error) {
         console.error(`Error during ${featureType} analysis:`, error);
         const message =
@@ -307,7 +344,7 @@ const App: React.FC = () => {
         newWidget = { id: widgetId, type: 'error', title: `Error: ${featureType} for ${symbol}`, data: { text: message } };
         setWidgets(prev => [newWidget, ...prev]);
     } finally {
-        setIsDashboardLoading(false);
+      setIsDashboardLoading(false);
     }
   };
 
@@ -329,8 +366,7 @@ const App: React.FC = () => {
       content: '',
       isLoading: true,
     };
-    
-    // Add user message and loading placeholder to the UI
+
     setMessages(prev => [...prev, userMessage, loadingMessage]);
 
     try {
@@ -338,7 +374,7 @@ const App: React.FC = () => {
       let sources: Source[] | undefined;
 
       if (image) {
-        const prompt = message || "Analyze this image.";
+        const prompt = message || 'Analyze this image.';
         const response = await analyzeImage(prompt, image);
         responseText = response.text;
       } else {
@@ -363,17 +399,19 @@ const App: React.FC = () => {
             },
           });
         }
-        const stream = await chatSessionRef.current.sendMessageStream({ message: message });
+        const stream = await chatSessionRef.current.sendMessageStream({ message });
         for await (const chunk of stream) {
-            responseText += chunk.text;
-            if (chunk.candidates?.[0]?.groundingMetadata?.groundingChunks) {
-                sources = chunk.candidates[0].groundingMetadata.groundingChunks as Source[];
-            }
-            setMessages(prev => prev.map(msg => 
-                msg.id === modelResponseId 
-                ? { ...msg, content: responseText, isLoading: true, sources: sources } 
-                : msg
-            ));
+          responseText += chunk.text;
+          if (chunk.candidates?.[0]?.groundingMetadata?.groundingChunks) {
+            sources = chunk.candidates[0].groundingMetadata.groundingChunks as Source[];
+          }
+          setMessages(prev =>
+            prev.map(msg =>
+              msg.id === modelResponseId
+                ? { ...msg, content: responseText, isLoading: true, sources }
+                : msg,
+            ),
+          );
         }
       }
 
@@ -381,14 +419,11 @@ const App: React.FC = () => {
         id: modelResponseId,
         role: 'model',
         content: responseText || "Sorry, I couldn't process that request.",
-        sources: sources,
+        sources,
         isLoading: false,
       };
 
-      setMessages(prev => prev.map(msg => 
-          msg.id === modelResponseId ? newBotMessage : msg
-      ));
-
+      setMessages(prev => prev.map(msg => (msg.id === modelResponseId ? newBotMessage : msg)));
     } catch (error) {
       console.error('Error handling message:', error);
       const errorMessage: ChatMessageType = {
@@ -400,86 +435,123 @@ const App: React.FC = () => {
             : 'An error occurred. Please check the console.',
         isLoading: false,
       };
-       setMessages(prev => prev.map(msg => 
-          msg.id === modelResponseId ? errorMessage : msg
-      ));
+      setMessages(prev => prev.map(msg => (msg.id === modelResponseId ? errorMessage : msg)));
     } finally {
       setIsChatLoading(false);
     }
   };
 
-  const handleStartRecording = async () => { /* Unchanged */ };
-  const handleStopRecording = () => { /* Unchanged */ };
+  const handleStartRecording = async () => {
+    try {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        throw new Error('Audio recording is not supported in this browser.');
+      }
+
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = recorder;
+      audioChunksRef.current = [];
+
+      recorder.ondataavailable = event => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      recorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        // Placeholder: Convert audio to text and call handleSendMessage when backend is available.
+        console.info('Recorded audio blob', audioBlob);
+      };
+
+      recorder.start();
+      setIsRecording(true);
+    } catch (error) {
+      console.error('Failed to start recording:', error);
+    }
+  };
+
+  const handleStopRecording = () => {
+    const recorder = mediaRecorderRef.current;
+    if (!recorder) {
+      return;
+    }
+
+    if (recorder.state !== 'inactive') {
+      recorder.stop();
+    }
+
+    mediaRecorderRef.current = null;
+    setIsRecording(false);
+  };
 
   const removeWidget = (id: string) => {
     setWidgets(prev => prev.filter(w => w.id !== id));
-  }
+  };
 
   const renderWidget = (widget: AnalysisWidget) => {
     const props = { id: widget.id, onRemove: removeWidget };
     switch (widget.type) {
-        case 'divergence':
-            return <StockDivergenceChart data={widget.data} {...props} />;
-        case 'ghost':
-            return <GhostPatternChart data={widget.data} {...props} />;
-        case 'options':
-            return <OptionsStrategyCard data={widget.data} {...props} />;
-        case 'profile':
-        case 'news':
-        case 'comparison':
-        case 'error':
-             return <TextWidget title={widget.title} text={widget.data.text} sources={widget.data.sources} {...props} />;
-        default:
-            return null;
+      case 'divergence':
+        return <StockDivergenceChart data={widget.data} {...props} />;
+      case 'ghost':
+        return <GhostPatternChart data={widget.data} {...props} />;
+      case 'options':
+        return <OptionsStrategyCard data={widget.data} {...props} />;
+      case 'profile':
+      case 'news':
+      case 'comparison':
+      case 'error':
+        return <TextWidget title={widget.title} text={widget.data.text} sources={widget.data.sources} {...props} />;
+      default:
+        return null;
     }
   };
-
 
   return (
     <div className="flex flex-col h-screen bg-black text-gray-200 font-mono">
       <Header />
       <div className="flex-1 md:grid md:grid-cols-12">
-        
         <div className={`border-r border-gray-800 overflow-y-auto md:col-span-3 xl:col-span-2 ${mobileView === 'toolbox' ? 'block' : 'hidden'} md:block`}>
-            <Toolbox onAnalysisRequested={handleAnalysisRequest} isLoading={isDashboardLoading} />
+          <Toolbox onAnalysisRequested={handleAnalysisRequest} isLoading={isDashboardLoading} />
         </div>
 
         <main className={`overflow-y-auto p-4 md:p-6 space-y-4 md:space-y-6 relative md:col-span-6 xl:col-span-7 ${mobileView === 'dashboard' ? 'block' : 'hidden'} md:block`}>
-            {isDashboardLoading && (
-                <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-20">
-                    <LoadingSpinner className="w-10 h-10" />
-                </div>
-            )}
-            {widgets.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-full text-gray-600 text-center p-4">
-                   <Icon icon="chart" className="w-16 h-16 mb-4" />
-                   <h3 className="text-xl font-semibold text-gray-400">DASHBOARD</h3>
-                   <p className="max-w-md mt-2 text-sm">
-                     Your financial analysis widgets will appear here. Select a tool from the toolbox to begin.
-                   </p>
-                </div>
-            ) : (
-                <div className="grid grid-cols-1 gap-4 md:gap-6">
-                    {widgets.map((widget) => (
-                        <div key={widget.id}>{renderWidget(widget)}</div>
-                    ))}
-                </div>
-            )}
+          {isDashboardLoading && (
+            <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-20">
+              <LoadingSpinner className="w-10 h-10" />
+            </div>
+          )}
+          {widgets.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full text-gray-600 text-center p-4">
+              <Icon icon="chart" className="w-16 h-16 mb-4" />
+              <h3 className="text-xl font-semibold text-gray-400">DASHBOARD</h3>
+              <p className="max-w-md mt-2 text-sm">
+                Your financial analysis widgets will appear here. Select a tool from the toolbox to begin.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-4 md:gap-6">
+              {widgets.map(widget => (
+                <div key={widget.id}>{renderWidget(widget)}</div>
+              ))}
+            </div>
+          )}
         </main>
 
         <aside className={`flex flex-col bg-[#0D0D0D] border-l border-gray-800 max-h-full md:col-span-3 xl:col-span-3 ${mobileView === 'chat' ? 'flex' : 'hidden'} md:flex`}>
-            <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-4 space-y-4">
-                {messages.map((msg) => (
-                    <ChatMessage key={msg.id} message={msg} />
-                ))}
-            </div>
-            <ChatInput 
-                onSendMessage={handleSendMessage} 
-                onStartRecording={handleStartRecording}
-                onStopRecording={handleStopRecording}
-                isRecording={isRecording}
-                isLoading={isChatLoading} 
-            />
+          <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-4 space-y-4">
+            {messages.map(msg => (
+              <ChatMessage key={msg.id} message={msg} />
+            ))}
+          </div>
+          <ChatInput
+            onSendMessage={handleSendMessage}
+            onStartRecording={handleStartRecording}
+            onStopRecording={handleStopRecording}
+            isRecording={isRecording}
+            isLoading={isChatLoading}
+          />
         </aside>
       </div>
       <MobileNav activeView={mobileView} setActiveView={setMobileView} />
