@@ -1,304 +1,245 @@
-import React, { useState, useEffect, useRef } from 'react';
-import type { Chat } from '@google/genai';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Header } from './components/Header';
 import { ChatInput } from './components/ChatInput';
 import { ChatMessage } from './components/ChatMessage';
 import { Toolbox } from './components/Toolbox';
 import { TextWidget } from './components/TextWidget';
-import { ChatMessage as ChatMessageType, Source } from './types';
-import { analyzeStockData, searchWithGrounding, analyzeImage, ai } from './services/geminiService';
 import { StockDivergenceChart } from './components/StockDivergenceChart';
 import { GhostPatternChart } from './components/GhostPatternChart';
 import { OptionsStrategyCard } from './components/OptionsStrategyCard';
 import { Icon } from './components/Icon';
 import { LoadingSpinner } from './components/LoadingSpinner';
 import { MobileNav } from './components/MobileNav';
+import type { ChatMessage as ChatMessageType } from './types';
+import {
+  GEMINI_MISSING_MESSAGE,
+  GEMINI_READY_MESSAGE,
+  createOfflineWidget,
+  getOfflineChatResponse,
+  getOfflineDashboardSeed,
+  getOfflineImageResponse,
+  isGeminiConfigured,
+  type OfflineWidget,
+} from './services/geminiService';
+import type { DivergenceData, GhostPatternData, OptionsStrategy, Source } from './types';
 
-type AnalysisWidget = {
-  id: string;
-  type: 'divergence' | 'ghost' | 'options' | 'news' | 'profile' | 'comparison' | 'error';
-  title: string;
-  data: any;
-};
+type MobileView = 'toolbox' | 'dashboard' | 'chat';
 
-const initialWidgets: AnalysisWidget[] = [
-  {
-    id: 'init-divergence-tsla',
-    type: 'divergence',
-    title: 'Divergence: TSLA',
-    data: [
-      { timeframe: '1H', bullish: 5, bearish: 2 },
-      { timeframe: '4H', bullish: 8, bearish: 6 },
-      { timeframe: '1D', bullish: 12, bearish: 10 },
-      { timeframe: '1W', bullish: 15, bearish: 5 },
-    ]
-  },
-  {
-    id: 'init-ghost-nvda',
-    type: 'ghost',
-    title: 'Ghost Pattern: NVDA',
-    data: {
-      score: 0.87,
-      patternType: 'Inverse Index Correlation',
-      correlation: [
-        { x: 'Day 1', y: 100 }, { x: 'Day 2', y: 102 }, { x: 'Day 3', y: 101 }, { x: 'Day 4', y: 105 },
-        { x: 'Day 5', y: 103 }, { x: 'Day 6', y: 108 }, { x: 'Day 7', y: 110 }, { x: 'Day 8', y: 109 },
-        { x: 'Day 9', y: 112 }, { x: 'Day 10', y: 115 },
-      ]
-    }
-  },
-  {
-      id: 'init-news-market',
-      type: 'profile',
-      title: 'Recent Market Overview',
-      data: {
-          text: `**Global Markets Rally on Positive Inflation Data**\n\nMajor global indices saw significant gains this week as new inflation reports from the US and Europe came in lower than expected. The S&P 500 is up 2.5% on the week, while the STOXX 600 has climbed 1.8%. This has eased fears of further aggressive interest rate hikes from central banks.\n\n**Tech Sector Leads the Charge**\n\nThe technology sector was a primary driver of the rally, with semiconductor stocks like NVDA and AMD posting strong performance. The positive sentiment is fueled by hopes that a more stable economic environment will boost consumer and enterprise spending.`,
-          sources: []
-      }
-  }
-];
+const OFFLINE_DEMO_NOTICE =
+  'Gemini credentials are optional for this deployment. The experience below uses curated demo data until an API key is wired up.';
 
 const App: React.FC = () => {
-  const [messages, setMessages] = useState<ChatMessageType[]>([
+  const [geminiConfigured, setGeminiConfigured] = useState<boolean>(() => isGeminiConfigured());
+  const [widgets, setWidgets] = useState<OfflineWidget[]>(() => getOfflineDashboardSeed());
+  const [messages, setMessages] = useState<ChatMessageType[]>(() => [
     {
-      id: 'init',
+      id: 'welcome',
       role: 'model',
-      content: "Welcome! I've preloaded some analysis in the dashboard. Use the toolbox for more or ask me a question.",
+      content: isGeminiConfigured()
+        ? `${GEMINI_READY_MESSAGE} This hosted preview still serves curated insights until the Gemini client is enabled.`
+        : GEMINI_MISSING_MESSAGE,
     },
   ]);
   const [isChatLoading, setIsChatLoading] = useState(false);
   const [isDashboardLoading, setIsDashboardLoading] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
-  const [widgets, setWidgets] = useState<AnalysisWidget[]>(initialWidgets);
-  const [mobileView, setMobileView] = useState<'toolbox' | 'dashboard' | 'chat'>('toolbox');
-  
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioChunksRef = useRef<Blob[]>([]);
+  const [mobileView, setMobileView] = useState<MobileView>('toolbox');
+
   const chatContainerRef = useRef<HTMLDivElement>(null);
-  const chatSessionRef = useRef<Chat | null>(null);
 
   useEffect(() => {
-    chatContainerRef.current?.scrollTo({
+    setGeminiConfigured(isGeminiConfigured());
+  }, []);
+
+  useEffect(() => {
+    if (!chatContainerRef.current) return;
+    chatContainerRef.current.scrollTo({
       top: chatContainerRef.current.scrollHeight,
       behavior: 'smooth',
     });
   }, [messages]);
 
-  const handleAnalysisRequest = async (featureType: string, symbol: string) => {
-    setIsDashboardLoading(true);
-    setMobileView('dashboard');
-    let newWidget: AnalysisWidget | null = null;
-    const widgetId = `${featureType}-${symbol}-${Date.now()}`;
-
-    try {
-        const promptMap: { [key: string]: string } = {
-            'Divergence Analysis': `Run a stock divergence analysis for ${symbol}.`,
-            'Ghost Pattern': `Detect ghost patterns for ${symbol}.`,
-            'Options Strategy': `Suggest an options strategy for ${symbol}.`,
-            'Financial News': `Get the latest financial news for ${symbol}.`,
-            'Company Profile': `Provide a detailed company profile for ${symbol}.`,
-            'Peer Comparison': `Provide a peer comparison for ${symbol}.`,
-            'Sentiment Analysis': `Provide a sentiment analysis for ${symbol} based on recent news and social media.`,
-            'Technical Indicators': `Calculate key technical indicators (like RSI, MACD, Bollinger Bands) for ${symbol}.`,
-            'Earnings Analysis': `Analyze the latest earnings report for ${symbol}.`,
-            'Market Overview': `Provide a general market overview and how ${symbol} fits into the current landscape.`
-        };
-
-        const prompt = promptMap[featureType];
-        
-        if (['Divergence Analysis', 'Ghost Pattern', 'Options Strategy'].includes(featureType)) {
-            const response = await analyzeStockData(prompt);
-            const jsonData = JSON.parse(response.text);
-            if (featureType === 'Divergence Analysis' && jsonData.divergenceData) {
-                newWidget = { id: widgetId, type: 'divergence', title: `Divergence: ${symbol}`, data: jsonData.divergenceData };
-            } else if (featureType === 'Ghost Pattern' && jsonData.ghostPatternData) {
-                newWidget = { id: widgetId, type: 'ghost', title: `Ghost Pattern: ${symbol}`, data: jsonData.ghostPatternData };
-            } else if (featureType === 'Options Strategy' && jsonData.optionsStrategy) {
-                newWidget = { id: widgetId, type: 'options', title: `Options Strategy: ${symbol}`, data: jsonData.optionsStrategy };
-            }
-        } else {
-            const response = await searchWithGrounding(prompt);
-            newWidget = { id: widgetId, type: 'profile', title: `${featureType}: ${symbol}`, data: { text: response.text, sources: response.candidates?.[0]?.groundingMetadata?.groundingChunks } };
-        }
-
-        if (newWidget) {
-            setWidgets(prev => [newWidget, ...prev]);
-        } else {
-             throw new Error("No data returned from analysis.");
-        }
-
-    } catch (error) {
-        console.error(`Error during ${featureType} analysis:`, error);
-        newWidget = { id: widgetId, type: 'error', title: `Error: ${featureType} for ${symbol}`, data: { text: "Failed to generate analysis. Please try again." } };
-        setWidgets(prev => [newWidget, ...prev]);
-    } finally {
-        setIsDashboardLoading(false);
-    }
+  const handleRemoveWidget = (id: string) => {
+    setWidgets(prev => prev.filter(widget => widget.id !== id));
   };
 
-  const handleSendMessage = async (message: string, image?: File) => {
+  const handleAnalysisRequested = (featureType: string, symbol: string) => {
+    setIsDashboardLoading(true);
+    setTimeout(() => {
+      const widget = createOfflineWidget(featureType, symbol || 'DEMO');
+      setWidgets(prev => [widget, ...prev]);
+      setIsDashboardLoading(false);
+      setMobileView('dashboard');
+    }, 400);
+  };
+
+  const handleSendMessage = (message: string, image?: File) => {
     if (!message.trim() && !image) return;
 
     const userMessage: ChatMessageType = {
-      id: Date.now().toString(),
+      id: `user-${Date.now()}`,
       role: 'user',
       content: message,
     };
 
-    setIsChatLoading(true);
-
-    const modelResponseId = (Date.now() + 1).toString();
+    const modelMessageId = `model-${Date.now() + 1}`;
     const loadingMessage: ChatMessageType = {
-      id: modelResponseId,
+      id: modelMessageId,
       role: 'model',
       content: '',
       isLoading: true,
     };
-    
-    // Add user message and loading placeholder to the UI
+
     setMessages(prev => [...prev, userMessage, loadingMessage]);
+    setIsChatLoading(true);
+    setMobileView('chat');
 
-    try {
-      let responseText = '';
-      let sources: Source[] | undefined;
-      
-      if (image) {
-        const prompt = message || "Analyze this image.";
-        const response = await analyzeImage(prompt, image);
-        responseText = response.text;
-      } else {
-        if (!chatSessionRef.current) {
-            const historyForAPI = messages
-              .filter(m => (m.role === 'user' || m.role === 'model') && !m.isLoading)
-              .map(m => ({
-                role: m.role as 'user' | 'model',
-                parts: [{ text: m.content }],
-              }));
-              
-            chatSessionRef.current = ai.chats.create({
-                model: 'gemini-2.5-flash',
-                history: historyForAPI,
-                config: {
-                    tools: [{ googleSearch: {} }],
-                },
-            });
-        }
-        const stream = await chatSessionRef.current.sendMessageStream({ message: message });
-        for await (const chunk of stream) {
-            responseText += chunk.text;
-            if (chunk.candidates?.[0]?.groundingMetadata?.groundingChunks) {
-                sources = chunk.candidates[0].groundingMetadata.groundingChunks as Source[];
-            }
-            setMessages(prev => prev.map(msg => 
-                msg.id === modelResponseId 
-                ? { ...msg, content: responseText, isLoading: true, sources: sources } 
-                : msg
-            ));
-        }
-      }
+    setTimeout(() => {
+      setMessages(prev => {
+        const nonLoadingModelMessages = prev.filter(msg => msg.role === 'model' && !msg.isLoading);
+        const responseText = image
+          ? getOfflineImageResponse()
+          : getOfflineChatResponse(nonLoadingModelMessages.length);
 
-      const newBotMessage: ChatMessageType = {
-        id: modelResponseId,
-        role: 'model',
-        content: responseText || "Sorry, I couldn't process that request.",
-        sources: sources,
-        isLoading: false,
-      };
-
-      setMessages(prev => prev.map(msg => 
-          msg.id === modelResponseId ? newBotMessage : msg
-      ));
-
-    } catch (error) {
-      console.error('Error handling message:', error);
-      const errorMessage: ChatMessageType = {
-        id: modelResponseId,
-        role: 'model',
-        content: 'An error occurred. Please check the console.',
-        isLoading: false,
-      };
-       setMessages(prev => prev.map(msg => 
-          msg.id === modelResponseId ? errorMessage : msg
-      ));
-    } finally {
+        return prev.map(msg =>
+          msg.id === modelMessageId
+            ? {
+                id: modelMessageId,
+                role: 'model',
+                content: responseText,
+                isLoading: false,
+              }
+            : msg,
+        );
+      });
       setIsChatLoading(false);
-    }
+    }, 400);
   };
 
-  const handleStartRecording = async () => { /* Unchanged */ };
-  const handleStopRecording = () => { /* Unchanged */ };
+  const handleStartRecording = () => {
+    setIsRecording(true);
+  };
 
-  const removeWidget = (id: string) => {
-    setWidgets(prev => prev.filter(w => w.id !== id));
-  }
+  const handleStopRecording = () => {
+    setIsRecording(false);
+  };
 
-  const renderWidget = (widget: AnalysisWidget) => {
-    const props = { id: widget.id, onRemove: removeWidget };
+  const renderWidget = (widget: OfflineWidget) => {
     switch (widget.type) {
-        case 'divergence':
-            return <StockDivergenceChart data={widget.data} {...props} />;
-        case 'ghost':
-            return <GhostPatternChart data={widget.data} {...props} />;
-        case 'options':
-            return <OptionsStrategyCard data={widget.data} {...props} />;
-        case 'profile':
-        case 'news':
-        case 'comparison':
-        case 'error':
-             return <TextWidget title={widget.title} text={widget.data.text} sources={widget.data.sources} {...props} />;
-        default:
-            return null;
+      case 'divergence':
+        return (
+          <StockDivergenceChart
+            key={widget.id}
+            id={widget.id}
+            data={widget.data as DivergenceData[]}
+            onRemove={handleRemoveWidget}
+          />
+        );
+      case 'ghost':
+        return (
+          <GhostPatternChart
+            key={widget.id}
+            id={widget.id}
+            data={widget.data as GhostPatternData}
+            onRemove={handleRemoveWidget}
+          />
+        );
+      case 'options':
+        return (
+          <OptionsStrategyCard
+            key={widget.id}
+            id={widget.id}
+            data={widget.data as OptionsStrategy}
+            onRemove={handleRemoveWidget}
+          />
+        );
+      case 'profile':
+      default:
+        return (
+          <TextWidget
+            key={widget.id}
+            id={widget.id}
+            title={widget.title}
+            text={(widget.data as { text: string; sources?: Source[] }).text}
+            sources={(widget.data as { text: string; sources?: Source[] }).sources}
+            onRemove={handleRemoveWidget}
+          />
+        );
     }
   };
 
+  const dashboardNotice = useMemo(() => {
+    if (!widgets.length) {
+      return (
+        <div className="border border-dashed border-gray-700 p-6 text-center text-gray-500">
+          <p className="text-sm">Use the toolbox to add demo widgets while Gemini is offline.</p>
+        </div>
+      );
+    }
+
+    return null;
+  }, [widgets.length]);
 
   return (
-    <div className="flex flex-col h-screen bg-black text-gray-200 font-mono">
+    <div className="min-h-screen bg-black text-gray-200 flex flex-col">
       <Header />
-      <div className="flex-1 md:grid md:grid-cols-12">
-        
-        <div className={`border-r border-gray-800 overflow-y-auto md:col-span-3 xl:col-span-2 ${mobileView === 'toolbox' ? 'block' : 'hidden'} md:block`}>
-            <Toolbox onAnalysisRequested={handleAnalysisRequest} isLoading={isDashboardLoading} />
+
+      <div className="bg-yellow-950/40 border-b border-yellow-800/40 px-4 py-3 text-sm text-yellow-200 flex items-start gap-3">
+        <Icon icon="info" className="w-5 h-5 mt-0.5 text-yellow-300" />
+        <div>
+          <p className="font-semibold tracking-wide uppercase text-xs text-yellow-400">Offline demo mode</p>
+          <p>{OFFLINE_DEMO_NOTICE}</p>
+          {geminiConfigured && (
+            <p className="mt-1 text-yellow-300/80">
+              Gemini credentials detected, but remote calls remain disabled for this deployment. Sample insights are shown below.
+            </p>
+          )}
         </div>
+      </div>
+
+      <div className="flex-1 grid grid-cols-1 md:grid-cols-12 xl:grid-cols-[260px_minmax(0,_1fr)_340px]">
+        <aside className={`border-r border-gray-900 hidden md:block md:col-span-3 xl:col-auto ${isDashboardLoading ? 'opacity-70' : ''}`}>
+          <Toolbox onAnalysisRequested={handleAnalysisRequested} isLoading={isDashboardLoading} />
+        </aside>
 
         <main className={`overflow-y-auto p-4 md:p-6 space-y-4 md:space-y-6 relative md:col-span-6 xl:col-span-7 ${mobileView === 'dashboard' ? 'block' : 'hidden'} md:block`}>
-            {isDashboardLoading && (
-                <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-20">
-                    <LoadingSpinner className="w-10 h-10" />
-                </div>
-            )}
-            {widgets.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-full text-gray-600 text-center p-4">
-                   <Icon icon="chart" className="w-16 h-16 mb-4" />
-                   <h3 className="text-xl font-semibold text-gray-400">DASHBOARD</h3>
-                   <p className="max-w-md mt-2 text-sm">
-                     Your financial analysis widgets will appear here. Select a tool from the toolbox to begin.
-                   </p>
-                </div>
-            ) : (
-                <div className="grid grid-cols-1 gap-4 md:gap-6">
-                    {widgets.map((widget) => (
-                        <div key={widget.id}>{renderWidget(widget)}</div>
-                    ))}
-                </div>
-            )}
+          {isDashboardLoading && (
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center gap-3 z-10">
+              <LoadingSpinner />
+              <p className="text-sm text-gray-400 uppercase tracking-widest">Preparing offline insight…</p>
+            </div>
+          )}
+
+          {dashboardNotice}
+
+          <div className="grid gap-4 md:gap-6 xl:grid-cols-2">
+            {widgets.map(widget => (
+              <div key={widget.id} className="min-h-[220px]">
+                {renderWidget(widget)}
+              </div>
+            ))}
+          </div>
         </main>
 
-        <aside className={`flex flex-col bg-[#0D0D0D] border-l border-gray-800 max-h-full md:col-span-3 xl:col-span-3 ${mobileView === 'chat' ? 'flex' : 'hidden'} md:flex`}>
+        <section className={`border-l border-gray-900 flex flex-col bg-black md:col-span-3 xl:col-auto ${mobileView === 'chat' ? 'flex' : 'hidden'} md:flex`}>
+          <div className="flex-1 overflow-hidden flex flex-col">
             <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-4 space-y-4">
-                {messages.map((msg) => (
-                    <ChatMessage key={msg.id} message={msg} />
-                ))}
+              {messages.map(message => (
+                <ChatMessage key={message.id} message={message} />
+              ))}
             </div>
-            <ChatInput 
-                onSendMessage={handleSendMessage} 
-                onStartRecording={handleStartRecording}
-                onStopRecording={handleStopRecording}
-                isRecording={isRecording}
-                isLoading={isChatLoading} 
+            <ChatInput
+              onSendMessage={handleSendMessage}
+              onStartRecording={handleStartRecording}
+              onStopRecording={handleStopRecording}
+              isRecording={isRecording}
+              isLoading={isChatLoading}
             />
-        </aside>
+          </div>
+        </section>
       </div>
+
+      <div className="md:hidden h-16" />
       <MobileNav activeView={mobileView} setActiveView={setMobileView} />
     </div>
   );
