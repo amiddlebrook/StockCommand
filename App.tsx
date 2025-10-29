@@ -186,11 +186,12 @@ const App: React.FC = () => {
       setWidgets(prev => [widget, ...prev]);
     } catch (error) {
       console.error(`Error during ${featureType} analysis:`, error);
+      const errorDetails = error instanceof Error ? error.message : String(error);
       const fallbackWidget = {
         id: `${widgetId}-error`,
         type: 'error' as const,
         title: `Error: ${featureType} for ${symbol}`,
-        data: { text: 'Failed to generate analysis. Please try again.', sources: [] },
+        data: { text: `❌ Failed to generate analysis.\n\nError: ${errorDetails}\n\nCheck browser console for details.`, sources: [] },
       };
       setWidgets(prev => [fallbackWidget, ...prev]);
     } finally {
@@ -250,10 +251,11 @@ const App: React.FC = () => {
       setMessages(prev => prev.map(msg => (msg.id === modelMessageId ? newBotMessage : msg)));
     } catch (error) {
       console.error('Error handling message:', error);
+      const errorDetails = error instanceof Error ? error.message : String(error);
       const errorMessage: ChatMessageType = {
         id: modelMessageId,
         role: 'model',
-        content: 'An error occurred. Please try again.',
+        content: `❌ Error: ${errorDetails}\n\nPlease check the browser console for more details.`,
         isLoading: false,
       };
       setMessages(prev => prev.map(msg => (msg.id === modelMessageId ? errorMessage : msg)));
@@ -324,18 +326,9 @@ const App: React.FC = () => {
         }}
       />
 
-      <div className="flex-1 md:grid md:grid-cols-12">
-        <div className={`border-r border-gray-800 overflow-y-auto md:col-span-3 xl:col-span-2 ${mobileView === 'toolbox' ? 'block' : 'hidden'} md:block`}>
-          <Toolbox
-            onAnalysisRequested={handleAnalysisRequest}
-            onCreateTool={() => setIsToolCreatorOpen(true)}
-            isLoading={isDashboardLoading}
-          />
-        </div>
-      </div>
-
-      <div className="flex-1 grid grid-cols-1 md:grid-cols-12 xl:grid-cols-[260px_minmax(0,_1fr)_340px]">
-        <aside className={`border-r border-gray-900 hidden md:block md:col-span-3 xl:col-auto ${isDashboardLoading ? 'opacity-70' : ''}`}>
+      <div className="flex-1 grid grid-cols-1 md:grid-cols-12 xl:grid-cols-[280px_minmax(0,_1fr)_380px]">
+        {/* Toolbox Sidebar */}
+        <aside className={`border-r border-gray-800/50 bg-gradient-to-b from-black to-gray-950 overflow-y-auto md:col-span-3 xl:col-auto ${mobileView === 'toolbox' ? 'block' : 'hidden'} md:block ${isDashboardLoading ? 'opacity-70' : ''}`}>
           <Toolbox
             onAnalysisRequested={handleAnalysisRequest}
             onCreateTool={() => setIsToolCreatorOpen(true)}
@@ -343,7 +336,8 @@ const App: React.FC = () => {
           />
         </aside>
 
-        <main className={`overflow-y-auto p-4 md:p-6 space-y-4 md:space-y-6 relative md:col-span-6 xl:col-span-7 ${mobileView === 'dashboard' ? 'block' : 'hidden'} md:block`}>
+        {/* Dashboard Main Area */}
+        <main className={`overflow-y-auto p-4 md:p-6 space-y-4 md:space-y-6 relative bg-black md:col-span-6 xl:col-span-7 ${mobileView === 'dashboard' ? 'block' : 'hidden'} md:block`}>
           {isDashboardLoading && (
             <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-20">
               <LoadingSpinner className="w-10 h-10" />
@@ -366,7 +360,14 @@ const App: React.FC = () => {
           )}
         </main>
 
-        <aside className={`flex flex-col bg-[#0D0D0D] border-l border-gray-800 max-h-full md:col-span-3 xl:col-span-3 ${mobileView === 'chat' ? 'flex' : 'hidden'} md:flex`}>
+        {/* Chat Sidebar */}
+        <aside className={`flex flex-col bg-gradient-to-b from-gray-950 to-black border-l border-gray-800/50 max-h-full md:col-span-3 xl:col-span-3 ${mobileView === 'chat' ? 'flex' : 'hidden'} md:flex`}>
+          <div className="px-4 py-3 border-b border-gray-800/50">
+            <h2 className="text-sm font-semibold text-gray-400 tracking-wider flex items-center gap-2">
+              <Icon icon="bot" className="w-4 h-4 text-cyan-400" />
+              AI ASSISTANT
+            </h2>
+          </div>
           <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-4 space-y-4">
             {messages.map(msg => (
               <ChatMessage key={msg.id} message={msg} />
