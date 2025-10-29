@@ -184,11 +184,12 @@ const App: React.FC = () => {
       setWidgets(prev => [widget, ...prev]);
     } catch (error) {
       console.error(`Error during ${featureType} analysis:`, error);
+      const errorDetails = error instanceof Error ? error.message : 'Unknown error occurred';
       const fallbackWidget = {
         id: `${widgetId}-error`,
         type: 'error' as const,
         title: `Error: ${featureType} for ${symbol}`,
-        data: { text: 'Failed to generate analysis. Please try again.', sources: [] },
+        data: { text: `Failed to generate analysis: ${errorDetails}. Please check your API configuration and try again.`, sources: [] },
       };
       setWidgets(prev => [fallbackWidget, ...prev]);
     } finally {
@@ -248,10 +249,11 @@ const App: React.FC = () => {
       setMessages(prev => prev.map(msg => (msg.id === modelMessageId ? newBotMessage : msg)));
     } catch (error) {
       console.error('Error handling message:', error);
+      const errorDetails = error instanceof Error ? error.message : 'Unknown error occurred';
       const errorMessage: ChatMessageType = {
         id: modelMessageId,
         role: 'model',
-        content: 'An error occurred. Please try again.',
+        content: `Error: ${errorDetails}. Please try again or check your API configuration.`,
         isLoading: false,
       };
       setMessages(prev => prev.map(msg => (msg.id === modelMessageId ? errorMessage : msg)));
@@ -306,12 +308,6 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-black text-gray-200 flex flex-col">
       <Header />
-      <div className="flex-1 md:grid md:grid-cols-12">
-        <div className={`border-r border-gray-800 overflow-y-auto md:col-span-3 xl:col-span-2 ${mobileView === 'toolbox' ? 'block' : 'hidden'} md:block`}>
-          <Toolbox onAnalysisRequested={handleAnalysisRequest} isLoading={isDashboardLoading} />
-        </div>
-      </div>
-
       <div className="flex-1 grid grid-cols-1 md:grid-cols-12 xl:grid-cols-[260px_minmax(0,_1fr)_340px]">
         <aside className={`border-r border-gray-900 hidden md:block md:col-span-3 xl:col-auto ${isDashboardLoading ? 'opacity-70' : ''}`}>
           <Toolbox onAnalysisRequested={handleAnalysisRequest} isLoading={isDashboardLoading} />

@@ -55,7 +55,8 @@ export const analyzeStockData = async (prompt: string): Promise<any> => {
   });
 
   if (!response.ok) {
-    throw new Error('Failed to analyze stock data.');
+    const errorText = await response.text().catch(() => 'Unknown error');
+    throw new Error(`Failed to analyze stock data (${response.status}): ${errorText}`);
   }
 
   return response.json();
@@ -69,7 +70,8 @@ export const searchWithGrounding = async (prompt: string): Promise<any> => {
   });
 
   if (!response.ok) {
-    throw new Error('Failed to search with grounding.');
+    const errorText = await response.text().catch(() => 'Unknown error');
+    throw new Error(`Failed to search with grounding (${response.status}): ${errorText}`);
   }
 
   return response.json();
@@ -86,7 +88,8 @@ export const analyzeImage = async (prompt: string, image: File): Promise<any> =>
   });
 
   if (!response.ok) {
-    throw new Error('Failed to analyze image.');
+    const errorText = await response.text().catch(() => 'Unknown error');
+    throw new Error(`Failed to analyze image (${response.status}): ${errorText}`);
   }
 
   return response.json();
@@ -100,7 +103,8 @@ export const sendMessage = async (message: string, history: any[]): Promise<any>
   });
 
   if (!response.ok) {
-    throw new Error('Failed to send message.');
+    const errorText = await response.text().catch(() => 'Unknown error');
+    throw new Error(`Failed to send message (${response.status}): ${errorText}`);
   }
 
   return response.json();
