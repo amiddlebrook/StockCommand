@@ -2,11 +2,13 @@
 <img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
 </div>
 
-# Run and deploy your AI Studio app
+# StockBrain - AI Stock Analyzer
 
-This contains everything you need to run your app locally.
+An adaptive AI environment where users can analyze stocks and options through natural conversation. The AI generates data tables, divergence counts, visual patterns, and strategy suggestions dynamically.
 
-View your app in AI Studio: https://ai.studio/apps/drive/1DCuAWQG-5ycJxiUtP5JfBvxFgloYnDUL
+**Live App**: https://stockbrain.averymiddlebrook2014.workers.dev/
+
+This contains everything you need to run your app locally and deploy to Cloudflare Workers.
 
 ## Run Locally
 
@@ -58,3 +60,40 @@ The app will automatically use the first available provider in order of priority
 2. OpenAI
 3. Claude
 4. OpenRouter models
+
+## Deploy to Cloudflare Workers
+
+StockBrain is configured to deploy to Cloudflare Workers using Wrangler.
+
+**Prerequisites:** Wrangler CLI and a Cloudflare account
+
+1. Install Wrangler globally (if not already installed):
+   ```bash
+   npm install -g wrangler
+   ```
+
+2. Login to your Cloudflare account:
+   ```bash
+   wrangler login
+   ```
+
+3. Build the application:
+   ```bash
+   npm run build
+   ```
+
+4. Deploy to Cloudflare Workers:
+   ```bash
+   wrangler deploy
+   ```
+
+Your app will be deployed to a `*.workers.dev` subdomain. You can configure a custom domain in your Cloudflare dashboard.
+
+### Configuration for Production
+
+For production deployments, you'll need to configure environment variables:
+- API keys are embedded at build time via Vite's environment variable system
+- Make sure your `.env.local` (or build-time environment) contains all necessary API keys before running `npm run build`
+- The built static assets are served by the Cloudflare Worker defined in `worker.ts`
+
+**Security Note:** API keys embedded at build time will be visible in the client-side JavaScript bundle. For improved security, consider implementing a backend API proxy that keeps API keys server-side. The current architecture uses client-side API calls for simplicity.
