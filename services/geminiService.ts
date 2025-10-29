@@ -1,5 +1,6 @@
 import { GoogleGenAI, Type, type GenerateContentResponse } from '@google/genai';
 import type { DivergenceData, GhostPatternData, OptionsStrategy } from '../types';
+import { getAvailableProvider, isAnyProviderConfigured, getProviderApiKey, getProviderDisplayName } from './apiConfig';
 
 type WidgetKind = 'divergence' | 'ghost' | 'options' | 'profile' | 'news' | 'comparison' | 'error';
 
@@ -66,51 +67,64 @@ const EARNINGS_COPY = (symbol: string) =>
 type MaybeGeminiClient = GoogleGenAI | null;
 
 let cachedClient: MaybeGeminiClient = null;
+let cachedProvider: string | null = null;
 let missingKeyWarned = false;
 
-const resolveApiKey = (): string | undefined => {
-  const maybeImportMeta = typeof import.meta !== 'undefined' ? (import.meta as ImportMeta) : undefined;
-  const fromVite = maybeImportMeta?.env?.VITE_API_KEY;
-  if (typeof fromVite === 'string' && fromVite.length > 0) {
-    return fromVite;
-  }
+/**
+ * Checks if any AI provider is configured
+ * Maintains backward compatibility with isGeminiConfigured name
+ */
+export const isGeminiConfigured = (): boolean => isAnyProviderConfigured();
 
-  if (typeof process !== 'undefined') {
-    const fromProcess = process.env?.VITE_API_KEY ?? process.env?.API_KEY ?? process.env?.GEMINI_API_KEY;
-    if (typeof fromProcess === 'string' && fromProcess.length > 0) {
-      return fromProcess;
-    }
-  }
-
-  const globalKey = (globalThis as { API_KEY?: unknown }).API_KEY;
-  if (typeof globalKey === 'string' && globalKey.length > 0) {
-    return globalKey;
-  }
-
-  return undefined;
-};
-
-export const isGeminiConfigured = (): boolean => Boolean(resolveApiKey());
-
+/**
+ * Gets or creates a Gemini client instance
+ * Now supports multiple AI providers with automatic selection
+ */
 export const getGeminiClient = (): MaybeGeminiClient => {
-  if (cachedClient) {
-    return cachedClient;
-  }
-
-  const apiKey = resolveApiKey();
-  if (!apiKey) {
+  // Check if we have a cached client with the same provider
+  const availableProvider = getAvailableProvider();
+  if (!availableProvider) {
     if (!missingKeyWarned) {
-      console.warn('Gemini API key not found. Set VITE_API_KEY for client builds or API_KEY for server builds.');
+      console.warn('No AI provider API key found. Configure one of: VITE_GEMINI_API_KEY, VITE_OPENAI_API_KEY, VITE_CLAUDE_API_KEY, or OpenRouter keys.');
       missingKeyWarned = true;
     }
     return null;
   }
 
+  // If we have a cached client and the provider hasn't changed, return it
+  if (cachedClient && cachedProvider === availableProvider.provider) {
+    return cachedClient;
+  }
+
+  // For non-Gemini providers, we only support Gemini client for now
+  // Future: Add OpenAI, Claude, and OpenRouter client support
+  if (availableProvider.provider !== 'gemini') {
+    console.info(`Using ${getProviderDisplayName(availableProvider.provider)} as AI provider`);
+    // For now, try to get Gemini key as fallback
+    const geminiKey = getProviderApiKey('gemini');
+    if (!geminiKey) {
+      console.warn(`${getProviderDisplayName(availableProvider.provider)} is configured, but full support requires Gemini API. Add VITE_GEMINI_API_KEY for full functionality.`);
+      return null;
+    }
+    // Use Gemini if available even if another provider is primary
+    try {
+      cachedClient = new GoogleGenAI({ apiKey: geminiKey });
+      cachedProvider = 'gemini';
+      return cachedClient;
+    } catch (error) {
+      console.error('Failed to initialize Gemini client:', error);
+      return null;
+    }
+  }
+
   try {
-    cachedClient = new GoogleGenAI({ apiKey });
+    cachedClient = new GoogleGenAI({ apiKey: availableProvider.apiKey });
+    cachedProvider = availableProvider.provider;
+    console.info(`Initialized ${getProviderDisplayName(availableProvider.provider)} client`);
   } catch (error) {
-    console.error('Failed to initialise Gemini client:', error);
+    console.error('Failed to initialize AI client:', error);
     cachedClient = null;
+    cachedProvider = null;
   }
 
   return cachedClient;
@@ -119,7 +133,7 @@ export const getGeminiClient = (): MaybeGeminiClient => {
 const ensureClient = (): GoogleGenAI => {
   const client = getGeminiClient();
   if (!client) {
-    throw new Error('Gemini API key is not configured');
+    throw new Error('AI API key is not configured. Set up Gemini, OpenAI, Claude, or OpenRouter API key.');
   }
   return client;
 };
