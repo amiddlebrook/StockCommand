@@ -95,3 +95,5 @@ For production deployments, you'll need to configure environment variables:
 - API keys are embedded at build time via Vite's environment variable system
 - Make sure your `.env.local` (or build-time environment) contains all necessary API keys before running `npm run build`
 - The built static assets are served by the Cloudflare Worker defined in `worker.ts`
+
+**Security Note:** API keys embedded at build time will be visible in the client-side JavaScript bundle. For improved security, consider implementing a backend API proxy that keeps API keys server-side. The current architecture uses client-side API calls for simplicity.
