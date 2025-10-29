@@ -3,6 +3,7 @@ import { Header } from './components/Header';
 import { ChatInput } from './components/ChatInput';
 import { ChatMessage } from './components/ChatMessage';
 import { Toolbox } from './components/Toolbox';
+import { ToolCreatorModal } from './components/ToolCreatorModal';
 import { TextWidget } from './components/TextWidget';
 import { StockDivergenceChart } from './components/StockDivergenceChart';
 import { GhostPatternChart } from './components/GhostPatternChart';
@@ -55,6 +56,7 @@ const App: React.FC = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [widgets, setWidgets] = useState<AnalysisWidget[]>(() => getOfflineDashboardSeed());
   const [mobileView, setMobileView] = useState<MobileView>('toolbox');
+  const [isToolCreatorOpen, setIsToolCreatorOpen] = useState(false);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -306,15 +308,39 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-black text-gray-200 flex flex-col">
       <Header />
+
+      <ToolCreatorModal
+        isOpen={isToolCreatorOpen}
+        onClose={() => setIsToolCreatorOpen(false)}
+        onToolCreated={(tool) => {
+          // Tool is automatically saved in the service
+          // Just show a success message in the chat
+          const successMessage: ChatMessageType = {
+            id: `tool-created-${Date.now()}`,
+            role: 'model',
+            content: `✨ Successfully created "${tool.name}"! You can now find it in the Custom Tools section of the toolbox.`,
+          };
+          setMessages(prev => [...prev, successMessage]);
+        }}
+      />
+
       <div className="flex-1 md:grid md:grid-cols-12">
         <div className={`border-r border-gray-800 overflow-y-auto md:col-span-3 xl:col-span-2 ${mobileView === 'toolbox' ? 'block' : 'hidden'} md:block`}>
-          <Toolbox onAnalysisRequested={handleAnalysisRequest} isLoading={isDashboardLoading} />
+          <Toolbox
+            onAnalysisRequested={handleAnalysisRequest}
+            onCreateTool={() => setIsToolCreatorOpen(true)}
+            isLoading={isDashboardLoading}
+          />
         </div>
       </div>
 
       <div className="flex-1 grid grid-cols-1 md:grid-cols-12 xl:grid-cols-[260px_minmax(0,_1fr)_340px]">
         <aside className={`border-r border-gray-900 hidden md:block md:col-span-3 xl:col-auto ${isDashboardLoading ? 'opacity-70' : ''}`}>
-          <Toolbox onAnalysisRequested={handleAnalysisRequest} isLoading={isDashboardLoading} />
+          <Toolbox
+            onAnalysisRequested={handleAnalysisRequest}
+            onCreateTool={() => setIsToolCreatorOpen(true)}
+            isLoading={isDashboardLoading}
+          />
         </aside>
 
         <main className={`overflow-y-auto p-4 md:p-6 space-y-4 md:space-y-6 relative md:col-span-6 xl:col-span-7 ${mobileView === 'dashboard' ? 'block' : 'hidden'} md:block`}>

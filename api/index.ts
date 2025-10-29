@@ -3,7 +3,8 @@
  *
  * This worker acts as a secure proxy for AI API calls and serves static assets.
  */
-import { getAvailableProvider, setEnv, type APIConfig } from '../services/apiConfig';
+import { getAvailableProvider, setEnv, getAllConfiguredProviders, type APIConfig, type AIProvider } from '../services/apiConfig';
+import { determineTaskType, getProviderForTask, isToolGenerationRequest, type TaskType } from '../services/aiRouter';
 import OpenAI from 'openai';
 import Anthropic from '@anthropic-ai/sdk';
 import { GoogleGenerativeAI } from '@google/generative-ai';
@@ -132,6 +133,33 @@ async function callAI(provider: APIConfig | null, prompt: string, env: Env, mess
   }
 }
 
+/**
+ * Gets the best provider for a specific task type
+ */
+function getProviderForTaskType(taskType: TaskType, env: Env): APIConfig | null {
+  const configuredProviders = getAllConfiguredProviders();
+  const availableProviderNames = new Set<AIProvider>(
+    configuredProviders.map(p => p.provider as AIProvider)
+  );
+
+  // Add Workers AI if available
+  if (env.AI) {
+    availableProviderNames.add('workers-ai');
+  }
+
+  const preferredProvider = getProviderForTask(taskType, availableProviderNames);
+
+  if (!preferredProvider) {
+    return null;
+  }
+
+  if (preferredProvider === 'workers-ai') {
+    return null; // Will use env.AI in callAI
+  }
+
+  return configuredProviders.find(p => p.provider === preferredProvider) || null;
+}
+
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     setEnv(env);
@@ -185,11 +213,16 @@ async function handleApiRequest(request: Request, env: Env, ctx: ExecutionContex
     return handleAnalyzeImageRequest(request, env, provider);
   }
 
+  // Generate tool endpoint
+  if (url.pathname === '/api/generate-tool') {
+    return handleGenerateToolRequest(request, env);
+  }
+
   // Default API response
   return new Response('API endpoint not found', { status: 404 });
 }
 
-async function handleChatRequest(request: Request, env: Env, provider: any): Promise<Response> {
+async function handleChatRequest(request: Request, env: Env, _provider: any): Promise<Response> {
   if (request.method !== 'POST') {
     return new Response('Method not allowed', { status: 405 });
   }
@@ -201,6 +234,14 @@ async function handleChatRequest(request: Request, env: Env, provider: any): Pro
       return new Response('Message is required', { status: 400 });
     }
 
+    // Determine task type based on message content
+    const taskType = determineTaskType({ message });
+
+    // Get the appropriate provider for this task
+    // Tool generation -> Qwen Coder
+    // Regular chat -> Minimax
+    const provider = getProviderForTaskType(taskType, env);
+
     const messages = [
       ...(history || []),
       { role: 'user', content: message }
@@ -208,7 +249,14 @@ async function handleChatRequest(request: Request, env: Env, provider: any): Pro
 
     const responseText = await callAI(provider, message, env, messages);
 
-    return new Response(JSON.stringify({ response: responseText }), {
+    // Check if this was a tool generation request
+    const isToolRequest = isToolGenerationRequest(message);
+
+    return new Response(JSON.stringify({
+      response: responseText,
+      isToolGeneration: isToolRequest,
+      taskType
+    }), {
       headers: { 'Content-Type': 'application/json' },
     });
 
@@ -218,7 +266,7 @@ async function handleChatRequest(request: Request, env: Env, provider: any): Pro
   }
 }
 
-async function handleAnalyzeRequest(request: Request, env: Env, provider: any): Promise<Response> {
+async function handleAnalyzeRequest(request: Request, env: Env, _provider: any): Promise<Response> {
   if (request.method !== 'POST') {
     return new Response('Method not allowed', { status: 405 });
   }
@@ -230,6 +278,8 @@ async function handleAnalyzeRequest(request: Request, env: Env, provider: any): 
       return new Response('Prompt is required', { status: 400 });
     }
 
+    // Use stock-analysis routing (Gemini/Claude preferred)
+    const provider = getProviderForTaskType('stock-analysis', env);
     const responseText = await callAI(provider, prompt, env);
 
     return new Response(JSON.stringify({ response: responseText }), {
@@ -241,7 +291,7 @@ async function handleAnalyzeRequest(request: Request, env: Env, provider: any): 
   }
 }
 
-async function handleSearchRequest(request: Request, env: Env, provider: any): Promise<Response> {
+async function handleSearchRequest(request: Request, env: Env, _provider: any): Promise<Response> {
   if (request.method !== 'POST') {
     return new Response('Method not allowed', { status: 405 });
   }
@@ -253,6 +303,8 @@ async function handleSearchRequest(request: Request, env: Env, provider: any): P
       return new Response('Prompt is required', { status: 400 });
     }
 
+    // Use web-search routing (Gemini preferred for grounding)
+    const provider = getProviderForTaskType('web-search', env);
     const responseText = await callAI(provider, prompt, env);
 
     return new Response(JSON.stringify({ response: responseText }), {
@@ -264,7 +316,7 @@ async function handleSearchRequest(request: Request, env: Env, provider: any): P
   }
 }
 
-async function handleAnalyzeImageRequest(request: Request, env: Env, provider: any): Promise<Response> {
+async function handleAnalyzeImageRequest(request: Request, env: Env, _provider: any): Promise<Response> {
   if (request.method !== 'POST') {
     return new Response('Method not allowed', { status: 405 });
   }
@@ -277,6 +329,9 @@ async function handleAnalyzeImageRequest(request: Request, env: Env, provider: a
     if (!prompt || !image) {
       return new Response('Prompt and image are required', { status: 400 });
     }
+
+    // Use image-analysis routing (Gemini/OpenAI/Claude preferred)
+    const provider = getProviderForTaskType('image-analysis', env);
 
     let responseText = '';
 
@@ -372,6 +427,81 @@ async function handleAnalyzeImageRequest(request: Request, env: Env, provider: a
     });
   } catch (error) {
     console.error('Error in analyze image request:', error);
+    return new Response(JSON.stringify({ error: 'Internal server error' }), { status: 500 });
+  }
+}
+
+async function handleGenerateToolRequest(request: Request, env: Env): Promise<Response> {
+  if (request.method !== 'POST') {
+    return new Response('Method not allowed', { status: 405 });
+  }
+
+  try {
+    const { description } = await request.json();
+
+    if (!description) {
+      return new Response('Tool description is required', { status: 400 });
+    }
+
+    // Use Qwen Coder for tool generation
+    const provider = getProviderForTaskType('tool-generation', env);
+
+    const systemPrompt = `You are a tool generator for StockBrain, a financial analysis platform.
+Generate a JSON specification for a new analysis tool based on the user's description.
+
+Return ONLY valid JSON in this exact format:
+{
+  "name": "Tool Name",
+  "description": "What this tool does",
+  "category": "analysis|news|technical|fundamental",
+  "prompt": "The AI prompt template to use (use SYMBOL as placeholder)",
+  "visualType": "text|divergence|ghost|options|chart",
+  "sampleData": {}
+}
+
+For visualType, use:
+- "text" for text-based analysis
+- "divergence" for timeframe comparison data
+- "ghost" for pattern correlation data
+- "options" for options strategy recommendations
+- "chart" for general chart data
+
+Keep it simple and focused. The tool should analyze a stock ticker.`;
+
+    const fullPrompt = `${systemPrompt}\n\nUser request: ${description}`;
+
+    const responseText = await callAI(provider, fullPrompt, env);
+
+    // Try to parse the JSON response
+    let toolSpec;
+    try {
+      // Extract JSON from response (in case there's extra text)
+      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        toolSpec = JSON.parse(jsonMatch[0]);
+      } else {
+        toolSpec = JSON.parse(responseText);
+      }
+    } catch (parseError) {
+      console.error('Failed to parse tool specification:', parseError);
+      return new Response(JSON.stringify({
+        error: 'Failed to generate tool specification',
+        rawResponse: responseText
+      }), { status: 500 });
+    }
+
+    // Add a unique ID
+    toolSpec.id = `custom-${Date.now()}`;
+
+    return new Response(JSON.stringify({
+      tool: toolSpec,
+      rawResponse: responseText
+    }), {
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+  } catch (error) {
+    console.error('Error in generate tool request:', error);
     return new Response(JSON.stringify({ error: 'Internal server error' }), { status: 500 });
   }
 }
