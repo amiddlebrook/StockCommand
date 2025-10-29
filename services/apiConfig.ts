@@ -54,10 +54,26 @@ const PROVIDER_PRIORITY: AIProvider[] = [
   'openrouter-glm-45-air',
 ];
 
+let env: any = {};
+
+export const setEnv = (newEnv: any) => {
+  env = newEnv;
+};
+
 /**
  * Resolves an API key from environment variables
  */
 const resolveApiKey = (envKeys: string[]): string | undefined => {
+  // Check the env object first (for worker environment)
+  if (env) {
+    for (const key of envKeys) {
+      const value = env[key];
+      if (typeof value === 'string' && value.length > 0) {
+        return value;
+      }
+    }
+  }
+
   // Check import.meta.env (Vite)
   const maybeImportMeta = typeof import.meta !== 'undefined' ? (import.meta as any) : undefined;
   if (maybeImportMeta?.env) {
