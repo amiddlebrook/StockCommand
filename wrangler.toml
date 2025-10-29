@@ -8,3 +8,6 @@ binding = "ASSETS"
 
 [ai]
 binding = "AI"
+
+[build]
+external = ["@cloudflare/ai"]
