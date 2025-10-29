@@ -81,7 +81,7 @@ const resolveApiKey = (envKeys: string[]): string | undefined => {
 
   // Check globalThis
   for (const key of envKeys) {
-    const value = (globalThis as any)[key];
+    const value = (globalThis as Record<string, unknown>)[key];
     if (typeof value === 'string' && value.length > 0) {
       return value;
     }

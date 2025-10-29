@@ -78,7 +78,13 @@ export const isGeminiConfigured = (): boolean => isAnyProviderConfigured();
 
 /**
  * Gets or creates a Gemini client instance
- * Now supports multiple AI providers with automatic selection
+ * 
+ * Note: Currently only supports Gemini AI client. While other providers
+ * (OpenAI, Claude, OpenRouter) can be configured via apiConfig, they will
+ * fall back to using Gemini client if available. Full multi-client support
+ * for OpenAI, Claude, and OpenRouter is planned for future implementation.
+ * 
+ * @returns GoogleGenAI client instance or null if no API key is available
  */
 export const getGeminiClient = (): MaybeGeminiClient => {
   // Check if we have a cached client with the same provider
@@ -96,8 +102,9 @@ export const getGeminiClient = (): MaybeGeminiClient => {
     return cachedClient;
   }
 
-  // For non-Gemini providers, we only support Gemini client for now
-  // Future: Add OpenAI, Claude, and OpenRouter client support
+  // Note: For non-Gemini providers, we currently fall back to Gemini client
+  // TODO: Implement native OpenAI, Claude, and OpenRouter client support
+  // See GitHub issue #[TBD] for multi-client implementation roadmap
   if (availableProvider.provider !== 'gemini') {
     console.info(`Using ${getProviderDisplayName(availableProvider.provider)} as AI provider`);
     // For now, try to get Gemini key as fallback
