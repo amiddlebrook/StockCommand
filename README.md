@@ -18,7 +18,9 @@ View your app in AI Studio: https://ai.studio/apps/drive/1DCuAWQG-5ycJxiUtP5JfBv
 2. Configure API keys in `.env.local` (copy from `.env.local.example`):
    - At least one AI provider is required (Gemini, OpenAI, Claude, or OpenRouter)
    - Optional: Odds API key for sports betting data
-3. Run the app:
+3. Verify your configuration (optional):
+   `npm run check-config`
+4. Run the app:
    `npm run dev`
 
 ## API Configuration
