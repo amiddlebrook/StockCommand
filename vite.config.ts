@@ -39,7 +39,8 @@ export default defineConfig(({ mode }) => {
             entryFileNames: 'assets/[name].js',
             chunkFileNames: 'assets/[name].js',
             assetFileNames: 'assets/[name][extname]'
-          }
+          },
+          external: ['@cloudflare/ai']
         }
       }
     };
