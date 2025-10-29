@@ -58,8 +58,6 @@ export const Toolbox: React.FC<ToolboxProps> = ({ onAnalysisRequested, isLoading
 
     return (
         <div className="p-4 bg-[#0D0D0D] h-full">
-            <h2 className="text-lg font-semibold text-gray-300 mb-4 tracking-wider">TOOLBOX</h2>
-            
             <div className="mb-4">
                 <label htmlFor="stock-symbol" className="text-sm font-medium text-gray-400 block mb-2">
                     Add Stock Symbol
