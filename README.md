@@ -2,6 +2,9 @@
 
 # StockBrain - AI Stock Analyzer
 
+[![Deploy to Cloudflare Workers](https://github.com/amiddlebrook/StockBrain/actions/workflows/deploy.yml/badge.svg)](https://github.com/amiddlebrook/StockBrain/actions/workflows/deploy.yml)
+[![CI - Pull Request Checks](https://github.com/amiddlebrook/StockBrain/actions/workflows/pr-checks.yml/badge.svg)](https://github.com/amiddlebrook/StockBrain/actions/workflows/pr-checks.yml)
+
 An adaptive AI environment where users can analyze stocks and options through natural conversation. The AI generates data tables, divergence counts, visual patterns, and strategy suggestions dynamically.
 
 **Live App**: https://stockbrain.averymiddlebrook2014.workers.dev/
@@ -95,3 +98,19 @@ For production deployments, you'll need to configure environment variables:
 - The built static assets are served by the Cloudflare Worker defined in `worker.ts`
 
 **Security Note:** API keys embedded at build time will be visible in the client-side JavaScript bundle. For improved security, consider implementing a backend API proxy that keeps API keys server-side. The current architecture uses client-side API calls for simplicity.
+
+## CI/CD Pipeline
+
+StockBrain uses GitHub Actions for automated deployment to Cloudflare Workers.
+
+- **Pull Requests:** Automatically build and validate the application
+- **Main Branch:** Automatically build and deploy to production
+- **Manual Deployment:** Trigger deployment via GitHub Actions
+
+For detailed CI/CD setup instructions, see [CI_CD.md](CI_CD.md).
+
+### Required Secrets
+
+Configure these in GitHub repository settings for automated deployment:
+- `CLOUDFLARE_API_TOKEN` - Cloudflare API token with Workers permissions
+- `CLOUDFLARE_ACCOUNT_ID` - Your Cloudflare account ID
