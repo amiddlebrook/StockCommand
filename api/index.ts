@@ -2,8 +2,8 @@
  * Cloudflare Worker API
  *
  * This worker acts as a secure proxy for AI API calls and serves static assets.
+ * Using native Cloudflare AI binding (no external imports needed).
  */
-import { Ai } from '@cloudflare/ai';
 import { getAvailableProvider, setEnv } from '../services/apiConfig';
 
 export default {
@@ -74,8 +74,7 @@ async function handleChatRequest(request: Request, env: Env, provider: any): Pro
       return new Response('Message is required', { status: 400 });
     }
 
-    const ai = new Ai(env.AI);
-
+    // Use native Cloudflare AI binding directly
     const chat = {
       messages: [
         ...history,
@@ -83,7 +82,7 @@ async function handleChatRequest(request: Request, env: Env, provider: any): Pro
       ]
     };
 
-    const response = await ai.run('@cf/meta/llama-3-8b-instruct', chat);
+    const response = await env.AI.run('@cf/meta/llama-3-8b-instruct', chat);
 
     return new Response(JSON.stringify(response), {
       headers: { 'Content-Type': 'application/json' },
@@ -107,9 +106,8 @@ async function handleAnalyzeRequest(request: Request, env: Env, provider: any): 
       return new Response('Prompt is required', { status: 400 });
     }
 
-    const ai = new Ai(env.AI);
-
-    const response = await ai.run('@cf/meta/llama-3-8b-instruct', {
+    // Use native Cloudflare AI binding directly
+    const response = await env.AI.run('@cf/meta/llama-3-8b-instruct', {
       prompt,
     });
 
@@ -134,9 +132,8 @@ async function handleSearchRequest(request: Request, env: Env, provider: any): P
       return new Response('Prompt is required', { status: 400 });
     }
 
-    const ai = new Ai(env.AI);
-
-    const response = await ai.run('@cf/meta/llama-3-8b-instruct', {
+    // Use native Cloudflare AI binding directly
+    const response = await env.AI.run('@cf/meta/llama-3-8b-instruct', {
       prompt,
     });
 
@@ -163,9 +160,8 @@ async function handleAnalyzeImageRequest(request: Request, env: Env, provider: a
       return new Response('Prompt and image are required', { status: 400 });
     }
 
-    const ai = new Ai(env.AI);
-
-    const response = await ai.run('@cf/unum/uform-gen2-qwen-500m', {
+    // Use native Cloudflare AI binding directly
+    const response = await env.AI.run('@cf/unum/uform-gen2-qwen-500m', {
       prompt,
       image: [image],
     });
