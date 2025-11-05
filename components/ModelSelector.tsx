@@ -1,14 +1,12 @@
 import React from 'react';
-import { DEFAULT_CHAT_MODEL, type LlmModelOption, LLM_MODEL_OPTIONS } from '../lib/constants/llmModels';
+import { DEFAULT_CHAT_MODEL, LLM_MODEL_OPTIONS } from '../lib/constants/llmModels';
 
 interface ModelSelectorProps {
-  options?: LlmModelOption[];
   selectedModel?: string;
   onChange: (modelId: string) => void;
 }
 
 export const ModelSelector: React.FC<ModelSelectorProps> = ({
-  options = LLM_MODEL_OPTIONS,
   selectedModel = DEFAULT_CHAT_MODEL,
   onChange,
 }) => {
@@ -18,7 +16,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
         Model
       </span>
       <div className="flex gap-2 overflow-x-auto pb-1">
-        {options.map(option => {
+        {LLM_MODEL_OPTIONS.map(option => {
           const isActive = option.id === selectedModel;
           return (
             <button

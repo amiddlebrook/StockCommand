@@ -3,22 +3,10 @@
  *
  * This worker acts as a secure proxy for AI API calls and serves static assets.
  */
-import {
-  getAllConfiguredProviders,
-  getAvailableProvider,
-  setEnv,
-  type APIConfig,
-} from '../services/apiConfig';
-import {
-  LLM_MODEL_LOOKUP,
-  LLM_MODEL_OPTIONS,
-  type LlmModelOption,
-} from '../lib/constants/llmModels';
+import { getAvailableProvider, setEnv } from '../services/apiConfig';
+import { DEFAULT_CHAT_MODEL, LLM_MODEL_LOOKUP, LLM_MODEL_OPTIONS } from '../lib/constants/llmModels';
 
 const DEFAULT_IMAGE_MODEL = '@cf/unum/uform-gen2-qwen-500m';
-const OPENAI_CHAT_COMPLETIONS_URL = 'https://api.openai.com/v1/chat/completions';
-const ANTHROPIC_MESSAGES_URL = 'https://api.anthropic.com/v1/messages';
-const OPENROUTER_CHAT_COMPLETIONS_URL = 'https://openrouter.ai/api/v1/chat/completions';
 
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
@@ -53,7 +41,7 @@ async function handleApiRequest(request: Request, env: Env, ctx: ExecutionContex
   }
 
   if (url.pathname === '/api/models') {
-    return handleModelsRequest();
+    return handleModelsRequest(provider.provider);
   }
 
   // Chat endpoint
@@ -92,14 +80,15 @@ async function handleChatRequest(request: Request, env: Env): Promise<Response> 
       return new Response('Message is required', { status: 400 });
     }
 
-    const { selectedModel, providerConfig } = selectModelAndProvider(model);
+    const selectedModel = getValidatedModel(model);
     const chatMessages = buildChatMessages(history, message);
 
-    const responseText = await runChatCompletion(providerConfig, selectedModel, chatMessages);
+    const aiResponse = await env.AI.run(selectedModel, { messages: chatMessages });
+    const responseText = extractTextResponse(aiResponse);
 
     return jsonResponse({
       response: responseText,
-      model: selectedModel.id,
+      model: selectedModel,
     });
   } catch (error) {
     console.error('Error in chat request:', error);
@@ -119,14 +108,15 @@ async function handleAnalyzeRequest(request: Request, env: Env): Promise<Respons
       return new Response('Prompt is required', { status: 400 });
     }
 
-    const { selectedModel, providerConfig } = selectModelAndProvider(model);
-    const messages = buildSingleTurnMessages(prompt);
+    const selectedModel = getValidatedModel(model);
 
-    const responseText = await runChatCompletion(providerConfig, selectedModel, messages);
+    const aiResponse = await env.AI.run(selectedModel, {
+      prompt,
+    });
 
     return jsonResponse({
-      response: responseText,
-      model: selectedModel.id,
+      response: extractTextResponse(aiResponse),
+      model: selectedModel,
     });
   } catch (error) {
     console.error('Error in analyze request:', error);
@@ -146,14 +136,15 @@ async function handleSearchRequest(request: Request, env: Env): Promise<Response
       return new Response('Prompt is required', { status: 400 });
     }
 
-    const { selectedModel, providerConfig } = selectModelAndProvider(model);
-    const messages = buildSingleTurnMessages(prompt);
+    const selectedModel = getValidatedModel(model);
 
-    const responseText = await runChatCompletion(providerConfig, selectedModel, messages);
+    const aiResponse = await env.AI.run(selectedModel, {
+      prompt,
+    });
 
     return jsonResponse({
-      response: responseText,
-      model: selectedModel.id,
+      response: extractTextResponse(aiResponse),
+      model: selectedModel,
       sources: [],
     });
   } catch (error) {
@@ -179,10 +170,6 @@ async function handleAnalyzeImageRequest(request: Request, env: Env): Promise<Re
 
     const selectedModel = model && typeof model === 'string' && model.length > 0 ? model : DEFAULT_IMAGE_MODEL;
 
-    if (!env.AI) {
-      throw new Error('Workers AI binding is required for image analysis.');
-    }
-
     const aiResponse = await env.AI.run(selectedModel, {
       prompt,
       image: [image],
@@ -198,24 +185,21 @@ async function handleAnalyzeImageRequest(request: Request, env: Env): Promise<Re
   }
 }
 
-function handleModelsRequest(): Response {
-  const models = getConfiguredModelOptions();
-  const defaultModel = models.find(model => model.default) ?? models[0] ?? null;
-
+function handleModelsRequest(providerName: string): Response {
   return jsonResponse({
-    models,
-    defaultModel: defaultModel?.id ?? null,
+    provider: providerName,
+    models: LLM_MODEL_OPTIONS,
   });
 }
 
-function getValidatedModel(model?: unknown): LlmModelOption | null {
+function getValidatedModel(model?: unknown): string {
   if (typeof model === 'string' && LLM_MODEL_LOOKUP[model]) {
-    return LLM_MODEL_LOOKUP[model];
+    return model;
   }
-  return null;
+  return DEFAULT_CHAT_MODEL;
 }
 
-function buildChatMessages(history: any, latestMessage: string): NormalisedMessage[] {
+function buildChatMessages(history: any, latestMessage: string) {
   const normalisedHistory = Array.isArray(history)
     ? history
         .map((entry: any) => {
@@ -233,16 +217,12 @@ function buildChatMessages(history: any, latestMessage: string): NormalisedMessa
             return null;
           }
 
-          return { role, content } as NormalisedMessage;
+          return { role, content };
         })
-        .filter((entry: NormalisedMessage | null): entry is NormalisedMessage => Boolean(entry))
+        .filter((entry: any): entry is { role: string; content: string } => Boolean(entry))
     : [];
 
   return [...normalisedHistory, { role: 'user', content: latestMessage }];
-}
-
-function buildSingleTurnMessages(prompt: string): NormalisedMessage[] {
-  return [{ role: 'user', content: prompt }];
 }
 
 function extractHistoryContent(entry: any): string {
@@ -371,24 +351,6 @@ function jsonResponse(payload: Record<string, unknown>, init: ResponseInit = {})
     headers: { 'Content-Type': 'application/json' },
     ...init,
   });
-}
-
-type Env = {
-  ASSETS: AssetFetcher;
-  AI?: any;
-};
-
-type AssetFetcher = {
-  fetch(request: Request): Promise<Response>;
-};
-
-function shouldServeSpaFallback(response: Response, request: Request): boolean {
-  return response.status === 404 && request.method === 'GET' && acceptsHtml(request);
-}
-
-function acceptsHtml(request: Request): boolean {
-  const acceptHeader = request.headers.get('accept') ?? '';
-  return acceptHeader.includes('text/html');
 }
 
 async function handleStaticAssetRequest(request: Request, env: Env): Promise<Response> {
