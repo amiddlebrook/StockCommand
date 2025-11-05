@@ -27,7 +27,7 @@ export default {
 async function handleApiRequest(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
   const provider = getAvailableProvider();
 
-  if (!provider) {
+  if (!provider || getConfiguredModelOptions().length === 0) {
     return new Response('No AI provider configured', { status: 500 });
   }
 
@@ -46,29 +46,29 @@ async function handleApiRequest(request: Request, env: Env, ctx: ExecutionContex
 
   // Chat endpoint
   if (url.pathname === '/api/chat') {
-    return handleChatRequest(request, env, provider);
+    return handleChatRequest(request, env);
   }
 
   // Analyze endpoint
   if (url.pathname === '/api/analyze') {
-    return handleAnalyzeRequest(request, env, provider);
+    return handleAnalyzeRequest(request, env);
   }
 
   // Search endpoint
   if (url.pathname === '/api/search') {
-    return handleSearchRequest(request, env, provider);
+    return handleSearchRequest(request, env);
   }
 
   // Analyze image endpoint
   if (url.pathname === '/api/analyze-image') {
-    return handleAnalyzeImageRequest(request, env, provider);
+    return handleAnalyzeImageRequest(request, env);
   }
 
   // Default API response
   return new Response('API endpoint not found', { status: 404 });
 }
 
-async function handleChatRequest(request: Request, env: Env, provider: any): Promise<Response> {
+async function handleChatRequest(request: Request, env: Env): Promise<Response> {
   if (request.method !== 'POST') {
     return new Response('Method not allowed', { status: 405 });
   }
@@ -90,14 +90,13 @@ async function handleChatRequest(request: Request, env: Env, provider: any): Pro
       response: responseText,
       model: selectedModel,
     });
-
   } catch (error) {
     console.error('Error in chat request:', error);
     return new Response('Internal server error', { status: 500 });
   }
 }
 
-async function handleAnalyzeRequest(request: Request, env: Env, provider: any): Promise<Response> {
+async function handleAnalyzeRequest(request: Request, env: Env): Promise<Response> {
   if (request.method !== 'POST') {
     return new Response('Method not allowed', { status: 405 });
   }
@@ -125,7 +124,7 @@ async function handleAnalyzeRequest(request: Request, env: Env, provider: any): 
   }
 }
 
-async function handleSearchRequest(request: Request, env: Env, provider: any): Promise<Response> {
+async function handleSearchRequest(request: Request, env: Env): Promise<Response> {
   if (request.method !== 'POST') {
     return new Response('Method not allowed', { status: 405 });
   }
@@ -154,7 +153,7 @@ async function handleSearchRequest(request: Request, env: Env, provider: any): P
   }
 }
 
-async function handleAnalyzeImageRequest(request: Request, env: Env, provider: any): Promise<Response> {
+async function handleAnalyzeImageRequest(request: Request, env: Env): Promise<Response> {
   if (request.method !== 'POST') {
     return new Response('Method not allowed', { status: 405 });
   }
@@ -359,7 +358,7 @@ async function handleStaticAssetRequest(request: Request, env: Env): Promise<Res
 
   if (shouldServeSpaFallback(assetResponse, request)) {
     const url = new URL(request.url);
-    url.pathname = "/index.html";
+    url.pathname = '/index.html';
     return env.ASSETS.fetch(
       new Request(url.toString(), {
         method: request.method,
@@ -371,27 +370,230 @@ async function handleStaticAssetRequest(request: Request, env: Env): Promise<Res
   return assetResponse;
 }
 
-type Env = {
-  ASSETS: AssetFetcher;
-  AI: any;
-  GEMINI_API_KEY?: string;
-  OPENAI_API_KEY?: string;
-  CLAUDE_API_KEY?: string;
-};
+type NormalisedMessage = { role: 'user' | 'assistant' | 'system'; content: string };
 
-type AssetFetcher = {
-  fetch(request: Request): Promise<Response>;
-};
+function selectModelAndProvider(model?: unknown): { selectedModel: LlmModelOption; providerConfig: APIConfig } {
+  const configuredModels = getConfiguredModelOptions();
+  if (configuredModels.length === 0) {
+    throw new Error('No AI models configured.');
+  }
 
-function shouldServeSpaFallback(response: Response, request: Request): boolean {
-  return (
-    response.status === 404 &&
-    request.method === "GET" &&
-    acceptsHtml(request)
-  );
+  const requestedModel = getValidatedModel(model);
+  const selectedModel = requestedModel && configuredModels.some(option => option.id === requestedModel.id)
+    ? requestedModel
+    : configuredModels.find(option => option.default) ?? configuredModels[0];
+
+  const providers = getAllConfiguredProviders();
+  const providerConfig = providers.find(config => config.provider === selectedModel.provider);
+
+  if (!providerConfig) {
+    throw new Error(`Provider ${selectedModel.provider} is not configured.`);
+  }
+
+  return { selectedModel, providerConfig };
 }
 
-function acceptsHtml(request: Request): boolean {
-  const acceptHeader = request.headers.get("accept") ?? "";
-  return acceptHeader.includes("text/html");
+function getConfiguredModelOptions(): LlmModelOption[] {
+  const providers = getAllConfiguredProviders();
+  const configuredProviders = new Set(providers.map(config => config.provider));
+  return LLM_MODEL_OPTIONS.filter(option => configuredProviders.has(option.provider));
 }
+
+async function runChatCompletion(
+  providerConfig: APIConfig,
+  model: LlmModelOption,
+  messages: NormalisedMessage[],
+): Promise<string> {
+  switch (model.provider) {
+    case 'gemini':
+      return runGeminiCompletion(providerConfig.apiKey, model.apiModelId, messages);
+    case 'openai':
+      return runOpenAICompletion(providerConfig.apiKey, model.apiModelId, messages);
+    case 'claude':
+      return runAnthropicCompletion(providerConfig.apiKey, model.apiModelId, messages);
+    case 'openrouter-deepseek-chat':
+    case 'openrouter-qwen3-235b':
+    case 'openrouter-qwen3-coder':
+    case 'openrouter-deepseek-r1t2':
+    case 'openrouter-minimax-m2':
+    case 'openrouter-glm-45-air':
+      return runOpenRouterCompletion(providerConfig.apiKey, model.apiModelId, messages);
+    default:
+      throw new Error(`Unsupported provider: ${model.provider}`);
+  }
+}
+
+async function runGeminiCompletion(apiKey: string, modelId: string, messages: NormalisedMessage[]): Promise<string> {
+  const url = new URL(`https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent`);
+  url.searchParams.set('key', apiKey);
+
+  const { contents } = convertToGeminiContents(messages);
+
+  const response = await fetch(url.toString(), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ contents }),
+  });
+
+  if (!response.ok) {
+    const errorText = await safeReadText(response);
+    throw new Error(`Gemini request failed: ${response.status} ${errorText}`);
+  }
+
+  const data = await response.json();
+  return extractGeminiText(data);
+}
+
+async function runOpenAICompletion(apiKey: string, modelId: string, messages: NormalisedMessage[]): Promise<string> {
+  const response = await fetch(OPENAI_CHAT_COMPLETIONS_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: modelId,
+      messages: messages.map(message => ({ role: message.role, content: message.content })),
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await safeReadText(response);
+    throw new Error(`OpenAI request failed: ${response.status} ${errorText}`);
+  }
+
+  const data = await response.json();
+  return data.choices?.[0]?.message?.content ?? '';
+}
+
+async function runAnthropicCompletion(apiKey: string, modelId: string, messages: NormalisedMessage[]): Promise<string> {
+  const { systemPrompt, conversation } = convertToAnthropicMessages(messages);
+
+  const response = await fetch(ANTHROPIC_MESSAGES_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+    },
+    body: JSON.stringify({
+      model: modelId,
+      system: systemPrompt || undefined,
+      messages: conversation,
+      max_tokens: 1024,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await safeReadText(response);
+    throw new Error(`Anthropic request failed: ${response.status} ${errorText}`);
+  }
+
+  const data = await response.json();
+  const text = data.content
+    ?.map((part: any) => (typeof part.text === 'string' ? part.text : part?.content?.text ?? ''))
+    .filter((part: string) => part.length > 0)
+    .join('\n');
+
+  return text ?? '';
+}
+
+async function runOpenRouterCompletion(apiKey: string, modelId: string, messages: NormalisedMessage[]): Promise<string> {
+  const response = await fetch(OPENROUTER_CHAT_COMPLETIONS_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${apiKey}`,
+      'HTTP-Referer': 'https://stockbrain.averymiddlebrook2014.workers.dev/',
+      'X-Title': 'StockBrain',
+    },
+    body: JSON.stringify({
+      model: modelId,
+      messages: messages.map(message => ({ role: message.role, content: message.content })),
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await safeReadText(response);
+    throw new Error(`OpenRouter request failed: ${response.status} ${errorText}`);
+  }
+
+  const data = await response.json();
+  return data.choices?.[0]?.message?.content ?? '';
+}
+
+function convertToGeminiContents(messages: NormalisedMessage[]): { contents: any[] } {
+  const contents: any[] = [];
+  const systemMessages = messages.filter(message => message.role === 'system');
+  const userAndAssistant = messages.filter(message => message.role !== 'system');
+
+  let systemPrompt = systemMessages.map(message => message.content).join('\n\n').trim();
+
+  for (const message of userAndAssistant) {
+    const role = message.role === 'assistant' ? 'model' : 'user';
+    let text = message.content;
+
+    if (role === 'user' && systemPrompt) {
+      text = `${systemPrompt}\n\n${text}`;
+      systemPrompt = '';
+    }
+
+    contents.push({
+      role,
+      parts: [{ text }],
+    });
+  }
+
+  if (systemPrompt) {
+    contents.unshift({ role: 'user', parts: [{ text: systemPrompt }] });
+  }
+
+  return { contents };
+}
+
+function extractGeminiText(payload: any): string {
+  if (!payload?.candidates?.length) {
+    return '';
+  }
+
+  const parts = payload.candidates[0]?.content?.parts ?? [];
+  return parts
+    .map((part: any) => {
+      if (typeof part === 'string') {
+        return part;
+      }
+      if (typeof part?.text === 'string') {
+        return part.text;
+      }
+      return '';
+    })
+    .filter(Boolean)
+    .join('\n');
+}
+
+function convertToAnthropicMessages(messages: NormalisedMessage[]): {
+  systemPrompt: string;
+  conversation: Array<{ role: 'user' | 'assistant'; content: string }>;
+} {
+  const systemMessages = messages.filter(message => message.role === 'system');
+  const systemPrompt = systemMessages.map(message => message.content).join('\n\n').trim();
+
+  const conversation = messages
+    .filter(message => message.role !== 'system')
+    .map(message => ({
+      role: message.role === 'assistant' ? 'assistant' : 'user',
+      content: message.content,
+    }));
+
+  return { systemPrompt, conversation };
+}
+
+async function safeReadText(response: Response): Promise<string> {
+  try {
+    return await response.text();
+  } catch (error) {
+    console.error('Failed to read error response body:', error);
+    return '';
+  }
+}
+

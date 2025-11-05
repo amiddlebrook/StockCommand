@@ -64,6 +64,50 @@ const App: React.FC = () => {
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    let isCancelled = false;
+
+    const fetchModels = async () => {
+      try {
+        const response = await fetch('/api/models');
+        if (!response.ok) {
+          return;
+        }
+        const data = await response.json();
+        if (isCancelled) {
+          return;
+        }
+
+        const maybeModels = Array.isArray(data?.models)
+          ? (data.models as LlmModelOption[])
+          : undefined;
+
+        if (maybeModels) {
+          setModelOptions(maybeModels);
+        }
+
+        if (typeof data?.defaultModel === 'string') {
+          const defaultModel = data.defaultModel as string;
+          setSelectedModel(current => {
+            if (current === defaultModel) {
+              return current;
+            }
+            const isCurrentAvailable = maybeModels?.some(option => option.id === current);
+            return isCurrentAvailable ? current : defaultModel;
+          });
+        }
+      } catch (error) {
+        console.error('Failed to load configured models:', error);
+      }
+    };
+
+    fetchModels();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
     if (!chatContainerRef.current) {
       return;
     }
