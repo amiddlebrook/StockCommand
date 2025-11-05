@@ -7,7 +7,7 @@ interface ModelSelectorProps {
 }
 
 export const ModelSelector: React.FC<ModelSelectorProps> = ({
-  selectedModel = DEFAULT_CHAT_MODEL,
+  selectedModel = DEFAULT_CHAT_MODEL.id,
   onChange,
 }) => {
   return (
@@ -35,20 +35,12 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
                   isActive ? 'text-cyan-200' : 'text-gray-200'
                 }`}
               >
-                {option.label}
-              </span>
-              <span className="mt-1 block text-[11px] text-slate-400">
-                {option.description}
+                {option.name}
               </span>
               <span className="mt-2 flex items-center gap-2 text-[10px] uppercase tracking-wide text-slate-500">
                 <span className="inline-flex h-1.5 w-1.5 rounded-full bg-cyan-500/80" />
-                {option.providerLabel}
+                {option.provider}
               </span>
-              {option.contextWindowTokens && (
-                <span className="mt-1 block text-[10px] text-slate-500">
-                  Context: ~{option.contextWindowTokens.toLocaleString()} tokens
-                </span>
-              )}
             </button>
           );
         })}
