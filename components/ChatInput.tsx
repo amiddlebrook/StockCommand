@@ -43,35 +43,54 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, onStartReco
   };
 
   return (
-    <div className="p-2 bg-black border-t border-gray-800">
-      <div className="relative bg-black border border-gray-700 p-2 flex items-end">
+    <div className="p-3 bg-gradient-to-t from-slate-950 to-slate-900/50 border-t border-slate-800/50">
+      <div className="relative bg-slate-900/50 backdrop-blur-sm border border-slate-700/50 rounded-xl p-2 flex items-end gap-1 shadow-lg">
         {imageFile && (
-          <div className="absolute -bottom-12 left-2 p-1 bg-gray-900 border border-gray-700 shadow-lg">
-            <img src={URL.createObjectURL(imageFile)} alt="Preview" className="h-10 w-10 object-cover" />
-            <button onClick={() => setImageFile(null)} className="absolute -top-2 -right-2 bg-red-500 p-0.5">
+          <div className="absolute -top-14 left-2 p-1.5 bg-slate-900 border border-slate-700 rounded-lg shadow-xl">
+            <img src={URL.createObjectURL(imageFile)} alt="Preview" className="h-12 w-12 object-cover rounded" />
+            <button onClick={() => setImageFile(null)} className="absolute -top-1.5 -right-1.5 bg-red-500 hover:bg-red-600 rounded-full p-1 shadow-lg transition-colors">
               <Icon icon="close" className="w-3 h-3 text-white" />
             </button>
           </div>
         )}
-        <button onClick={triggerFileSelect} className="p-2 text-gray-400 hover:text-white transition-colors">
-            <Icon icon="upload" />
+
+        <button
+          onClick={triggerFileSelect}
+          className="p-2 text-gray-400 hover:text-cyan-400 transition-colors rounded-lg hover:bg-slate-800/50"
+          aria-label="Upload image"
+        >
+          <Icon icon="upload" className="w-5 h-5" />
         </button>
         <input type="file" accept="image/*" ref={fileInputRef} onChange={handleFileChange} className="hidden" />
 
-        <button onClick={isRecording ? onStopRecording : onStartRecording} className={`p-2 transition-colors ${isRecording ? 'text-red-500 animate-pulse' : 'text-gray-400 hover:text-white'}`}>
-            <Icon icon="mic" />
+        <button
+          onClick={isRecording ? onStopRecording : onStartRecording}
+          className={`p-2 rounded-lg transition-all ${
+            isRecording
+              ? 'text-red-500 bg-red-500/10 animate-pulse'
+              : 'text-gray-400 hover:text-cyan-400 hover:bg-slate-800/50'
+          }`}
+          aria-label={isRecording ? 'Stop recording' : 'Start recording'}
+        >
+          <Icon icon="mic" className="w-5 h-5" />
         </button>
-        
+
         <textarea
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyPress={handleKeyPress}
-          placeholder="Ask a follow-up..."
-          className="flex-1 bg-transparent border-none focus:ring-0 resize-none text-gray-200 placeholder-gray-500 px-2 max-h-40"
-          rows={2}
+          placeholder="Ask anything about the markets..."
+          className="flex-1 bg-transparent border-none focus:outline-none resize-none text-gray-200 placeholder-gray-500 px-2 py-2 max-h-40 text-sm"
+          rows={1}
           disabled={isLoading}
         />
-        <button onClick={handleSend} disabled={isLoading || (!input.trim() && !imageFile)} className="bg-cyan-600 text-white p-2 disabled:bg-gray-700 disabled:cursor-not-allowed hover:bg-cyan-500 transition-colors">
+
+        <button
+          onClick={handleSend}
+          disabled={isLoading || (!input.trim() && !imageFile)}
+          className="bg-gradient-to-r from-cyan-600 to-cyan-500 hover:from-cyan-500 hover:to-cyan-400 text-white p-2 rounded-lg disabled:from-slate-700 disabled:to-slate-700 disabled:cursor-not-allowed transition-all shadow-lg shadow-cyan-500/20 disabled:shadow-none"
+          aria-label="Send message"
+        >
           <Icon icon="send" className="w-5 h-5"/>
         </button>
       </div>
