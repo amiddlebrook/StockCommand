@@ -22,11 +22,7 @@ import {
   getOfflineDashboardSeed,
   type AnalysisWidget,
 } from './services/geminiService';
-import {
-  DEFAULT_CHAT_MODEL,
-  LLM_MODEL_OPTIONS,
-  type LlmModelOption,
-} from './lib/constants/llmModels';
+import { DEFAULT_CHAT_MODEL } from './lib/constants/llmModels';
 
 type MobileView = 'toolbox' | 'dashboard' | 'chat';
 
@@ -62,7 +58,6 @@ const App: React.FC = () => {
   const [widgets, setWidgets] = useState<AnalysisWidget[]>(() => getOfflineDashboardSeed());
   const [mobileView, setMobileView] = useState<MobileView>('toolbox');
   const [selectedModel, setSelectedModel] = useState(DEFAULT_CHAT_MODEL);
-  const [modelOptions, setModelOptions] = useState<LlmModelOption[]>(LLM_MODEL_OPTIONS);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -275,7 +270,7 @@ const App: React.FC = () => {
       let sources: Source[] | undefined;
 
       if (image) {
-        const response = await analyzeImage(message || 'Analyze this image.', image);
+        const response = await analyzeImage(message || 'Analyze this image.', image, { model: selectedModel });
         responseText = response.response ?? '';
       } else {
         const history = messages
@@ -411,11 +406,7 @@ const App: React.FC = () => {
                 <Icon icon="bot" className="w-4 h-4 text-cyan-400" />
                 AI ASSISTANT
               </h2>
-              <ModelSelector
-                options={modelOptions}
-                selectedModel={selectedModel}
-                onChange={setSelectedModel}
-              />
+              <ModelSelector selectedModel={selectedModel} onChange={setSelectedModel} />
             </div>
           </div>
           <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-4 space-y-4">
