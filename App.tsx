@@ -270,6 +270,7 @@ const App: React.FC = () => {
       let sources: Source[] | undefined;
 
       if (image) {
+        console.log('Analyzing image with model:', selectedModel);
         const response = await analyzeImage(message || 'Analyze this image.', image, { model: selectedModel });
         responseText = response.response ?? '';
       } else {
@@ -280,7 +281,10 @@ const App: React.FC = () => {
             parts: [{ text: m.content }],
           }));
 
+        console.log('Sending message with model:', selectedModel);
+        console.log('History length:', history.length);
         const response = await sendMessage(message, history, { model: selectedModel });
+        console.log('Received response:', response);
         responseText = response.response ?? '';
       }
 
@@ -295,10 +299,16 @@ const App: React.FC = () => {
       setMessages(prev => prev.map(msg => (msg.id === modelMessageId ? newBotMessage : msg)));
     } catch (error) {
       console.error('Error handling message:', error);
+      // Log detailed error info
+      if (error instanceof Error) {
+        console.error('Error message:', error.message);
+        console.error('Error stack:', error.stack);
+      }
+
       const errorMessage: ChatMessageType = {
         id: modelMessageId,
         role: 'model',
-        content: 'An error occurred. Please try again.',
+        content: `An error occurred: ${error instanceof Error ? error.message : 'Unknown error'}. Please check console for details.`,
         isLoading: false,
       };
       setMessages(prev => prev.map(msg => (msg.id === modelMessageId ? errorMessage : msg)));
@@ -355,15 +365,15 @@ const App: React.FC = () => {
       <Header />
 
       {/* Main Content Grid */}
-      <div className="flex-1 grid grid-cols-1 md:grid-cols-12 lg:grid-cols-[280px_minmax(0,_1fr)_380px] overflow-hidden">
+      <div className="flex-1 grid grid-cols-1 md:grid-cols-12 lg:grid-cols-[240px_minmax(0,_1fr)_320px] overflow-hidden h-[calc(100vh-64px)]">
 
         {/* Toolbox Sidebar */}
-        <aside className={`border-r border-slate-800/50 backdrop-blur-sm bg-slate-900/30 md:col-span-3 lg:col-auto ${mobileView === 'toolbox' ? 'block' : 'hidden'} md:block ${isDashboardLoading ? 'opacity-70' : ''}`}>
+        <aside className={`border-r border-slate-800/50 backdrop-blur-sm bg-slate-900/30 overflow-y-auto md:col-span-3 lg:col-auto ${mobileView === 'toolbox' ? 'block' : 'hidden'} md:block ${isDashboardLoading ? 'opacity-70' : ''}`}>
           <Toolbox onAnalysisRequested={handleAnalysisRequest} isLoading={isDashboardLoading} />
         </aside>
 
         {/* Dashboard Main Area */}
-        <main className={`overflow-y-auto p-4 md:p-8 space-y-6 relative md:col-span-6 lg:col-auto ${mobileView === 'dashboard' ? 'block' : 'hidden'} md:block`}>
+        <main className={`overflow-y-auto p-3 md:p-6 space-y-4 relative md:col-span-6 lg:col-auto ${mobileView === 'dashboard' ? 'block' : 'hidden'} md:block`}>
           {isDashboardLoading && (
             <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center z-20">
               <div className="flex flex-col items-center gap-4">
@@ -374,23 +384,23 @@ const App: React.FC = () => {
           )}
 
           {widgets.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-center p-8">
-              <div className="relative mb-6">
+            <div className="flex flex-col items-center justify-center h-full text-center p-4">
+              <div className="relative mb-4">
                 <div className="absolute inset-0 bg-cyan-500/20 blur-3xl rounded-full" />
-                <Icon icon="chart" className="w-20 h-20 text-cyan-400 relative" />
+                <Icon icon="chart" className="w-16 h-16 text-cyan-400 relative" />
               </div>
-              <h3 className="text-2xl font-bold text-gray-200 mb-3 tracking-tight">Analytics Dashboard</h3>
-              <p className="max-w-md text-gray-400 text-sm leading-relaxed">
+              <h3 className="text-xl font-bold text-gray-200 mb-2 tracking-tight">Analytics Dashboard</h3>
+              <p className="max-w-md text-gray-400 text-xs leading-relaxed">
                 Your financial analysis widgets will appear here. Select a tool from the toolbox to begin your analysis.
               </p>
-              <div className="mt-8 flex gap-2">
+              <div className="mt-6 flex gap-2">
                 <div className="h-1.5 w-1.5 rounded-full bg-cyan-500 animate-pulse" />
                 <div className="h-1.5 w-1.5 rounded-full bg-cyan-500 animate-pulse delay-75" />
                 <div className="h-1.5 w-1.5 rounded-full bg-cyan-500 animate-pulse delay-150" />
               </div>
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-6">
+            <div className="grid grid-cols-1 gap-4">
               {widgets.map(widget => (
                 <div key={widget.id} className="animate-fadeIn">{renderWidget(widget)}</div>
               ))}
@@ -400,16 +410,33 @@ const App: React.FC = () => {
 
         {/* Chat Sidebar */}
         <aside className={`flex flex-col bg-gradient-to-b from-slate-900/50 to-slate-950/50 backdrop-blur-sm border-l border-slate-800/50 max-h-full md:col-span-3 lg:col-auto ${mobileView === 'chat' ? 'flex' : 'hidden'} md:flex`}>
-          <div className="border-b border-slate-800/50 px-4 py-3 bg-slate-900/30 space-y-3">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <h2 className="text-sm font-semibold text-gray-300 tracking-wider flex items-center gap-2">
+          <div className="border-b border-slate-800/50 px-3 py-2.5 bg-slate-900/30">
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <div className="flex items-center gap-2">
                 <Icon icon="bot" className="w-4 h-4 text-cyan-400" />
-                AI ASSISTANT
-              </h2>
-              <ModelSelector selectedModel={selectedModel} onChange={setSelectedModel} />
+                <h2 className="text-xs font-semibold text-gray-300 tracking-wider">
+                  AI ASSISTANT
+                </h2>
+              </div>
+              {modelOptions.length > 0 ? (
+                <span className="text-[9px] text-green-400 flex items-center gap-1">
+                  <span className="inline-block w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"></span>
+                  {modelOptions.length} API{modelOptions.length !== 1 ? 's' : ''} ready
+                </span>
+              ) : (
+                <span className="text-[9px] text-yellow-400 flex items-center gap-1">
+                  <span className="inline-block w-1.5 h-1.5 bg-yellow-400 rounded-full animate-pulse"></span>
+                  Loading APIs...
+                </span>
+              )}
             </div>
+            <ModelSelector
+              selectedModel={selectedModel}
+              onChange={setSelectedModel}
+              availableModels={modelOptions}
+            />
           </div>
-          <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-4 space-y-4">
+          <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-3 space-y-3">
             {messages.map(msg => (
               <ChatMessage key={msg.id} message={msg} />
             ))}
