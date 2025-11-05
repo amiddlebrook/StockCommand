@@ -8,3 +8,19 @@ binding = "ASSETS"
 
 [ai]
 binding = "AI"
+
+# Environment variables for external API keys
+# Set these using: wrangler secret put <SECRET_NAME>
+# Example: wrangler secret put OPENAI_API_KEY
+[vars]
+
+# The following secrets need to be configured in Cloudflare dashboard or via CLI:
+# - OPENAI_API_KEY
+# - GEMINI_API_KEY
+# - CLAUDE_API_KEY
+# - OPENROUTER_QWEN3_CODER_API_KEY
+# - OPENROUTER_DEEPSEEK_R1T2_API_KEY
+# - OPENROUTER_DEEPSEEK_CHAT_API_KEY
+# - OPENROUTER_MINIMAX_M2_API_KEY
+# - OPENROUTER_GLM_45_AIR_API_KEY
+# - OPENROUTER_QWEN3_235B_API_KEY

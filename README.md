@@ -83,7 +83,25 @@ StockBrain is configured to deploy to Cloudflare Workers using Wrangler.
    npm run build
    ```
 
-4. Deploy to Cloudflare Workers:
+4. Configure API secrets (required for external LLM providers):
+   ```bash
+   # Set at least one AI provider API key
+   wrangler secret put OPENAI_API_KEY
+   wrangler secret put GEMINI_API_KEY
+   wrangler secret put CLAUDE_API_KEY
+
+   # Optional: OpenRouter models
+   wrangler secret put OPENROUTER_QWEN3_CODER_API_KEY
+   wrangler secret put OPENROUTER_DEEPSEEK_R1T2_API_KEY
+   wrangler secret put OPENROUTER_DEEPSEEK_CHAT_API_KEY
+   wrangler secret put OPENROUTER_MINIMAX_M2_API_KEY
+   wrangler secret put OPENROUTER_GLM_45_AIR_API_KEY
+   wrangler secret put OPENROUTER_QWEN3_235B_API_KEY
+   ```
+
+   When prompted, paste your API key and press Enter. You only need to configure the providers you plan to use.
+
+5. Deploy to Cloudflare Workers:
    ```bash
    wrangler deploy
    ```
@@ -92,12 +110,28 @@ Your app will be deployed to a `*.workers.dev` subdomain. You can configure a cu
 
 ### Configuration for Production
 
-For production deployments, you'll need to configure environment variables:
-- API keys are embedded at build time via Vite's environment variable system
-- Make sure your `.env.local` (or build-time environment) contains all necessary API keys before running `npm run build`
-- The built static assets are served by the Cloudflare Worker defined in `worker.ts`
+StockBrain uses a **secure API proxy architecture** where:
+- **API keys are stored as Cloudflare secrets** (server-side only)
+- The Cloudflare Worker acts as a secure proxy for all AI API calls
+- External LLM providers (OpenAI, Claude, Gemini, OpenRouter) are accessed through the worker
+- API keys are never exposed to the client-side code
 
-**Security Note:** API keys embedded at build time will be visible in the client-side JavaScript bundle. For improved security, consider implementing a backend API proxy that keeps API keys server-side. The current architecture uses client-side API calls for simplicity.
+#### Required Cloudflare Secrets
+
+Configure at least one AI provider using `wrangler secret put`:
+
+| Secret Name | Provider | Required |
+|------------|----------|----------|
+| `OPENAI_API_KEY` | OpenAI GPT-4o, GPT-4 Turbo | At least one |
+| `GEMINI_API_KEY` | Google Gemini 1.5 Flash | At least one |
+| `CLAUDE_API_KEY` | Anthropic Claude 3.x | At least one |
+| `OPENROUTER_*` | OpenRouter models | Optional |
+
+**Security Benefits:**
+- API keys are never visible in client-side code
+- All API calls are proxied through the worker
+- Secrets are encrypted and managed by Cloudflare
+- No risk of API key exposure in browser DevTools
 
 ## CI/CD Pipeline
 

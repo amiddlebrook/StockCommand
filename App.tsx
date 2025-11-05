@@ -22,7 +22,7 @@ import {
   getOfflineDashboardSeed,
   type AnalysisWidget,
 } from './services/geminiService';
-import { DEFAULT_CHAT_MODEL } from './lib/constants/llmModels';
+import { DEFAULT_CHAT_MODEL, type LlmModelOption } from './lib/constants/llmModels';
 
 type MobileView = 'toolbox' | 'dashboard' | 'chat';
 
@@ -57,7 +57,8 @@ const App: React.FC = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [widgets, setWidgets] = useState<AnalysisWidget[]>(() => getOfflineDashboardSeed());
   const [mobileView, setMobileView] = useState<MobileView>('toolbox');
-  const [selectedModel, setSelectedModel] = useState(DEFAULT_CHAT_MODEL);
+  const [modelOptions, setModelOptions] = useState<LlmModelOption[]>([]);
+  const [selectedModel, setSelectedModel] = useState(DEFAULT_CHAT_MODEL.id);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -81,18 +82,17 @@ const App: React.FC = () => {
           ? (data.models as LlmModelOption[])
           : undefined;
 
-        if (maybeModels) {
+        if (maybeModels && maybeModels.length > 0) {
           setModelOptions(maybeModels);
-        }
 
-        if (typeof data?.defaultModel === 'string') {
-          const defaultModel = data.defaultModel as string;
+          // Set default model to the first model marked as default, or the first available model
+          const defaultModel = maybeModels.find(m => m.isDefault) || maybeModels[0];
           setSelectedModel(current => {
-            if (current === defaultModel) {
+            if (current === defaultModel.id) {
               return current;
             }
-            const isCurrentAvailable = maybeModels?.some(option => option.id === current);
-            return isCurrentAvailable ? current : defaultModel;
+            const isCurrentAvailable = maybeModels.some(option => option.id === current);
+            return isCurrentAvailable ? current : defaultModel.id;
           });
         }
       } catch (error) {

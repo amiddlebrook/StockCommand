@@ -123,13 +123,13 @@ async function handleAnalyzeRequest(request: Request, env: Env): Promise<Respons
 
     const selectedModel = getValidatedModel(model);
 
-    const aiResponse = await env.AI.run(selectedModel, {
+    const aiResponse = await env.AI.run(selectedModel.id, {
       prompt,
     });
 
     return jsonResponse({
       response: extractTextResponse(aiResponse),
-      model: selectedModel,
+      model: selectedModel.id,
     });
   } catch (error) {
     console.error('Error in analyze request:', error);
@@ -151,13 +151,13 @@ async function handleSearchRequest(request: Request, env: Env): Promise<Response
 
     const selectedModel = getValidatedModel(model);
 
-    const aiResponse = await env.AI.run(selectedModel, {
+    const aiResponse = await env.AI.run(selectedModel.id, {
       prompt,
     });
 
     return jsonResponse({
       response: extractTextResponse(aiResponse),
-      model: selectedModel,
+      model: selectedModel.id,
       sources: [],
     });
   } catch (error) {
@@ -205,9 +205,9 @@ function handleModelsRequest(providerName: string): Response {
   });
 }
 
-function getValidatedModel(model?: unknown): string {
+function getValidatedModel(model?: unknown): LlmModelOption {
   if (typeof model === 'string' && LLM_MODEL_LOOKUP[model]) {
-    return model;
+    return LLM_MODEL_LOOKUP[model];
   }
   return DEFAULT_CHAT_MODEL;
 }
@@ -383,6 +383,29 @@ async function handleStaticAssetRequest(request: Request, env: Env): Promise<Res
   return assetResponse;
 }
 
+function shouldServeSpaFallback(response: Response, request: Request): boolean {
+  // Serve SPA fallback for 404s on HTML pages (client-side routing)
+  if (response.status !== 404) {
+    return false;
+  }
+
+  const url = new URL(request.url);
+  const path = url.pathname;
+
+  // Don't fallback for API routes
+  if (path.startsWith('/api/')) {
+    return false;
+  }
+
+  // Don't fallback for files with extensions (like .js, .css, .png, etc.)
+  const hasExtension = /\.[a-zA-Z0-9]+$/.test(path);
+  if (hasExtension && !path.endsWith('.html')) {
+    return false;
+  }
+
+  return true;
+}
+
 type NormalisedMessage = { role: 'user' | 'assistant' | 'system'; content: string };
 
 function selectModelAndProvider(model?: unknown): { selectedModel: LlmModelOption; providerConfig: APIConfig } {
@@ -392,9 +415,9 @@ function selectModelAndProvider(model?: unknown): { selectedModel: LlmModelOptio
   }
 
   const requestedModel = getValidatedModel(model);
-  const selectedModel = requestedModel && configuredModels.some(option => option.id === requestedModel.id)
+  const selectedModel = configuredModels.some(option => option.id === requestedModel.id)
     ? requestedModel
-    : configuredModels.find(option => option.default) ?? configuredModels[0];
+    : configuredModels.find(option => option.isDefault) ?? configuredModels[0];
 
   const providers = getAllConfiguredProviders();
   const providerConfig = providers.find(config => config.provider === selectedModel.provider);
