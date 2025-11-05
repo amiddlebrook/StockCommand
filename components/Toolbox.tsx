@@ -57,12 +57,18 @@ export const Toolbox: React.FC<ToolboxProps> = ({ onAnalysisRequested, isLoading
     };
 
     return (
-        <div className="p-4 bg-[#0D0D0D] h-full">
-            <h2 className="text-lg font-semibold text-gray-300 mb-4 tracking-wider">TOOLBOX</h2>
-            
-            <div className="mb-4">
-                <label htmlFor="stock-symbol" className="text-sm font-medium text-gray-400 block mb-2">
-                    Add Stock Symbol
+        <div className="p-5 h-full overflow-y-auto">
+            <div className="mb-6">
+                <h2 className="text-sm font-bold text-gray-400 mb-1 tracking-widest uppercase flex items-center gap-2">
+                    <Icon icon="search" className="w-4 h-4 text-cyan-400" />
+                    Analysis Tools
+                </h2>
+                <div className="h-0.5 w-12 bg-gradient-to-r from-cyan-500 to-transparent rounded-full" />
+            </div>
+
+            <div className="mb-6">
+                <label htmlFor="stock-symbol" className="text-xs font-semibold text-gray-400 block mb-2 uppercase tracking-wide">
+                    Stock Symbol
                 </label>
                 <div className="flex gap-2">
                     <input
@@ -71,14 +77,14 @@ export const Toolbox: React.FC<ToolboxProps> = ({ onAnalysisRequested, isLoading
                         value={symbolInput}
                         onChange={(e) => setSymbolInput(e.target.value)}
                         onKeyPress={(e) => e.key === 'Enter' && handleAddSymbol()}
-                        placeholder="e.g., GME"
+                        placeholder="e.g., TSLA"
                         disabled={isLoading}
-                        className="w-full bg-black border border-gray-700 px-3 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 disabled:opacity-50"
+                        className="w-full bg-slate-900/50 border border-slate-700/50 rounded-lg px-3 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500/50 disabled:opacity-50 transition-all text-sm backdrop-blur-sm"
                     />
-                    <button 
-                        onClick={handleAddSymbol} 
+                    <button
+                        onClick={handleAddSymbol}
                         disabled={isLoading || !symbolInput.trim()}
-                        className="bg-cyan-600 hover:bg-cyan-500 text-white font-semibold px-4 py-2 whitespace-nowrap disabled:bg-gray-700 disabled:cursor-not-allowed transition-colors"
+                        className="bg-gradient-to-r from-cyan-600 to-cyan-500 hover:from-cyan-500 hover:to-cyan-400 text-white font-semibold px-4 py-2.5 rounded-lg whitespace-nowrap disabled:from-slate-700 disabled:to-slate-700 disabled:cursor-not-allowed transition-all shadow-lg shadow-cyan-500/20 disabled:shadow-none text-sm"
                     >
                         Add
                     </button>
@@ -86,25 +92,25 @@ export const Toolbox: React.FC<ToolboxProps> = ({ onAnalysisRequested, isLoading
             </div>
 
             <div className="mb-6">
-                <h3 className="text-sm font-medium text-gray-400 block mb-2">Ticker List</h3>
-                <div className="flex flex-wrap gap-2 min-h-[28px]">
+                <h3 className="text-xs font-semibold text-gray-400 block mb-3 uppercase tracking-wide">Active Tickers</h3>
+                <div className="flex flex-wrap gap-2 min-h-[32px]">
                     {symbolList.length === 0 ? (
-                        <p className="text-xs text-gray-600 italic px-1 py-1">No tickers added yet.</p>
+                        <p className="text-xs text-gray-600 italic px-2 py-1.5">No tickers yet</p>
                     ) : (
                         symbolList.map(symbol => (
-                            <div 
-                                key={symbol} 
-                                className={`flex items-center gap-1.5 pl-3 pr-1 py-1 text-sm border cursor-pointer transition-colors ${
-                                    activeSymbol === symbol 
-                                    ? 'bg-cyan-800 border-cyan-600 text-white' 
-                                    : 'bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700 hover:border-gray-600'
+                            <div
+                                key={symbol}
+                                className={`group flex items-center gap-2 pl-3 pr-2 py-1.5 text-sm rounded-lg border cursor-pointer transition-all ${
+                                    activeSymbol === symbol
+                                    ? 'bg-gradient-to-r from-cyan-600/20 to-purple-600/20 border-cyan-500/50 text-white shadow-lg shadow-cyan-500/10'
+                                    : 'bg-slate-800/30 border-slate-700/50 text-gray-300 hover:bg-slate-700/40 hover:border-slate-600/50'
                                 }`}
                                 onClick={() => handleSetActiveSymbol(symbol)}
                             >
                                 <span className="font-mono font-bold">{symbol}</span>
-                                <button 
-                                    onClick={(e) => { e.stopPropagation(); handleRemoveSymbol(symbol); }} 
-                                    className="text-gray-500 hover:text-white rounded-full p-0.5"
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); handleRemoveSymbol(symbol); }}
+                                    className="text-gray-500 hover:text-red-400 rounded-full p-0.5 transition-colors"
                                     aria-label={`Remove ${symbol}`}
                                     disabled={isLoading}
                                 >
@@ -116,15 +122,16 @@ export const Toolbox: React.FC<ToolboxProps> = ({ onAnalysisRequested, isLoading
                 </div>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-1.5">
+                <h3 className="text-xs font-semibold text-gray-400 block mb-3 uppercase tracking-wide">Features</h3>
                 {features.map((feature) => (
                     <button
                         key={feature.name}
                         onClick={() => handleFeatureClick(feature.name)}
                         disabled={isLoading || !activeSymbol}
-                        className="w-full flex items-center gap-3 px-3 py-2 text-left text-gray-300 bg-gray-900/50 hover:bg-gray-800 border border-transparent hover:border-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="group w-full flex items-center gap-3 px-3 py-2.5 text-left text-gray-300 bg-slate-800/20 hover:bg-slate-700/30 border border-slate-700/30 hover:border-cyan-500/30 rounded-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:shadow-lg hover:shadow-cyan-500/5"
                     >
-                        <Icon icon={feature.icon as any} className="w-5 h-5 text-cyan-400" />
+                        <Icon icon={feature.icon as any} className="w-4 h-4 text-cyan-400 group-hover:text-cyan-300 transition-colors" />
                         <span className="text-sm font-medium">{feature.name}</span>
                     </button>
                 ))}

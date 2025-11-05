@@ -304,43 +304,61 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-black text-gray-200 flex flex-col">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-gray-100 flex flex-col">
       <Header />
-      <div className="flex-1 md:grid md:grid-cols-12">
-        <div className={`border-r border-gray-800 overflow-y-auto md:col-span-3 xl:col-span-2 ${mobileView === 'toolbox' ? 'block' : 'hidden'} md:block`}>
-          <Toolbox onAnalysisRequested={handleAnalysisRequest} isLoading={isDashboardLoading} />
-        </div>
-      </div>
 
-      <div className="flex-1 grid grid-cols-1 md:grid-cols-12 xl:grid-cols-[260px_minmax(0,_1fr)_340px]">
-        <aside className={`border-r border-gray-900 hidden md:block md:col-span-3 xl:col-auto ${isDashboardLoading ? 'opacity-70' : ''}`}>
+      {/* Main Content Grid */}
+      <div className="flex-1 grid grid-cols-1 md:grid-cols-12 lg:grid-cols-[280px_minmax(0,_1fr)_380px] overflow-hidden">
+
+        {/* Toolbox Sidebar */}
+        <aside className={`border-r border-slate-800/50 backdrop-blur-sm bg-slate-900/30 md:col-span-3 lg:col-auto ${mobileView === 'toolbox' ? 'block' : 'hidden'} md:block ${isDashboardLoading ? 'opacity-70' : ''}`}>
           <Toolbox onAnalysisRequested={handleAnalysisRequest} isLoading={isDashboardLoading} />
         </aside>
 
-        <main className={`overflow-y-auto p-4 md:p-6 space-y-4 md:space-y-6 relative md:col-span-6 xl:col-span-7 ${mobileView === 'dashboard' ? 'block' : 'hidden'} md:block`}>
+        {/* Dashboard Main Area */}
+        <main className={`overflow-y-auto p-4 md:p-8 space-y-6 relative md:col-span-6 lg:col-auto ${mobileView === 'dashboard' ? 'block' : 'hidden'} md:block`}>
           {isDashboardLoading && (
-            <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-20">
-              <LoadingSpinner className="w-10 h-10" />
+            <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center z-20">
+              <div className="flex flex-col items-center gap-4">
+                <LoadingSpinner className="w-12 h-12" />
+                <p className="text-sm text-cyan-400 animate-pulse">Analyzing...</p>
+              </div>
             </div>
           )}
+
           {widgets.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-gray-600 text-center p-4">
-              <Icon icon="chart" className="w-16 h-16 mb-4" />
-              <h3 className="text-xl font-semibold text-gray-400">DASHBOARD</h3>
-              <p className="max-w-md mt-2 text-sm">
-                Your financial analysis widgets will appear here. Select a tool from the toolbox to begin.
+            <div className="flex flex-col items-center justify-center h-full text-center p-8">
+              <div className="relative mb-6">
+                <div className="absolute inset-0 bg-cyan-500/20 blur-3xl rounded-full" />
+                <Icon icon="chart" className="w-20 h-20 text-cyan-400 relative" />
+              </div>
+              <h3 className="text-2xl font-bold text-gray-200 mb-3 tracking-tight">Analytics Dashboard</h3>
+              <p className="max-w-md text-gray-400 text-sm leading-relaxed">
+                Your financial analysis widgets will appear here. Select a tool from the toolbox to begin your analysis.
               </p>
+              <div className="mt-8 flex gap-2">
+                <div className="h-1.5 w-1.5 rounded-full bg-cyan-500 animate-pulse" />
+                <div className="h-1.5 w-1.5 rounded-full bg-cyan-500 animate-pulse delay-75" />
+                <div className="h-1.5 w-1.5 rounded-full bg-cyan-500 animate-pulse delay-150" />
+              </div>
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-4 md:gap-6">
+            <div className="grid grid-cols-1 gap-6">
               {widgets.map(widget => (
-                <div key={widget.id}>{renderWidget(widget)}</div>
+                <div key={widget.id} className="animate-fadeIn">{renderWidget(widget)}</div>
               ))}
             </div>
           )}
         </main>
 
-        <aside className={`flex flex-col bg-[#0D0D0D] border-l border-gray-800 max-h-full md:col-span-3 xl:col-span-3 ${mobileView === 'chat' ? 'flex' : 'hidden'} md:flex`}>
+        {/* Chat Sidebar */}
+        <aside className={`flex flex-col bg-gradient-to-b from-slate-900/50 to-slate-950/50 backdrop-blur-sm border-l border-slate-800/50 max-h-full md:col-span-3 lg:col-auto ${mobileView === 'chat' ? 'flex' : 'hidden'} md:flex`}>
+          <div className="border-b border-slate-800/50 px-4 py-3 bg-slate-900/30">
+            <h2 className="text-sm font-semibold text-gray-300 tracking-wider flex items-center gap-2">
+              <Icon icon="bot" className="w-4 h-4 text-cyan-400" />
+              AI ASSISTANT
+            </h2>
+          </div>
           <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-4 space-y-4">
             {messages.map(msg => (
               <ChatMessage key={msg.id} message={msg} />
@@ -356,6 +374,7 @@ const App: React.FC = () => {
         </aside>
       </div>
 
+      {/* Mobile Navigation Spacer */}
       <div className="md:hidden h-16" />
       <MobileNav activeView={mobileView} setActiveView={setMobileView} />
     </div>

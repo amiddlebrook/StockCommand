@@ -36,22 +36,22 @@ export function Card({
   padding = 'medium',
   onClick,
 }: CardProps) {
-  const baseStyles = 'bg-black border border-gray-800 transition-colors';
-  
+  const baseStyles = 'bg-gradient-to-br from-slate-900/50 to-slate-800/30 backdrop-blur-sm border border-slate-700/50 rounded-xl transition-all';
+
   const variantStyles = {
-    default: '',
-    bordered: 'border-2',
-    elevated: 'shadow-lg hover:shadow-xl',
+    default: 'hover:border-slate-600/50',
+    bordered: 'border-2 border-cyan-500/20',
+    elevated: 'shadow-xl shadow-black/50 hover:shadow-2xl hover:shadow-cyan-500/10 hover:border-cyan-500/30',
   };
 
   const paddingStyles = {
     none: '',
-    small: 'p-2',
-    medium: 'p-4',
+    small: 'p-3',
+    medium: 'p-5',
     large: 'p-6',
   };
 
-  const interactiveStyles = onClick ? 'cursor-pointer hover:border-gray-700' : '';
+  const interactiveStyles = onClick ? 'cursor-pointer hover:border-cyan-500/30' : '';
 
   return (
     <div
@@ -59,13 +59,13 @@ export function Card({
       onClick={onClick}
     >
       {(title || subtitle || actions) && (
-        <div className="flex justify-between items-start mb-4">
+        <div className="flex justify-between items-start mb-4 pb-3 border-b border-slate-700/30">
           <div>
             {title && (
-              <h3 className="text-lg font-semibold text-gray-200">{title}</h3>
+              <h3 className="text-lg font-bold text-gray-100 tracking-tight">{title}</h3>
             )}
             {subtitle && (
-              <p className="text-sm text-gray-400 mt-1">{subtitle}</p>
+              <p className="text-xs text-gray-400 mt-1 tracking-wide">{subtitle}</p>
             )}
           </div>
           {actions && <div className="flex gap-2">{actions}</div>}
@@ -80,7 +80,7 @@ export function Card({
  * Card Header Component
  */
 export function CardHeader({ children, className = '' }: { children: React.ReactNode; className?: string }) {
-  return <div className={`border-b border-gray-800 pb-3 mb-3 ${className}`}>{children}</div>;
+  return <div className={`border-b border-slate-700/30 pb-3 mb-3 ${className}`}>{children}</div>;
 }
 
 /**
@@ -94,5 +94,5 @@ export function CardBody({ children, className = '' }: { children: React.ReactNo
  * Card Footer Component
  */
 export function CardFooter({ children, className = '' }: { children: React.ReactNode; className?: string }) {
-  return <div className={`border-t border-gray-800 pt-3 mt-3 ${className}`}>{children}</div>;
+  return <div className={`border-t border-slate-700/30 pt-3 mt-3 ${className}`}>{children}</div>;
 }

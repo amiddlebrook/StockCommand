@@ -11,13 +11,14 @@ interface TextWidgetProps {
 }
 
 const SourceLink: React.FC<{ source: Source, index: number }> = ({ source, index }) => (
-    <a 
-        href={source.web.uri} 
-        target="_blank" 
+    <a
+        href={source.web.uri}
+        target="_blank"
         rel="noopener noreferrer"
-        className="text-xs bg-gray-800 hover:bg-gray-700 text-cyan-400 px-3 py-1 transition-colors inline-block border border-gray-700"
+        className="text-xs bg-slate-800/50 hover:bg-slate-700/50 text-cyan-400 hover:text-cyan-300 px-3 py-1.5 rounded-lg transition-all inline-flex items-center gap-2 border border-slate-700/50 hover:border-cyan-500/30 shadow-sm"
     >
-        {index + 1}. {source.web.title}
+        <span className="text-cyan-500 font-bold">#{index + 1}</span>
+        <span className="truncate max-w-[200px]">{source.web.title}</span>
     </a>
 );
 
@@ -27,21 +28,28 @@ export const TextWidget: React.FC<TextWidgetProps> = ({ id, title, text, sources
     .replace(/\*\*(.*?)\*\*/g, '<strong class="text-gray-100">$1</strong>');
 
   return (
-    <div className="bg-black border border-gray-800">
-        <header className="flex justify-between items-center p-3 bg-gray-900 border-b border-gray-800">
-            <h3 className="text-sm font-semibold text-gray-300 tracking-wider uppercase">{title}</h3>
-            <button onClick={() => onRemove(id)} className="text-gray-500 hover:text-white">
+    <div className="bg-gradient-to-br from-slate-900/50 to-slate-800/30 backdrop-blur-sm border border-slate-700/50 rounded-xl shadow-xl overflow-hidden">
+        <header className="flex justify-between items-center px-5 py-4 bg-gradient-to-r from-slate-900/80 to-slate-800/80 border-b border-slate-700/30">
+            <h3 className="text-sm font-bold text-gray-200 tracking-wide flex items-center gap-2">
+                <div className="h-1 w-1 rounded-full bg-cyan-400 animate-pulse" />
+                {title}
+            </h3>
+            <button
+                onClick={() => onRemove(id)}
+                className="text-gray-500 hover:text-red-400 transition-colors rounded-lg p-1.5 hover:bg-slate-700/50"
+                aria-label="Remove widget"
+            >
                 <Icon icon="close" className="w-4 h-4" />
             </button>
         </header>
-        <div className="p-4">
-            <div 
-                className="text-gray-400 prose prose-invert prose-sm max-w-none" 
-                dangerouslySetInnerHTML={{ __html: contentWithLineBreaks }} 
+        <div className="p-5">
+            <div
+                className="text-gray-300 prose prose-invert prose-sm max-w-none leading-relaxed"
+                dangerouslySetInnerHTML={{ __html: contentWithLineBreaks }}
             />
             {sources && sources.length > 0 && (
-                <div className="mt-4 pt-3 border-t border-gray-700">
-                    <h4 className="text-xs font-semibold mb-2 text-gray-400 tracking-wider uppercase">Sources:</h4>
+                <div className="mt-5 pt-4 border-t border-slate-700/30">
+                    <h4 className="text-xs font-semibold mb-3 text-gray-500 tracking-wider uppercase">Sources</h4>
                     <div className="flex flex-wrap gap-2">
                         {sources.map((source, index) => (
                             <SourceLink key={index} source={source} index={index} />
