@@ -4,6 +4,9 @@
  * This worker acts as a secure proxy for AI API calls and serves static assets.
  */
 import { getAvailableProvider, setEnv } from '../services/apiConfig';
+import { DEFAULT_CHAT_MODEL, LLM_MODEL_LOOKUP, LLM_MODEL_OPTIONS } from '../lib/constants/llmModels';
+
+const DEFAULT_IMAGE_MODEL = '@cf/unum/uform-gen2-qwen-500m';
 
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
@@ -37,6 +40,10 @@ async function handleApiRequest(request: Request, env: Env, ctx: ExecutionContex
     });
   }
 
+  if (url.pathname === '/api/models') {
+    return handleModelsRequest(provider.provider);
+  }
+
   // Chat endpoint
   if (url.pathname === '/api/chat') {
     return handleChatRequest(request, env, provider);
@@ -67,23 +74,21 @@ async function handleChatRequest(request: Request, env: Env, provider: any): Pro
   }
 
   try {
-    const { message, history } = await request.json();
+    const { message, history, model } = await request.json();
 
     if (!message) {
       return new Response('Message is required', { status: 400 });
     }
 
-    const chat = {
-      messages: [
-        ...history,
-        { role: 'user', content: message }
-      ]
-    };
+    const selectedModel = getValidatedModel(model);
+    const chatMessages = buildChatMessages(history, message);
 
-    const response = await env.AI.run('@cf/meta/llama-3-8b-instruct', chat);
+    const aiResponse = await env.AI.run(selectedModel, { messages: chatMessages });
+    const responseText = extractTextResponse(aiResponse);
 
-    return new Response(JSON.stringify(response), {
-      headers: { 'Content-Type': 'application/json' },
+    return jsonResponse({
+      response: responseText,
+      model: selectedModel,
     });
 
   } catch (error) {
@@ -98,18 +103,21 @@ async function handleAnalyzeRequest(request: Request, env: Env, provider: any): 
   }
 
   try {
-    const { prompt } = await request.json();
+    const { prompt, model } = await request.json();
 
     if (!prompt) {
       return new Response('Prompt is required', { status: 400 });
     }
 
-    const response = await env.AI.run('@cf/meta/llama-3-8b-instruct', {
+    const selectedModel = getValidatedModel(model);
+
+    const aiResponse = await env.AI.run(selectedModel, {
       prompt,
     });
 
-    return new Response(JSON.stringify(response), {
-      headers: { 'Content-Type': 'application/json' },
+    return jsonResponse({
+      response: extractTextResponse(aiResponse),
+      model: selectedModel,
     });
   } catch (error) {
     console.error('Error in analyze request:', error);
@@ -123,18 +131,22 @@ async function handleSearchRequest(request: Request, env: Env, provider: any): P
   }
 
   try {
-    const { prompt } = await request.json();
+    const { prompt, model } = await request.json();
 
     if (!prompt) {
       return new Response('Prompt is required', { status: 400 });
     }
 
-    const response = await env.AI.run('@cf/meta/llama-3-8b-instruct', {
+    const selectedModel = getValidatedModel(model);
+
+    const aiResponse = await env.AI.run(selectedModel, {
       prompt,
     });
 
-    return new Response(JSON.stringify(response), {
-      headers: { 'Content-Type': 'application/json' },
+    return jsonResponse({
+      response: extractTextResponse(aiResponse),
+      model: selectedModel,
+      sources: [],
     });
   } catch (error) {
     console.error('Error in search request:', error);
@@ -151,23 +163,195 @@ async function handleAnalyzeImageRequest(request: Request, env: Env, provider: a
     const formData = await request.formData();
     const prompt = formData.get('prompt');
     const image = formData.get('image');
+    const model = typeof formData.get('model') === 'string' ? (formData.get('model') as string) : undefined;
 
     if (!prompt || !image) {
       return new Response('Prompt and image are required', { status: 400 });
     }
 
-    const response = await env.AI.run('@cf/unum/uform-gen2-qwen-500m', {
+    const selectedModel = model && typeof model === 'string' && model.length > 0 ? model : DEFAULT_IMAGE_MODEL;
+
+    const aiResponse = await env.AI.run(selectedModel, {
       prompt,
       image: [image],
     });
 
-    return new Response(JSON.stringify(response), {
-      headers: { 'Content-Type': 'application/json' },
+    return jsonResponse({
+      response: extractTextResponse(aiResponse),
+      model: selectedModel,
     });
   } catch (error) {
     console.error('Error in analyze image request:', error);
     return new Response('Internal server error', { status: 500 });
   }
+}
+
+function handleModelsRequest(providerName: string): Response {
+  return jsonResponse({
+    provider: providerName,
+    models: LLM_MODEL_OPTIONS,
+  });
+}
+
+function getValidatedModel(model?: unknown): string {
+  if (typeof model === 'string' && LLM_MODEL_LOOKUP[model]) {
+    return model;
+  }
+  return DEFAULT_CHAT_MODEL;
+}
+
+function buildChatMessages(history: any, latestMessage: string) {
+  const normalisedHistory = Array.isArray(history)
+    ? history
+        .map((entry: any) => {
+          if (!entry || typeof entry !== 'object') {
+            return null;
+          }
+
+          const role = entry.role === 'model' ? 'assistant' : entry.role;
+          if (role !== 'user' && role !== 'assistant' && role !== 'system') {
+            return null;
+          }
+
+          const content = extractHistoryContent(entry);
+          if (!content) {
+            return null;
+          }
+
+          return { role, content };
+        })
+        .filter((entry: any): entry is { role: string; content: string } => Boolean(entry))
+    : [];
+
+  return [...normalisedHistory, { role: 'user', content: latestMessage }];
+}
+
+function extractHistoryContent(entry: any): string {
+  if (typeof entry?.content === 'string' && entry.content.length > 0) {
+    return entry.content;
+  }
+
+  if (Array.isArray(entry?.parts)) {
+    const text = entry.parts
+      .map((part: any) => {
+        if (!part) {
+          return '';
+        }
+        if (typeof part.text === 'string') {
+          return part.text;
+        }
+        if (typeof part.content === 'string') {
+          return part.content;
+        }
+        return '';
+      })
+      .filter(Boolean)
+      .join('\n');
+
+    if (text.length > 0) {
+      return text;
+    }
+  }
+
+  return '';
+}
+
+function extractTextResponse(aiResponse: any): string {
+  if (!aiResponse) {
+    return '';
+  }
+
+  if (typeof aiResponse === 'string') {
+    return aiResponse;
+  }
+
+  if (typeof aiResponse.response === 'string') {
+    return aiResponse.response;
+  }
+
+  if (typeof aiResponse.result === 'string') {
+    return aiResponse.result;
+  }
+
+  if (typeof aiResponse.output === 'string') {
+    return aiResponse.output;
+  }
+
+  if (aiResponse.result) {
+    const { result } = aiResponse;
+    if (typeof result.response === 'string') {
+      return result.response;
+    }
+    if (typeof result.output_text === 'string') {
+      return result.output_text;
+    }
+    if (Array.isArray(result.output)) {
+      const outputText = result.output.map(extractContentFromPart).filter(Boolean).join('\n');
+      if (outputText.length > 0) {
+        return outputText;
+      }
+    }
+    if (Array.isArray(result.outputs)) {
+      const outputText = result.outputs.map(extractContentFromPart).filter(Boolean).join('\n');
+      if (outputText.length > 0) {
+        return outputText;
+      }
+    }
+    if (result.message?.content) {
+      const outputText = ensureArray(result.message.content)
+        .map(extractContentFromPart)
+        .filter(Boolean)
+        .join('\n');
+      if (outputText.length > 0) {
+        return outputText;
+      }
+    }
+  }
+
+  if (aiResponse.choices) {
+    const outputText = ensureArray(aiResponse.choices)
+      .map((choice: any) => choice?.message?.content || choice?.text)
+      .filter((value: any): value is string => typeof value === 'string' && value.length > 0)
+      .join('\n');
+    if (outputText.length > 0) {
+      return outputText;
+    }
+  }
+
+  return JSON.stringify(aiResponse);
+}
+
+function extractContentFromPart(part: any): string {
+  if (!part) {
+    return '';
+  }
+  if (typeof part === 'string') {
+    return part;
+  }
+  if (typeof part.text === 'string') {
+    return part.text;
+  }
+  if (typeof part.output_text === 'string') {
+    return part.output_text;
+  }
+  if (part.data?.text) {
+    return part.data.text;
+  }
+  return '';
+}
+
+function ensureArray<T>(value: T | T[]): T[] {
+  if (Array.isArray(value)) {
+    return value;
+  }
+  return [value];
+}
+
+function jsonResponse(payload: Record<string, unknown>, init: ResponseInit = {}): Response {
+  return new Response(JSON.stringify(payload), {
+    headers: { 'Content-Type': 'application/json' },
+    ...init,
+  });
 }
 
 async function handleStaticAssetRequest(request: Request, env: Env): Promise<Response> {

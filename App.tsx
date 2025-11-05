@@ -10,6 +10,7 @@ import { OptionsStrategyCard } from './components/OptionsStrategyCard';
 import { Icon } from './components/Icon';
 import { LoadingSpinner } from './components/LoadingSpinner';
 import { MobileNav } from './components/MobileNav';
+import { ModelSelector } from './components/ModelSelector';
 import type { ChatMessage as ChatMessageType, Source } from './types';
 import {
   analyzeImage,
@@ -21,6 +22,7 @@ import {
   getOfflineDashboardSeed,
   type AnalysisWidget,
 } from './services/geminiService';
+import { DEFAULT_CHAT_MODEL } from './lib/constants/llmModels';
 
 type MobileView = 'toolbox' | 'dashboard' | 'chat';
 
@@ -55,6 +57,7 @@ const App: React.FC = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [widgets, setWidgets] = useState<AnalysisWidget[]>(() => getOfflineDashboardSeed());
   const [mobileView, setMobileView] = useState<MobileView>('toolbox');
+  const [selectedModel, setSelectedModel] = useState(DEFAULT_CHAT_MODEL);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -114,7 +117,7 @@ const App: React.FC = () => {
 
     try {
       if (['Divergence Analysis', 'Ghost Pattern', 'Options Strategy'].includes(featureType)) {
-        const response = await analyzeStockData(prompt);
+        const response = await analyzeStockData(prompt, { model: selectedModel });
         const responseText = response.response ?? '';
 
         let jsonData: any;
@@ -171,7 +174,7 @@ const App: React.FC = () => {
         throw new Error('No data returned from analysis.');
       }
 
-      const response = await searchWithGrounding(prompt);
+      const response = await searchWithGrounding(prompt, { model: selectedModel });
       const text = response.response ?? '';
       const sources = response.candidates?.[0]?.groundingMetadata?.groundingChunks as Source[] | undefined;
 
@@ -223,7 +226,7 @@ const App: React.FC = () => {
       let sources: Source[] | undefined;
 
       if (image) {
-        const response = await analyzeImage(message || 'Analyze this image.', image);
+        const response = await analyzeImage(message || 'Analyze this image.', image, { model: selectedModel });
         responseText = response.response ?? '';
       } else {
         const history = messages
@@ -233,7 +236,7 @@ const App: React.FC = () => {
             parts: [{ text: m.content }],
           }));
 
-        const response = await sendMessage(message, history);
+        const response = await sendMessage(message, history, { model: selectedModel });
         responseText = response.response ?? '';
       }
 
@@ -353,11 +356,14 @@ const App: React.FC = () => {
 
         {/* Chat Sidebar */}
         <aside className={`flex flex-col bg-gradient-to-b from-slate-900/50 to-slate-950/50 backdrop-blur-sm border-l border-slate-800/50 max-h-full md:col-span-3 lg:col-auto ${mobileView === 'chat' ? 'flex' : 'hidden'} md:flex`}>
-          <div className="border-b border-slate-800/50 px-4 py-3 bg-slate-900/30">
-            <h2 className="text-sm font-semibold text-gray-300 tracking-wider flex items-center gap-2">
-              <Icon icon="bot" className="w-4 h-4 text-cyan-400" />
-              AI ASSISTANT
-            </h2>
+          <div className="border-b border-slate-800/50 px-4 py-3 bg-slate-900/30 space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h2 className="text-sm font-semibold text-gray-300 tracking-wider flex items-center gap-2">
+                <Icon icon="bot" className="w-4 h-4 text-cyan-400" />
+                AI ASSISTANT
+              </h2>
+              <ModelSelector selectedModel={selectedModel} onChange={setSelectedModel} />
+            </div>
           </div>
           <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-4 space-y-4">
             {messages.map(msg => (
