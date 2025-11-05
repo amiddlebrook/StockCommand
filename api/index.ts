@@ -199,9 +199,10 @@ async function handleAnalyzeImageRequest(request: Request, env: Env): Promise<Re
 }
 
 function handleModelsRequest(providerName: string): Response {
+  const configuredModels = getConfiguredModelOptions();
   return jsonResponse({
     provider: providerName,
-    models: LLM_MODEL_OPTIONS,
+    models: configuredModels,
   });
 }
 

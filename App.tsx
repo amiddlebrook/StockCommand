@@ -355,15 +355,15 @@ const App: React.FC = () => {
       <Header />
 
       {/* Main Content Grid */}
-      <div className="flex-1 grid grid-cols-1 md:grid-cols-12 lg:grid-cols-[280px_minmax(0,_1fr)_380px] overflow-hidden">
+      <div className="flex-1 grid grid-cols-1 md:grid-cols-12 lg:grid-cols-[300px_minmax(0,_1fr)_420px] xl:grid-cols-[320px_minmax(0,_1fr)_480px] overflow-hidden">
 
         {/* Toolbox Sidebar */}
-        <aside className={`border-r border-slate-800/50 backdrop-blur-sm bg-slate-900/30 md:col-span-3 lg:col-auto ${mobileView === 'toolbox' ? 'block' : 'hidden'} md:block ${isDashboardLoading ? 'opacity-70' : ''}`}>
+        <aside className={`border-r border-slate-800/50 backdrop-blur-sm bg-slate-900/30 overflow-y-auto md:col-span-3 lg:col-auto ${mobileView === 'toolbox' ? 'block' : 'hidden'} md:block ${isDashboardLoading ? 'opacity-70' : ''}`}>
           <Toolbox onAnalysisRequested={handleAnalysisRequest} isLoading={isDashboardLoading} />
         </aside>
 
         {/* Dashboard Main Area */}
-        <main className={`overflow-y-auto p-4 md:p-8 space-y-6 relative md:col-span-6 lg:col-auto ${mobileView === 'dashboard' ? 'block' : 'hidden'} md:block`}>
+        <main className={`overflow-y-auto p-4 md:p-6 lg:p-8 space-y-6 relative md:col-span-6 lg:col-auto ${mobileView === 'dashboard' ? 'block' : 'hidden'} md:block`}>
           {isDashboardLoading && (
             <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center z-20">
               <div className="flex flex-col items-center gap-4">
@@ -400,27 +400,33 @@ const App: React.FC = () => {
 
         {/* Chat Sidebar */}
         <aside className={`flex flex-col bg-gradient-to-b from-slate-900/50 to-slate-950/50 backdrop-blur-sm border-l border-slate-800/50 max-h-full md:col-span-3 lg:col-auto ${mobileView === 'chat' ? 'flex' : 'hidden'} md:flex`}>
-          <div className="border-b border-slate-800/50 px-4 py-3 bg-slate-900/30 space-y-3">
-            <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="border-b border-slate-800/50 px-4 py-4 bg-slate-900/30">
+            <div className="flex flex-col gap-4">
               <h2 className="text-sm font-semibold text-gray-300 tracking-wider flex items-center gap-2">
                 <Icon icon="bot" className="w-4 h-4 text-cyan-400" />
                 AI ASSISTANT
               </h2>
-              <ModelSelector selectedModel={selectedModel} onChange={setSelectedModel} />
+              <ModelSelector
+                selectedModel={selectedModel}
+                modelOptions={modelOptions}
+                onChange={setSelectedModel}
+              />
             </div>
           </div>
-          <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-4 space-y-4">
+          <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-4 md:p-5 lg:p-6 space-y-4">
             {messages.map(msg => (
               <ChatMessage key={msg.id} message={msg} />
             ))}
           </div>
-          <ChatInput
-            onSendMessage={handleSendMessage}
-            onStartRecording={handleStartRecording}
-            onStopRecording={handleStopRecording}
-            isRecording={isRecording}
-            isLoading={isChatLoading}
-          />
+          <div className="border-t border-slate-800/50">
+            <ChatInput
+              onSendMessage={handleSendMessage}
+              onStartRecording={handleStartRecording}
+              onStopRecording={handleStopRecording}
+              isRecording={isRecording}
+              isLoading={isChatLoading}
+            />
+          </div>
         </aside>
       </div>
 
