@@ -12,10 +12,11 @@
   "dependencies": {
     "@google/genai": "^1.27.0",
     "react": "^19.2.0",
-    "recharts": "^3.3.0",
-    "react-dom": "^19.2.0"
+    "react-dom": "^19.2.0",
+    "recharts": "^3.3.0"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^4.20251014.0",
     "@types/node": "^22.14.0",
     "@vitejs/plugin-react": "^5.0.0",
     "typescript": "~5.8.2",
