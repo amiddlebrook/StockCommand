@@ -4,12 +4,25 @@
  * This worker acts as a secure proxy for AI API calls and serves static assets.
  */
 import { getAvailableProvider, setEnv } from '../services/apiConfig';
+import { chat, complete } from '../services/aiService';
+import type { ChatMessage } from '../services/aiService';
 
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     setEnv(env);
 
     const url = new URL(request.url);
+
+    // Handle CORS preflight requests
+    if (request.method === 'OPTIONS') {
+      return new Response(null, {
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type',
+        },
+      });
+    }
 
     // Route API requests
     if (url.pathname.startsWith('/api/')) {
@@ -32,8 +45,15 @@ async function handleApiRequest(request: Request, env: Env, ctx: ExecutionContex
 
   // Health check endpoint
   if (url.pathname === '/api/status') {
-    return new Response(JSON.stringify({ status: 'ok', provider: provider.provider }), {
-      headers: { 'Content-Type': 'application/json' },
+    return new Response(JSON.stringify({
+      status: 'ok',
+      provider: provider?.provider || 'cloudflare',
+      hasProvider: Boolean(provider),
+    }), {
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+      },
     });
   }
 
@@ -73,22 +93,27 @@ async function handleChatRequest(request: Request, env: Env, provider: any): Pro
       return new Response('Message is required', { status: 400 });
     }
 
-    const chat = {
-      messages: [
-        ...history,
-        { role: 'user', content: message }
-      ]
-    };
+    const messages: ChatMessage[] = [
+      ...(history || []),
+      { role: 'user', content: message }
+    ];
 
-    const response = await env.AI.run('@cf/meta/llama-3-8b-instruct', chat);
+    const response = await chat(provider, { messages }, env);
 
     return new Response(JSON.stringify(response), {
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+      },
     });
 
   } catch (error) {
     console.error('Error in chat request:', error);
-    return new Response('Internal server error', { status: 500 });
+    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+    return new Response(JSON.stringify({ error: errorMessage }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
 }
 
@@ -104,16 +129,21 @@ async function handleAnalyzeRequest(request: Request, env: Env, provider: any): 
       return new Response('Prompt is required', { status: 400 });
     }
 
-    const response = await env.AI.run('@cf/meta/llama-3-8b-instruct', {
-      prompt,
-    });
+    const response = await complete(provider, prompt, env);
 
     return new Response(JSON.stringify(response), {
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+      },
     });
   } catch (error) {
     console.error('Error in analyze request:', error);
-    return new Response('Internal server error', { status: 500 });
+    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+    return new Response(JSON.stringify({ error: errorMessage }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
 }
 
@@ -129,16 +159,21 @@ async function handleSearchRequest(request: Request, env: Env, provider: any): P
       return new Response('Prompt is required', { status: 400 });
     }
 
-    const response = await env.AI.run('@cf/meta/llama-3-8b-instruct', {
-      prompt,
-    });
+    const response = await complete(provider, prompt, env);
 
     return new Response(JSON.stringify(response), {
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+      },
     });
   } catch (error) {
     console.error('Error in search request:', error);
-    return new Response('Internal server error', { status: 500 });
+    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+    return new Response(JSON.stringify({ error: errorMessage }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
 }
 
@@ -156,17 +191,32 @@ async function handleAnalyzeImageRequest(request: Request, env: Env, provider: a
       return new Response('Prompt and image are required', { status: 400 });
     }
 
-    const response = await env.AI.run('@cf/unum/uform-gen2-qwen-500m', {
-      prompt,
-      image: [image],
-    });
+    // Use Cloudflare AI for image analysis (vision model)
+    if (env.AI) {
+      const response = await env.AI.run('@cf/unum/uform-gen2-qwen-500m', {
+        prompt,
+        image: [image],
+      });
 
-    return new Response(JSON.stringify(response), {
+      return new Response(JSON.stringify(response), {
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+        },
+      });
+    }
+
+    return new Response(JSON.stringify({ error: 'Image analysis not available' }), {
+      status: 501,
       headers: { 'Content-Type': 'application/json' },
     });
   } catch (error) {
     console.error('Error in analyze image request:', error);
-    return new Response('Internal server error', { status: 500 });
+    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+    return new Response(JSON.stringify({ error: errorMessage }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
 }
 
