@@ -3,8 +3,23 @@
  *
  * This worker acts as a secure proxy for AI API calls and serves static assets.
  */
-import { getAvailableProvider, setEnv } from '../services/apiConfig';
-import { DEFAULT_CHAT_MODEL, LLM_MODEL_LOOKUP, LLM_MODEL_OPTIONS } from '../lib/constants/llmModels';
+import {
+  OPENAI_CHAT_COMPLETIONS_URL,
+  ANTHROPIC_MESSAGES_URL,
+  OPENROUTER_CHAT_COMPLETIONS_URL,
+} from './constants';
+import {
+  setEnv,
+  APIConfig,
+  getAllConfiguredProviders,
+  getAvailableProvider,
+} from '../services/apiConfig';
+import {
+  LlmModelOption,
+  LLM_MODEL_OPTIONS,
+  LLM_MODEL_LOOKUP,
+  DEFAULT_CHAT_MODEL,
+} from '../lib/constants/llmModels';
 
 const DEFAULT_IMAGE_MODEL = '@cf/unum/uform-gen2-qwen-500m';
 
@@ -80,15 +95,13 @@ async function handleChatRequest(request: Request, env: Env): Promise<Response> 
       return new Response('Message is required', { status: 400 });
     }
 
-    const selectedModel = getValidatedModel(model);
     const chatMessages = buildChatMessages(history, message);
-
-    const aiResponse = await env.AI.run(selectedModel, { messages: chatMessages });
-    const responseText = extractTextResponse(aiResponse);
+    const { selectedModel, providerConfig } = selectModelAndProvider(model);
+    const responseText = await runChatCompletion(providerConfig, selectedModel, chatMessages);
 
     return jsonResponse({
       response: responseText,
-      model: selectedModel,
+      model: selectedModel.id,
     });
   } catch (error) {
     console.error('Error in chat request:', error);

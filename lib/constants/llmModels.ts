@@ -1,50 +1,86 @@
-export type LlmModelProvider = 'workers-ai';
+import type { APIProvider } from '../../services/apiConfig';
 
-export interface LlmModelOption {
+export type LlmModelOption = {
   id: string;
-  label: string;
-  description: string;
-  provider: LlmModelProvider;
-  providerLabel: string;
-  contextWindowTokens?: number;
-  default?: boolean;
-}
+  name: string;
+  provider: APIProvider;
+  apiModelId: string;
+  isDefault?: boolean;
+};
 
 export const LLM_MODEL_OPTIONS: LlmModelOption[] = [
   {
-    id: '@cf/meta/llama-3-8b-instruct',
-    label: 'Llama 3.1 8B',
-    description: 'Balanced quality and speed for general research and market Q&A.',
-    provider: 'workers-ai',
-    providerLabel: 'Cloudflare Workers AI',
-    contextWindowTokens: 8000,
-    default: true,
+    id: 'gpt-4o',
+    name: 'GPT-4o',
+    provider: 'openai',
+    apiModelId: 'gpt-4o',
+    isDefault: true,
   },
   {
-    id: '@cf/meta/llama-3-70b-instruct',
-    label: 'Llama 3.1 70B',
-    description: 'Higher accuracy model for deeper analysis and longer reasoning.',
-    provider: 'workers-ai',
-    providerLabel: 'Cloudflare Workers AI',
-    contextWindowTokens: 128000,
+    id: 'gpt-4-turbo',
+    name: 'GPT-4 Turbo',
+    provider: 'openai',
+    apiModelId: 'gpt-4-turbo',
   },
   {
-    id: '@cf/openai/gpt-4o-mini',
-    label: 'GPT-4o mini',
-    description: 'Great for creative tasks and summarisation with low latency.',
-    provider: 'workers-ai',
-    providerLabel: 'Cloudflare Workers AI',
-    contextWindowTokens: 64000,
+    id: 'claude-3-opus',
+    name: 'Claude 3 Opus',
+    provider: 'claude',
+    apiModelId: 'claude-3-opus-20240229',
+  },
+  {
+    id: 'claude-3.5-sonnet',
+    name: 'Claude 3.5 Sonnet',
+    provider: 'claude',
+    apiModelId: 'claude-3-5-sonnet-20240620',
+  },
+  {
+    id: 'gemini-1.5-flash',
+    name: 'Gemini 1.5 Flash',
+    provider: 'gemini',
+    apiModelId: 'gemini-1.5-flash-latest',
+  },
+  {
+    id: 'openrouter-qwen3-coder',
+    name: 'OpenRouter Qwen3 Coder',
+    provider: 'openrouter-qwen3-coder',
+    apiModelId: 'google/gemma-2-9b-it',
+  },
+  {
+    id: 'openrouter-deepseek-r1t2',
+    name: 'OpenRouter Deepseek R1T2',
+    provider: 'openrouter-deepseek-r1t2',
+    apiModelId: 'deepseek/deepseek-coder',
+  },
+  {
+    id: 'openrouter-deepseek-chat',
+    name: 'OpenRouter Deepseek Chat',
+    provider: 'openrouter-deepseek-chat',
+    apiModelId: 'deepseek/deepseek-chat',
+  },
+  {
+    id: 'openrouter-minimax-m2',
+    name: 'OpenRouter Minimax M2',
+    provider: 'openrouter-minimax-m2',
+    apiModelId: 'minimax/minimax-chat',
+  },
+  {
+    id: 'openrouter-glm-45-air',
+    name: 'OpenRouter GLM 4.5 Air',
+    provider: 'openrouter-glm-45-air',
+    apiModelId: 'glm/glm-4-5-air',
+  },
+  {
+    id: 'openrouter-qwen3-235b',
+    name: 'OpenRouter Qwen3 235B',
+    provider: 'openrouter-qwen3-235b',
+    apiModelId: 'qwen/qwen-2-7b-instruct',
   },
 ];
 
-export const LLM_MODEL_LOOKUP: Record<string, LlmModelOption> = LLM_MODEL_OPTIONS.reduce(
-  (acc, model) => {
-    acc[model.id] = model;
-    return acc;
-  },
-  {} as Record<string, LlmModelOption>,
+export const LLM_MODEL_LOOKUP: { [id: string]: LlmModelOption } = LLM_MODEL_OPTIONS.reduce(
+  (acc, option) => ({ ...acc, [option.id]: option }),
+  {},
 );
 
-export const DEFAULT_CHAT_MODEL =
-  LLM_MODEL_OPTIONS.find(model => model.default)?.id ?? LLM_MODEL_OPTIONS[0]?.id ?? '@cf/meta/llama-3-8b-instruct';
+export const DEFAULT_CHAT_MODEL = LLM_MODEL_OPTIONS.find(option => option.isDefault) ?? LLM_MODEL_OPTIONS[0];
