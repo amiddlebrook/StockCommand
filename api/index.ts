@@ -3,9 +3,10 @@
  *
  * This worker acts as a secure proxy for AI API calls and serves static assets.
  */
-import { getAvailableProvider, setEnv } from '../services/apiConfig';
+import { getAvailableProvider, setEnv, getAllConfiguredProviders, getProviderApiKey } from '../services/apiConfig';
 import { chat, complete } from '../services/aiService';
 import type { ChatMessage } from '../services/aiService';
+import type { AIProvider } from '../services/apiConfig';
 
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
@@ -35,20 +36,28 @@ export default {
 };
 
 async function handleApiRequest(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
-  const provider = getAvailableProvider();
-
-  if (!provider) {
-    return new Response('No AI provider configured', { status: 500 });
-  }
-
   const url = new URL(request.url);
+
+  // Allow provider override via query parameter
+  const requestedProvider = url.searchParams.get('provider') as AIProvider | null;
+  let provider = getAvailableProvider();
+
+  // If a specific provider is requested, try to use it
+  if (requestedProvider) {
+    const apiKey = getProviderApiKey(requestedProvider);
+    if (apiKey) {
+      provider = { provider: requestedProvider, apiKey };
+    }
+  }
 
   // Health check endpoint
   if (url.pathname === '/api/status') {
+    const allProviders = getAllConfiguredProviders();
     return new Response(JSON.stringify({
       status: 'ok',
       provider: provider?.provider || 'cloudflare',
       hasProvider: Boolean(provider),
+      availableProviders: allProviders.map(p => p.provider),
     }), {
       headers: {
         'Content-Type': 'application/json',

@@ -10,6 +10,7 @@ import { OptionsStrategyCard } from './components/OptionsStrategyCard';
 import { Icon } from './components/Icon';
 import { LoadingSpinner } from './components/LoadingSpinner';
 import { MobileNav } from './components/MobileNav';
+import { ProviderSelector } from './components/ProviderSelector';
 import type { ChatMessage as ChatMessageType, Source } from './types';
 import {
   analyzeImage,
@@ -55,6 +56,7 @@ const App: React.FC = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [widgets, setWidgets] = useState<AnalysisWidget[]>(() => getOfflineDashboardSeed());
   const [mobileView, setMobileView] = useState<MobileView>('toolbox');
+  const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -233,7 +235,7 @@ const App: React.FC = () => {
             parts: [{ text: m.content }],
           }));
 
-        const response = await sendMessage(message, history);
+        const response = await sendMessage(message, history, selectedProvider || undefined);
         responseText = response.response ?? '';
       }
 
@@ -353,11 +355,15 @@ const App: React.FC = () => {
 
         {/* Chat Sidebar */}
         <aside className={`flex flex-col bg-gradient-to-b from-slate-900/50 to-slate-950/50 backdrop-blur-sm border-l border-slate-800/50 max-h-full md:col-span-3 lg:col-auto ${mobileView === 'chat' ? 'flex' : 'hidden'} md:flex`}>
-          <div className="border-b border-slate-800/50 px-4 py-3 bg-slate-900/30">
+          <div className="border-b border-slate-800/50 px-4 py-3 bg-slate-900/30 space-y-3">
             <h2 className="text-sm font-semibold text-gray-300 tracking-wider flex items-center gap-2">
               <Icon icon="bot" className="w-4 h-4 text-cyan-400" />
               AI ASSISTANT
             </h2>
+            <ProviderSelector
+              selectedProvider={selectedProvider}
+              onProviderChange={setSelectedProvider}
+            />
           </div>
           <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-4 space-y-4">
             {messages.map(msg => (

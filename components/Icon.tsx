@@ -2,7 +2,7 @@
 import React from 'react';
 
 interface IconProps {
-  icon: 'send' | 'upload' | 'mic' | 'search' | 'chart' | 'strategy' | 'ghost' | 'close' | 'bot';
+  icon: 'send' | 'upload' | 'mic' | 'search' | 'chart' | 'strategy' | 'ghost' | 'close' | 'bot' | 'chevron_up' | 'chevron_down' | 'check';
   className?: string;
 }
 
@@ -51,6 +51,21 @@ export const Icon: React.FC<IconProps> = ({ icon, className = 'w-6 h-6' }) => {
     bot: (
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 0 1-.659 1.591L5 14.5M9.75 3.104c.251-.042.506-.068.774-.068s.523.026.774.068l3.963 1.982c.527.264.935.756.935 1.34v7.428c0 .584-.408 1.076-.935 1.34l-3.963 1.982a2.25 2.25 0 0 1-1.548 0l-3.963-1.982a2.25 2.25 0 0 1-.935-1.34V6.426c0-.584.408-1.076.935-1.34L9.75 3.104Z" />
+        </svg>
+    ),
+    chevron_up: (
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 15.75 7.5-7.5 7.5 7.5" />
+        </svg>
+    ),
+    chevron_down: (
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+        </svg>
+    ),
+    check: (
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
         </svg>
     )
   };

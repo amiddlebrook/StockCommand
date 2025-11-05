@@ -47,6 +47,20 @@ export const isApiAvailable = (): boolean => {
   return true;
 };
 
+export const getAvailableProviders = async (): Promise<string[]> => {
+  try {
+    const response = await fetch('/api/status');
+    if (!response.ok) {
+      return [];
+    }
+    const data = await response.json();
+    return data.availableProviders || [];
+  } catch (error) {
+    console.error('Failed to fetch available providers:', error);
+    return [];
+  }
+};
+
 export const analyzeStockData = async (prompt: string): Promise<any> => {
   const response = await fetch('/api/analyze', {
     method: 'POST',
@@ -92,18 +106,34 @@ export const analyzeImage = async (prompt: string, image: File): Promise<any> =>
   return response.json();
 };
 
-export const sendMessage = async (message: string, history: any[]): Promise<any> => {
-  const response = await fetch('/api/chat', {
+export const sendMessage = async (message: string, history: any[], provider?: string): Promise<any> => {
+  const url = provider ? `/api/chat?provider=${encodeURIComponent(provider)}` : '/api/chat';
+
+  // Convert Gemini history format to simple format
+  const simpleHistory = history.map(h => ({
+    role: h.role === 'model' ? 'assistant' : h.role,
+    content: h.parts?.[0]?.text || '',
+  }));
+
+  const response = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message, history }),
+    body: JSON.stringify({ message, history: simpleHistory }),
   });
 
   if (!response.ok) {
-    throw new Error('Failed to send message.');
+    const error = await response.text();
+    throw new Error(`Failed to send message: ${error}`);
   }
 
-  return response.json();
+  const data = await response.json();
+
+  // Convert new format back to Gemini format for compatibility
+  return {
+    response: data.content || data.response,
+    model: data.model,
+    provider: data.provider,
+  };
 }
 
 export const createOfflineWidget = (featureType: string, symbol: string): AnalysisWidget => {
