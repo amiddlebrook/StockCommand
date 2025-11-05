@@ -365,7 +365,7 @@ const App: React.FC = () => {
       <Header />
 
       {/* Main Content Grid */}
-      <div className="flex-1 grid grid-cols-1 md:grid-cols-12 lg:grid-cols-[240px_minmax(0,_1fr)_320px] overflow-hidden h-[calc(100vh-64px)]">
+      <div className="flex-1 grid grid-cols-1 md:grid-cols-12 lg:grid-cols-[240px_minmax(0,_1fr)_360px] overflow-hidden h-[calc(100vh-64px)]">
 
         {/* Toolbox Sidebar */}
         <aside className={`border-r border-slate-800/50 backdrop-blur-sm bg-slate-900/30 overflow-y-auto md:col-span-3 lg:col-auto ${mobileView === 'toolbox' ? 'block' : 'hidden'} md:block ${isDashboardLoading ? 'opacity-70' : ''}`}>
@@ -410,23 +410,16 @@ const App: React.FC = () => {
 
         {/* Chat Sidebar */}
         <aside className={`flex flex-col bg-gradient-to-b from-slate-900/50 to-slate-950/50 backdrop-blur-sm border-l border-slate-800/50 max-h-full md:col-span-3 lg:col-auto ${mobileView === 'chat' ? 'flex' : 'hidden'} md:flex`}>
-          <div className="border-b border-slate-800/50 px-3 py-2.5 bg-slate-900/30">
-            <div className="flex items-center justify-between gap-2 mb-2">
-              <div className="flex items-center gap-2">
-                <Icon icon="bot" className="w-4 h-4 text-cyan-400" />
-                <h2 className="text-xs font-semibold text-gray-300 tracking-wider">
-                  AI ASSISTANT
-                </h2>
-              </div>
-              {modelOptions.length > 0 ? (
-                <span className="text-[9px] text-green-400 flex items-center gap-1">
+          <div className="border-b border-slate-800/50 px-3 py-3 bg-slate-900/30">
+            <div className="flex items-center gap-2 mb-2.5">
+              <Icon icon="bot" className="w-4 h-4 text-cyan-400" />
+              <h2 className="text-xs font-semibold text-gray-300 tracking-wider">
+                AI ASSISTANT
+              </h2>
+              {modelOptions.length > 0 && (
+                <span className="ml-auto text-[9px] text-green-400 flex items-center gap-1">
                   <span className="inline-block w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"></span>
-                  {modelOptions.length} API{modelOptions.length !== 1 ? 's' : ''} ready
-                </span>
-              ) : (
-                <span className="text-[9px] text-yellow-400 flex items-center gap-1">
-                  <span className="inline-block w-1.5 h-1.5 bg-yellow-400 rounded-full animate-pulse"></span>
-                  Loading APIs...
+                  {modelOptions.length} configured
                 </span>
               )}
             </div>
