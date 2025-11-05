@@ -47,11 +47,22 @@ export const isApiAvailable = (): boolean => {
   return true;
 };
 
-export const analyzeStockData = async (prompt: string): Promise<any> => {
+type RequestOptions = {
+  model?: string;
+};
+
+const getModelPayload = (options?: RequestOptions) => {
+  if (options?.model && typeof options.model === 'string') {
+    return { model: options.model };
+  }
+  return {};
+};
+
+export const analyzeStockData = async (prompt: string, options?: RequestOptions): Promise<any> => {
   const response = await fetch('/api/analyze', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ prompt }),
+    body: JSON.stringify({ prompt, ...getModelPayload(options) }),
   });
 
   if (!response.ok) {
@@ -61,11 +72,11 @@ export const analyzeStockData = async (prompt: string): Promise<any> => {
   return response.json();
 };
 
-export const searchWithGrounding = async (prompt: string): Promise<any> => {
+export const searchWithGrounding = async (prompt: string, options?: RequestOptions): Promise<any> => {
   const response = await fetch('/api/search', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ prompt }),
+    body: JSON.stringify({ prompt, ...getModelPayload(options) }),
   });
 
   if (!response.ok) {
@@ -75,10 +86,13 @@ export const searchWithGrounding = async (prompt: string): Promise<any> => {
   return response.json();
 };
 
-export const analyzeImage = async (prompt: string, image: File): Promise<any> => {
+export const analyzeImage = async (prompt: string, image: File, options?: RequestOptions): Promise<any> => {
   const formData = new FormData();
   formData.append('prompt', prompt);
   formData.append('image', image);
+  if (options?.model) {
+    formData.append('model', options.model);
+  }
 
   const response = await fetch('/api/analyze-image', {
     method: 'POST',
@@ -92,11 +106,11 @@ export const analyzeImage = async (prompt: string, image: File): Promise<any> =>
   return response.json();
 };
 
-export const sendMessage = async (message: string, history: any[]): Promise<any> => {
+export const sendMessage = async (message: string, history: any[], options?: RequestOptions): Promise<any> => {
   const response = await fetch('/api/chat', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message, history }),
+    body: JSON.stringify({ message, history, ...getModelPayload(options) }),
   });
 
   if (!response.ok) {
