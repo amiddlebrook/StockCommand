@@ -1,6 +1,7 @@
 name = "stockbrain"
 main = "worker.ts"
 compatibility_date = "2025-01-01"
+compatibility_flags = ["nodejs_compat"]
 
 [assets]
 directory = "./dist"
@@ -9,14 +10,26 @@ binding = "ASSETS"
 [ai]
 binding = "AI"
 
-# Environment variables for external API keys
-# Set these using: wrangler secret put <SECRET_NAME>
-# Example: wrangler secret put OPENAI_API_KEY
+# Environment variables
 [vars]
+# App configuration
+APP_NAME = "StockBrain"
+APP_VERSION = "1.0.0"
+ENVIRONMENT = "production"
+
+# CORS configuration
+ALLOWED_ORIGINS = "https://stockbrain.averymiddlebrook2014.workers.dev,https://localhost:3000"
+
+# Rate limiting
+RATE_LIMIT_REQUESTS = "100"
+RATE_LIMIT_WINDOW = "60"
+
+# Cache configuration
+CACHE_TTL = "3600"
 
 # The following secrets need to be configured in Cloudflare dashboard or via CLI:
 # - OPENAI_API_KEY
-# - GEMINI_API_KEY
+# - GEMINI_API_KEY  
 # - CLAUDE_API_KEY
 # - OPENROUTER_QWEN3_CODER_API_KEY
 # - OPENROUTER_DEEPSEEK_R1T2_API_KEY
@@ -24,3 +37,24 @@ binding = "AI"
 # - OPENROUTER_MINIMAX_M2_API_KEY
 # - OPENROUTER_GLM_45_AIR_API_KEY
 # - OPENROUTER_QWEN3_235B_API_KEY
+# - ODDS_API_KEY
+
+# KV Namespaces for caching (optional)
+# [[kv_namespaces]]
+# binding = "CACHE_KV"
+# id = "your-kv-namespace-id"
+
+# D1 Database (optional for future features)
+# [[d1_databases]]
+# binding = "DB"
+# database_name = "stockbrain-db"
+# database_id = "your-database-id"
+
+# Queue for background processing (optional)
+# [[queues.producers]]
+# binding = "QUEUE"
+# queue = "stockbrain-queue"
+
+# Analytics Engine (optional)
+# [[analytics_engine_datasets]]
+# binding = "ANALYTICS"

@@ -36,3 +36,39 @@ export interface Source {
     title: string;
   };
 }
+
+// Cloudflare Worker environment types
+export interface Env {
+  // AI binding
+  AI: Ai;
+
+  // Assets binding for static files
+  ASSETS: Fetcher;
+
+  // External API keys (secrets)
+  OPENAI_API_KEY?: string;
+  GEMINI_API_KEY?: string;
+  CLAUDE_API_KEY?: string;
+  OPENROUTER_QWEN3_CODER_API_KEY?: string;
+  OPENROUTER_DEEPSEEK_R1T2_API_KEY?: string;
+  OPENROUTER_DEEPSEEK_CHAT_API_KEY?: string;
+  OPENROUTER_MINIMAX_M2_API_KEY?: string;
+  OPENROUTER_GLM_45_AIR_API_KEY?: string;
+  OPENROUTER_QWEN3_235B_API_KEY?: string;
+  ODDS_API_KEY?: string;
+
+  // Environment variables
+  APP_NAME: string;
+  APP_VERSION: string;
+  ENVIRONMENT: string;
+  ALLOWED_ORIGINS: string;
+  RATE_LIMIT_REQUESTS: string;
+  RATE_LIMIT_WINDOW: string;
+  CACHE_TTL: string;
+
+  // Optional bindings (commented out until needed)
+  // CACHE_KV: KVNamespace;
+  // DB: D1Database;
+  // QUEUE: Queue<unknown>;
+  // ANALYTICS: AnalyticsEngineDataset;
+}
