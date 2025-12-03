@@ -37,6 +37,31 @@ export interface Source {
   };
 }
 
+export interface PortfolioAllocation {
+  symbol: string;
+  weight: number;
+  thesis: string;
+}
+
+export interface PortfolioHoldingSnapshot {
+  symbol: string;
+  name: string;
+  price: number;
+  changePercent: number;
+  sector?: string;
+  industry?: string;
+}
+
+export interface PortfolioReportData {
+  summary: string;
+  allocations: PortfolioAllocation[];
+  riskNotes: string[];
+  playbook: string[];
+  holdings: PortfolioHoldingSnapshot[];
+  generatedAt: string;
+  modelUsed?: string;
+}
+
 // Cloudflare Worker environment types
 export interface Env {
   // AI binding

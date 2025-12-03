@@ -1,6 +1,12 @@
-import type { DivergenceData, GhostPatternData, OptionsStrategy } from '../types';
+import type {
+  DivergenceData,
+  GhostPatternData,
+  OptionsStrategy,
+  PortfolioAllocation,
+  PortfolioReportData,
+} from '../types';
 
-type WidgetKind = 'divergence' | 'ghost' | 'options' | 'profile' | 'news' | 'comparison' | 'error';
+type WidgetKind = 'divergence' | 'ghost' | 'options' | 'profile' | 'news' | 'comparison' | 'error' | 'portfolio';
 
 export type AnalysisWidget = {
   id: string;
@@ -8,6 +14,7 @@ export type AnalysisWidget = {
   title: string;
   data: any;
 };
+
 
 const DIVERGENCE_DEMO: DivergenceData[] = [
   { timeframe: '1H', bullish: 5, bearish: 2 },
@@ -106,11 +113,11 @@ export const analyzeImage = async (prompt: string, image: File, options?: Reques
   return response.json();
 };
 
-export const sendMessage = async (message: string, history: any[]): Promise<any> => {
+export const sendMessage = async (message: string, history: any[], context?: Record<string, any>): Promise<any> => {
   const response = await fetch('/api/chat', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message, history }),
+    body: JSON.stringify({ message, history, context }),
   });
 
   if (!response.ok) {
@@ -119,6 +126,20 @@ export const sendMessage = async (message: string, history: any[]): Promise<any>
 
   return response.json();
 }
+
+export const generatePortfolioReport = async (tickers: string[], goal: string): Promise<PortfolioReportData> => {
+  const response = await fetch('/api/portfolio/report', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ tickers, goal }),
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to generate portfolio report.');
+  }
+
+  return response.json();
+};
 
 export const createOfflineWidget = (featureType: string, symbol: string): AnalysisWidget => {
   const idSuffix = `${symbol}-${Date.now()}`;
@@ -155,23 +176,3 @@ export const createOfflineWidget = (featureType: string, symbol: string): Analys
   }
 };
 
-export const getOfflineDashboardSeed = (): AnalysisWidget[] => [
-  {
-    id: 'seed-divergence-tsla',
-    type: 'divergence',
-    title: 'Divergence: TSLA',
-    data: DIVERGENCE_DEMO.map(point => ({ ...point })),
-  },
-  {
-    id: 'seed-ghost-nvda',
-    type: 'ghost',
-    title: 'Ghost Pattern: NVDA',
-    data: { ...GHOST_DEMO },
-  },
-  {
-    id: 'seed-options-aapl',
-    type: 'options',
-    title: 'Options Strategy: AAPL',
-    data: { ...OPTIONS_DEMO, symbol: 'AAPL' },
-  },
-];

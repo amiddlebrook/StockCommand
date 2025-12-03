@@ -2,7 +2,13 @@ import React, { useState } from 'react';
 import { Icon } from './Icon';
 
 interface ToolboxProps {
+    symbols: string[];
+    activeSymbol: string | null;
+    onAddSymbol: (symbol: string) => void;
+    onRemoveSymbol: (symbol: string) => void;
+    onSelectSymbol: (symbol: string) => void;
     onAnalysisRequested: (featureType: string, symbol: string) => void;
+    onPortfolioReport: () => void;
     isLoading: boolean;
 }
 
@@ -19,34 +25,35 @@ const features = [
     { name: 'Market Overview', icon: 'chart' },
 ];
 
-export const Toolbox: React.FC<ToolboxProps> = ({ onAnalysisRequested, isLoading }) => {
+export const Toolbox: React.FC<ToolboxProps> = ({
+    symbols,
+    activeSymbol,
+    onAddSymbol,
+    onRemoveSymbol,
+    onSelectSymbol,
+    onAnalysisRequested,
+    onPortfolioReport,
+    isLoading,
+}) => {
     const [symbolInput, setSymbolInput] = useState('');
-    const [symbolList, setSymbolList] = useState<string[]>(['TSLA', 'NVDA', 'AAPL']);
-    const [activeSymbol, setActiveSymbol] = useState<string | null>('TSLA');
 
     const handleAddSymbol = () => {
         if (isLoading) return;
         const newSymbol = symbolInput.trim().toUpperCase();
-        if (newSymbol && !symbolList.includes(newSymbol)) {
-            setSymbolList(prev => [...prev, newSymbol]);
-            setActiveSymbol(newSymbol);
-            onAnalysisRequested('Company Profile', newSymbol);
+        if (newSymbol) {
+            onAddSymbol(newSymbol);
             setSymbolInput('');
         }
     };
 
     const handleRemoveSymbol = (symbolToRemove: string) => {
         if (isLoading) return;
-        const newList = symbolList.filter(s => s !== symbolToRemove);
-        setSymbolList(newList);
-        if (activeSymbol === symbolToRemove) {
-            setActiveSymbol(newList.length > 0 ? newList[0] : null);
-        }
+        onRemoveSymbol(symbolToRemove);
     };
 
     const handleSetActiveSymbol = (symbol: string) => {
         if (isLoading || symbol === activeSymbol) return;
-        setActiveSymbol(symbol);
+        onSelectSymbol(symbol);
         onAnalysisRequested('Company Profile', symbol);
     };
 
@@ -64,6 +71,27 @@ export const Toolbox: React.FC<ToolboxProps> = ({ onAnalysisRequested, isLoading
                     Analysis Tools
                 </h2>
                 <div className="h-0.5 w-12 bg-gradient-to-r from-cyan-500 to-transparent rounded-full" />
+            </div>
+
+            <div className="mb-6">
+                <div className="bg-gradient-to-br from-cyan-900/30 to-blue-900/20 border border-cyan-500/30 rounded-2xl p-4 shadow-lg shadow-cyan-500/10">
+                    <div className="flex items-center gap-3 mb-3">
+                        <div className="p-2 rounded-xl bg-cyan-500/10 text-cyan-300">
+                            <Icon icon="portfolio" className="w-5 h-5" />
+                        </div>
+                        <div>
+                            <p className="text-xs uppercase font-semibold tracking-wide text-cyan-300">Portfolio Studio</p>
+                            <p className="text-sm text-gray-300">Generate a guided report across multiple tickers.</p>
+                        </div>
+                    </div>
+                    <button
+                        onClick={onPortfolioReport}
+                        disabled={isLoading}
+                        className="w-full bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-all disabled:opacity-50"
+                    >
+                        Launch Report Builder
+                    </button>
+                </div>
             </div>
 
             <div className="mb-6">
@@ -94,10 +122,10 @@ export const Toolbox: React.FC<ToolboxProps> = ({ onAnalysisRequested, isLoading
             <div className="mb-6">
                 <h3 className="text-xs font-semibold text-gray-400 block mb-3 uppercase tracking-wide">Active Tickers</h3>
                 <div className="flex flex-wrap gap-2 min-h-[32px]">
-                    {symbolList.length === 0 ? (
+                    {symbols.length === 0 ? (
                         <p className="text-xs text-gray-600 italic px-2 py-1.5">No tickers yet</p>
                     ) : (
-                        symbolList.map(symbol => (
+                        symbols.map(symbol => (
                             <div
                                 key={symbol}
                                 className={`group flex items-center gap-2 pl-3 pr-2 py-1.5 text-sm rounded-lg border cursor-pointer transition-all ${

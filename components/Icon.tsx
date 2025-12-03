@@ -2,7 +2,7 @@
 import React from 'react';
 
 interface IconProps {
-  icon: 'send' | 'upload' | 'mic' | 'search' | 'chart' | 'strategy' | 'ghost' | 'close' | 'bot';
+  icon: 'send' | 'upload' | 'mic' | 'search' | 'chart' | 'strategy' | 'ghost' | 'close' | 'bot' | 'portfolio';
   className?: string;
 }
 
@@ -52,6 +52,12 @@ export const Icon: React.FC<IconProps> = ({ icon, className = 'w-6 h-6' }) => {
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 0 1-.659 1.591L5 14.5M9.75 3.104c.251-.042.506-.068.774-.068s.523.026.774.068l3.963 1.982c.527.264.935.756.935 1.34v7.428c0 .584-.408 1.076-.935 1.34l-3.963 1.982a2.25 2.25 0 0 1-1.548 0l-3.963-1.982a2.25 2.25 0 0 1-.935-1.34V6.426c0-.584.408-1.076.935-1.34L9.75 3.104Z" />
         </svg>
+    ),
+    portfolio: (
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 6.75A3.75 3.75 0 0 1 12.75 3h.5A3.75 3.75 0 0 1 17 6.75V7.5h2.25A2.25 2.25 0 0 1 21.5 9.75v8.25A2.25 2.25 0 0 1 19.25 20.25H4.75A2.25 2.25 0 0 1 2.5 18V9.75A2.25 2.25 0 0 1 4.75 7.5H7V6.75Z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 13.5h6m-3-3v6" />
+      </svg>
     )
   };
 

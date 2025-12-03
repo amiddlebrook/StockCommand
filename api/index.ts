@@ -22,7 +22,7 @@ import {
   DEFAULT_CHAT_MODEL,
 } from '../lib/constants/llmModels';
 import { createStockAPI, StockAPIError } from './stock';
-import type { Env } from '../types';
+import type { Env, PortfolioHoldingSnapshot, PortfolioReportData } from '../types';
 
 const DEFAULT_IMAGE_MODEL = '@cf/unum/uform-gen2-qwen-500m';
 
@@ -44,6 +44,9 @@ export default {
       return handleCORS(request, env);
     }
 
+
+
+
     // Rate limiting check
     const rateLimitResponse = await checkRateLimit(request, env);
     if (rateLimitResponse) {
@@ -64,6 +67,7 @@ export default {
     return addCORSHeaders(assetResponse, env, securityHeaders);
   },
 };
+
 
 async function handleApiRequest(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
   const provider = getAvailableProvider();
@@ -105,6 +109,10 @@ async function handleApiRequest(request: Request, env: Env, ctx: ExecutionContex
     return handleAnalyzeImageRequest(request, env);
   }
 
+  if (url.pathname === '/api/portfolio/report') {
+    return handlePortfolioReportRequest(request, env);
+  }
+
   // Stock data endpoints
   if (url.pathname === '/api/stock/quote') {
     return handleStockQuoteRequest(request, env);
@@ -140,13 +148,18 @@ async function handleChatRequest(request: Request, env: Env): Promise<Response> 
   }
 
   try {
-    const body = await request.json() as { message?: string; history?: any[]; model?: string };
+    const body = await request.json() as { message?: string; history?: any[]; model?: string; context?: Record<string, any> };
     
     if (!body.message) {
       return new Response('Message is required', { status: 400 });
     }
 
     const chatMessages = buildChatMessages(body.history || [], body.message);
+    const contextMessage = await buildChatContextMessage(body.context, env);
+    if (contextMessage) {
+      chatMessages.unshift({ role: 'system', content: contextMessage });
+    }
+
     const hybridResult = await runHybridChatCompletion(chatMessages);
 
     return jsonResponse({
@@ -257,6 +270,60 @@ function handleModelsRequest(providerName: string): Response {
     provider: providerName,
     models: configuredModels,
   });
+}
+
+async function handlePortfolioReportRequest(request: Request, env: Env): Promise<Response> {
+  if (request.method !== 'POST') {
+    return new Response('Method not allowed', { status: 405 });
+  }
+
+  try {
+    const body = await request.json() as { tickers?: string[]; goal?: string };
+    const tickers = Array.isArray(body.tickers) ? body.tickers : [];
+    const cleanedTickers = [...new Set(
+      tickers
+        .map(symbol => (typeof symbol === 'string' ? symbol.trim().toUpperCase() : ''))
+        .filter(Boolean),
+    )].slice(0, 5);
+
+    if (cleanedTickers.length === 0) {
+      return new Response('At least one ticker is required', { status: 400 });
+    }
+
+    const stockAPI = createStockAPI(env);
+    const holdings: PortfolioHoldingSnapshot[] = [];
+
+    for (const symbol of cleanedTickers) {
+      try {
+        const quote = await stockAPI.getQuote(symbol);
+        const profile = await stockAPI.getCompanyProfile(symbol).catch(() => null);
+        holdings.push({
+          symbol: quote.symbol,
+          name: profile?.name ?? quote.symbol,
+          price: quote.price,
+          changePercent: quote.changePercent,
+          sector: profile?.sector,
+          industry: profile?.industry,
+        });
+      } catch (error) {
+        console.warn(`Failed to load portfolio snapshot for ${symbol}:`, error);
+      }
+    }
+
+    if (holdings.length === 0) {
+      return new Response('Unable to fetch live data for the requested symbols', { status: 502 });
+    }
+
+    const report = await generatePortfolioReportPayload({
+      goal: body.goal || 'Balanced total return with disciplined risk management.',
+      holdings,
+    });
+
+    return jsonResponse(report);
+  } catch (error) {
+    console.error('Error generating portfolio report:', error);
+    return new Response('Internal server error', { status: 500 });
+  }
 }
 
 function getValidatedModel(model?: unknown): LlmModelOption {
@@ -499,11 +566,21 @@ function selectModelAndProvider(model?: unknown): { selectedModel: LlmModelOptio
 const HYBRID_REASONING_MODEL_ID = 'openrouter-deepseek-r1';
 const HYBRID_RESPONSE_MODEL_ID = 'openrouter-minimax-m2';
 
-async function runHybridChatCompletion(messages: NormalisedMessage[]): Promise<{ response: string; model: string }> {
+type HybridCompletionOptions = {
+  finalInstruction?: string;
+};
+
+async function runHybridChatCompletion(
+  messages: NormalisedMessage[],
+  options?: HybridCompletionOptions,
+): Promise<{ response: string; model: string }> {
   const { model: reasoningModel, providerConfig: reasoningConfig } = getModelAndProviderById(HYBRID_REASONING_MODEL_ID);
   const reasoningOutput = await runChatCompletion(reasoningConfig, reasoningModel, messages);
 
   const conversationSummary = stringifyConversation(messages);
+  const finalInstruction =
+    options?.finalInstruction ||
+    'Provide the final response for the user, incorporating the reasoning above.';
   const finalMessages: NormalisedMessage[] = [
     {
       role: 'system',
@@ -512,7 +589,7 @@ async function runHybridChatCompletion(messages: NormalisedMessage[]): Promise<{
     },
     {
       role: 'user',
-      content: `Conversation so far:\n${conversationSummary}\n\nDeepSeek R1 reasoning notes:\n${reasoningOutput}\n\nProvide the final response for the user, incorporating the reasoning above.`,
+      content: `Conversation so far:\n${conversationSummary}\n\nDeepSeek R1 reasoning notes:\n${reasoningOutput}\n\n${finalInstruction}`,
     },
   ];
 
@@ -739,6 +816,208 @@ function convertToAnthropicMessages(messages: NormalisedMessage[]): {
     }));
 
   return { systemPrompt, conversation };
+}
+
+
+async function buildChatContextMessage(context: Record<string, any> | undefined, env: Env): Promise<string | null> {
+  if (!context) {
+    return null;
+  }
+
+  const symbols = new Set<string>();
+  if (typeof context.activeSymbol === 'string') {
+    symbols.add(context.activeSymbol.trim().toUpperCase());
+  }
+
+  if (Array.isArray(context.watchlist)) {
+    context.watchlist
+      .filter(symbol => typeof symbol === 'string')
+      .slice(0, 3)
+      .forEach(symbol => symbols.add(symbol.trim().toUpperCase()));
+  }
+
+  if (symbols.size === 0) {
+    return null;
+  }
+
+  const stockAPI = createStockAPI(env);
+  const snapshots: string[] = [];
+
+  for (const symbol of symbols) {
+    try {
+      const quote = await stockAPI.getQuote(symbol);
+      snapshots.push(
+        `${quote.symbol}: $${quote.price.toFixed(2)} (${quote.changePercent.toFixed(2)}%), volume ${quote.volume.toLocaleString()}`,
+      );
+    } catch (error) {
+      console.warn('Failed to load context quote for chat:', symbol, error);
+    }
+  }
+
+  if (snapshots.length === 0) {
+    return null;
+  }
+
+  return `Live market context for reference:\n${snapshots.join('\n')}`;
+}
+
+async function generatePortfolioReportPayload({
+  goal,
+  holdings,
+}: {
+  goal: string;
+  holdings: PortfolioHoldingSnapshot[];
+}): Promise<PortfolioReportData> {
+  const portfolioSnapshot = {
+    goal,
+    generatedAt: new Date().toISOString(),
+    holdings,
+  };
+
+  try {
+    const messages: NormalisedMessage[] = [
+      {
+        role: 'system',
+        content:
+          'You are StockBrain, an institutional-grade portfolio strategist. Return ONLY valid JSON with keys summary (string), allocations (array), riskNotes (string array), and playbook (string array). Each allocation entry must include symbol, thesis, and weight as a decimal between 0 and 1.',
+      },
+      {
+        role: 'user',
+        content: `Portfolio goal: ${goal}\nHoldings data: ${JSON.stringify(holdings, null, 2)}\nGenerate an allocation and playbook that references the freshest data.`,
+      },
+    ];
+
+    const hybrid = await runHybridChatCompletion(messages, {
+      finalInstruction:
+        'Return ONLY a JSON object that matches {"summary":string,"allocations":[{"symbol":string,"thesis":string,"weight":number}],"riskNotes":string[],"playbook":string[]}. Do not include markdown or commentary outside the JSON.',
+    });
+
+    const parsed = parseHybridJson(hybrid.response);
+    const allocations = buildPortfolioAllocations(parsed?.allocations, holdings);
+
+    return {
+      summary:
+        typeof parsed?.summary === 'string' && parsed.summary.length > 0
+          ? parsed.summary.trim()
+          : buildFallbackSummary(goal, holdings),
+      allocations,
+      riskNotes: Array.isArray(parsed?.riskNotes)
+        ? parsed.riskNotes.map(note => String(note))
+        : buildFallbackRiskNotes(holdings),
+      playbook: Array.isArray(parsed?.playbook)
+        ? parsed.playbook.map(item => String(item))
+        : buildFallbackPlaybook(goal, holdings),
+      holdings,
+      generatedAt: portfolioSnapshot.generatedAt,
+      modelUsed: hybrid.model,
+    };
+  } catch (error) {
+    console.error('Hybrid completion failed, falling back to deterministic report:', error);
+    return {
+      summary: buildFallbackSummary(goal, holdings),
+      allocations: buildPortfolioAllocations([], holdings),
+      riskNotes: buildFallbackRiskNotes(holdings),
+      playbook: buildFallbackPlaybook(goal, holdings),
+      holdings,
+      generatedAt: new Date().toISOString(),
+      modelUsed: 'fallback',
+    };
+  }
+}
+
+function parseHybridJson(payload: string | null | undefined): any {
+  if (!payload) {
+    return null;
+  }
+
+  const trimmed = payload.trim();
+  const jsonMatch = /\{[\s\S]*\}/.exec(trimmed);
+  const candidate = jsonMatch ? jsonMatch[0] : trimmed;
+
+  try {
+    return JSON.parse(candidate);
+  } catch (error) {
+    console.warn('Failed to parse hybrid JSON payload:', error, candidate);
+    return null;
+  }
+}
+
+function buildPortfolioAllocations(
+  rawAllocations: any,
+  holdings: PortfolioHoldingSnapshot[],
+): PortfolioReportData['allocations'] {
+  const fallbackWeight = holdings.length > 0 ? 1 / holdings.length : 0;
+  const sanitized = Array.isArray(rawAllocations) ? rawAllocations : [];
+
+  const mapped = holdings.map(holding => {
+    const match = sanitized.find(entry => {
+      const symbol = typeof entry?.symbol === 'string' ? entry.symbol.trim().toUpperCase() : '';
+      return symbol === holding.symbol.toUpperCase();
+    });
+
+    return {
+      symbol: holding.symbol,
+      thesis:
+        typeof match?.thesis === 'string' && match.thesis.trim().length > 0
+          ? match.thesis.trim()
+          : `Maintain exposure to ${holding.symbol} while monitoring catalyst-driven risk.`,
+      weight: normaliseAllocationWeight(match?.weight, fallbackWeight),
+    };
+  });
+
+  const total = mapped.reduce((sum, item) => sum + item.weight, 0);
+  if (total > 0) {
+    return mapped.map(item => ({ ...item, weight: item.weight / total }));
+  }
+
+  return mapped;
+}
+
+function normaliseAllocationWeight(value: unknown, fallback: number): number {
+  let numeric = fallback;
+
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    numeric = value;
+  } else if (typeof value === 'string') {
+    const parsed = parseFloat(value.replace('%', ''));
+    if (!Number.isNaN(parsed)) {
+      numeric = parsed > 1 ? parsed / 100 : parsed;
+    }
+  }
+
+  if (numeric < 0) {
+    return fallback;
+  }
+
+  if (numeric > 1.5) {
+    return numeric / 100;
+  }
+
+  return numeric;
+}
+
+function buildFallbackSummary(goal: string, holdings: PortfolioHoldingSnapshot[]): string {
+  const leaders = holdings.slice(0, 3).map(holding => holding.symbol).join(', ');
+  return `Constructed a ${goal.toLowerCase()} basket anchored by ${leaders} using live market telemetry.`;
+}
+
+function buildFallbackRiskNotes(holdings: PortfolioHoldingSnapshot[]): string[] {
+  return [
+    'Monitor earnings catalysts and guidance revisions over the next quarter.',
+    holdings.length > 1
+      ? 'Diversify position sizing to prevent any single name from dominating drawdown risk.'
+      : 'Position sizing should reflect higher idiosyncratic risk inherent in single-name exposure.',
+    'Stay aware of macro data prints (CPI, Fed communications) that could reprice beta-sensitive names.',
+  ];
+}
+
+function buildFallbackPlaybook(goal: string, holdings: PortfolioHoldingSnapshot[]): string[] {
+  const top = holdings[0];
+  return [
+    `Rebalance monthly to keep the portfolio aligned with the ${goal.toLowerCase()} mandate.`,
+    top ? `Track ${top.symbol}'s key catalysts (earnings, product launches) to adjust conviction.` : 'Track key catalysts to adjust conviction.',
+    'Layer protective options or stop levels if volatility expands beyond historical percentiles.',
+  ];
 }
 
 async function safeReadText(response: Response): Promise<string> {

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Header } from './components/Header';
 import { ChatInput } from './components/ChatInput';
 import { ChatMessage } from './components/ChatMessage';
@@ -14,14 +14,15 @@ import type { ChatMessage as ChatMessageType, Source } from './types';
 import {
   analyzeImage,
   analyzeStockData,
-  createOfflineWidget,
-  isApiAvailable,
   searchWithGrounding,
   sendMessage,
-  getOfflineDashboardSeed,
+  generatePortfolioReport,
   type AnalysisWidget,
 } from './services/geminiService';
 import { DEFAULT_CHAT_MODEL } from './lib/constants/llmModels';
+import { fetchStockSnapshot } from './services/stockData';
+import { PortfolioReportModal } from './components/PortfolioReportModal';
+import { PortfolioReportWidget } from './components/PortfolioReportWidget';
 
 type MobileView = 'toolbox' | 'dashboard' | 'chat';
 
@@ -43,6 +44,8 @@ const FEATURE_PROMPTS: FeaturePromptMap = {
   'Market Overview': 'Provide a general market overview and how SYMBOL fits into the current landscape.',
 };
 
+const DEFAULT_SYMBOLS = ['TSLA', 'NVDA', 'AAPL'];
+
 const App: React.FC = () => {
   const [messages, setMessages] = useState<ChatMessageType[]>(() => [
     {
@@ -54,13 +57,18 @@ const App: React.FC = () => {
   const [isChatLoading, setIsChatLoading] = useState(false);
   const [isDashboardLoading, setIsDashboardLoading] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
-  const [widgets, setWidgets] = useState<AnalysisWidget[]>(() => getOfflineDashboardSeed());
+  const [widgets, setWidgets] = useState<AnalysisWidget[]>([]);
   const [mobileView, setMobileView] = useState<MobileView>('toolbox');
   const analysisModelId = DEFAULT_CHAT_MODEL.id;
+  const [symbols, setSymbols] = useState<string[]>(DEFAULT_SYMBOLS);
+  const [activeSymbol, setActiveSymbol] = useState<string | null>(DEFAULT_SYMBOLS[0]);
+  const [isPortfolioModalOpen, setIsPortfolioModalOpen] = useState(false);
+  const [isPortfolioGenerating, setIsPortfolioGenerating] = useState(false);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const chatContainerRef = useRef<HTMLDivElement>(null);
+  const loadedSnapshotsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     if (!chatContainerRef.current) {
@@ -76,6 +84,39 @@ const App: React.FC = () => {
     setWidgets(prev => prev.filter(widget => widget.id !== id));
   };
 
+  const ensureSnapshotForSymbol = useCallback(async (symbol: string) => {
+    const upper = symbol.toUpperCase();
+    if (loadedSnapshotsRef.current.has(upper)) {
+      return;
+    }
+    loadedSnapshotsRef.current.add(upper);
+
+    try {
+      const snapshot = await fetchStockSnapshot(upper);
+      const text = `Price: $${snapshot.price.toFixed(2)} (${snapshot.changePercent.toFixed(2)}%)\n` +
+        `Change: ${snapshot.change.toFixed(2)} | Volume: ${snapshot.volume.toLocaleString()}\n` +
+        (snapshot.sector ? `Sector: ${snapshot.sector}\n` : '') +
+        (snapshot.industry ? `Industry: ${snapshot.industry}\n` : '') +
+        (snapshot.description ? `\n${snapshot.description}` : '');
+
+      const widget: AnalysisWidget = {
+        id: `snapshot-${upper}-${Date.now()}`,
+        type: 'profile',
+        title: `${upper} Snapshot`,
+        data: { text, sources: snapshot.sources },
+      };
+      setWidgets(prev => [widget, ...prev]);
+    } catch (error) {
+      console.error('Failed to load live snapshot:', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    symbols.forEach(symbol => {
+      ensureSnapshotForSymbol(symbol);
+    });
+  }, [symbols, ensureSnapshotForSymbol]);
+
   const renderWidget = (widget: AnalysisWidget) => {
     switch (widget.type) {
       case 'divergence':
@@ -84,6 +125,15 @@ const App: React.FC = () => {
         return <GhostPatternChart id={widget.id} data={widget.data} onRemove={removeWidget} />;
       case 'options':
         return <OptionsStrategyCard id={widget.id} data={widget.data} onRemove={removeWidget} />;
+      case 'portfolio':
+        return (
+          <PortfolioReportWidget
+            id={widget.id}
+            title={widget.title}
+            data={widget.data}
+            onRemove={removeWidget}
+          />
+        );
       case 'profile':
       case 'news':
       case 'comparison':
@@ -235,7 +285,10 @@ const App: React.FC = () => {
             parts: [{ text: m.content }],
           }));
 
-        const response = await sendMessage(message, history);
+        const response = await sendMessage(message, history, {
+          activeSymbol,
+          watchlist: symbols,
+        });
         responseText = response.response ?? '';
       }
 
@@ -305,6 +358,48 @@ const App: React.FC = () => {
     setIsRecording(false);
   };
 
+  const handleAddSymbol = (symbol: string) => {
+    const upper = symbol.toUpperCase();
+    setSymbols(prev => (prev.includes(upper) ? prev : [...prev, upper]));
+    setActiveSymbol(upper);
+    ensureSnapshotForSymbol(upper);
+    handleAnalysisRequest('Company Profile', upper);
+  };
+
+  const handleRemoveSymbol = (symbol: string) => {
+    const upper = symbol.toUpperCase();
+    setSymbols(prev => prev.filter(s => s !== upper));
+    setWidgets(prev => prev.filter(widget => !widget.title?.includes(upper)));
+    if (activeSymbol === upper) {
+      const remaining = symbols.filter(s => s !== upper);
+      setActiveSymbol(remaining[0] ?? null);
+    }
+  };
+
+  const handleSelectSymbol = (symbol: string) => {
+    setActiveSymbol(symbol);
+  };
+
+  const handleGeneratePortfolioReport = async (tickers: string[], goal: string) => {
+    setIsPortfolioGenerating(true);
+    try {
+      const report = await generatePortfolioReport(tickers, goal);
+      const widget: AnalysisWidget = {
+        id: `portfolio-${Date.now()}`,
+        type: 'portfolio',
+        title: `Portfolio Report (${tickers.join(', ')})`,
+        data: report,
+      };
+      setWidgets(prev => [widget, ...prev]);
+      setIsPortfolioModalOpen(false);
+      setMobileView('dashboard');
+    } catch (error) {
+      console.error('Failed to generate portfolio report:', error);
+    } finally {
+      setIsPortfolioGenerating(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-gray-100 flex flex-col">
       <Header />
@@ -314,7 +409,16 @@ const App: React.FC = () => {
 
         {/* Toolbox Sidebar */}
         <aside className={`border-r border-slate-800/50 backdrop-blur-sm bg-slate-900/30 overflow-y-auto md:col-span-3 lg:col-auto ${mobileView === 'toolbox' ? 'block' : 'hidden'} md:block ${isDashboardLoading ? 'opacity-70' : ''}`}>
-          <Toolbox onAnalysisRequested={handleAnalysisRequest} isLoading={isDashboardLoading} />
+          <Toolbox
+            symbols={symbols}
+            activeSymbol={activeSymbol}
+            onAddSymbol={handleAddSymbol}
+            onRemoveSymbol={handleRemoveSymbol}
+            onSelectSymbol={handleSelectSymbol}
+            onAnalysisRequested={handleAnalysisRequest}
+            onPortfolioReport={() => setIsPortfolioModalOpen(true)}
+            isLoading={isDashboardLoading}
+          />
         </aside>
 
         {/* Dashboard Main Area */}
@@ -386,6 +490,14 @@ const App: React.FC = () => {
       {/* Mobile Navigation Spacer */}
       <div className="md:hidden h-16" />
       <MobileNav activeView={mobileView} setActiveView={setMobileView} />
+      <PortfolioReportModal
+        isOpen={isPortfolioModalOpen}
+        symbols={symbols}
+        activeSymbol={activeSymbol}
+        isGenerating={isPortfolioGenerating}
+        onClose={() => setIsPortfolioModalOpen(false)}
+        onSubmit={handleGeneratePortfolioReport}
+      />
     </div>
   );
 };
