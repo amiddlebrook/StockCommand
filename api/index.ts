@@ -21,7 +21,7 @@ import {
   LLM_MODEL_LOOKUP,
   DEFAULT_CHAT_MODEL,
 } from '../lib/constants/llmModels';
-import { createStockAPI } from './stock';
+import { createStockAPI, StockAPIError } from './stock';
 import type { Env } from '../types';
 
 const DEFAULT_IMAGE_MODEL = '@cf/unum/uform-gen2-qwen-500m';
@@ -424,6 +424,19 @@ function jsonResponse(payload: any, init: ResponseInit = {}): Response {
   });
 }
 
+function handleStockApiError(error: unknown): Response {
+  if (error instanceof StockAPIError) {
+    const status = error.status ?? 500;
+    const body = {
+      error: error.message,
+      code: error.code ?? 'STOCK_API_ERROR',
+    };
+    return jsonResponse(body, { status });
+  }
+
+  return new Response('Internal server error', { status: 500 });
+}
+
 async function handleStaticAssetRequest(request: Request, env: Env): Promise<Response> {
   const assetResponse = await env.ASSETS.fetch(request);
 
@@ -772,7 +785,7 @@ async function handleStockQuoteRequest(request: Request, env: Env): Promise<Resp
     return jsonResponse(quote);
   } catch (error) {
     console.error('Error in stock quote request:', error);
-    return new Response('Internal server error', { status: 500 });
+    return handleStockApiError(error);
   }
 }
 
@@ -796,7 +809,7 @@ async function handleStockIntradayRequest(request: Request, env: Env): Promise<R
     return jsonResponse(data);
   } catch (error) {
     console.error('Error in intraday request:', error);
-    return new Response('Internal server error', { status: 500 });
+    return handleStockApiError(error);
   }
 }
 
@@ -819,7 +832,7 @@ async function handleStockProfileRequest(request: Request, env: Env): Promise<Re
     return jsonResponse(profile);
   } catch (error) {
     console.error('Error in profile request:', error);
-    return new Response('Internal server error', { status: 500 });
+    return handleStockApiError(error);
   }
 }
 
@@ -842,7 +855,7 @@ async function handleStockSearchRequest(request: Request, env: Env): Promise<Res
     return jsonResponse(results);
   } catch (error) {
     console.error('Error in search request:', error);
-    return new Response('Internal server error', { status: 500 });
+    return handleStockApiError(error);
   }
 }
 
