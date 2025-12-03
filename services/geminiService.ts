@@ -106,11 +106,11 @@ export const analyzeImage = async (prompt: string, image: File, options?: Reques
   return response.json();
 };
 
-export const sendMessage = async (message: string, history: any[], options?: RequestOptions): Promise<any> => {
+export const sendMessage = async (message: string, history: any[]): Promise<any> => {
   const response = await fetch('/api/chat', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message, history, ...getModelPayload(options) }),
+    body: JSON.stringify({ message, history }),
   });
 
   if (!response.ok) {

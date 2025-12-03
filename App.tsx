@@ -10,7 +10,6 @@ import { OptionsStrategyCard } from './components/OptionsStrategyCard';
 import { Icon } from './components/Icon';
 import { LoadingSpinner } from './components/LoadingSpinner';
 import { MobileNav } from './components/MobileNav';
-import { ModelSelector } from './components/ModelSelector';
 import type { ChatMessage as ChatMessageType, Source } from './types';
 import {
   analyzeImage,
@@ -22,7 +21,7 @@ import {
   getOfflineDashboardSeed,
   type AnalysisWidget,
 } from './services/geminiService';
-import { DEFAULT_CHAT_MODEL, type LlmModelOption } from './lib/constants/llmModels';
+import { DEFAULT_CHAT_MODEL } from './lib/constants/llmModels';
 
 type MobileView = 'toolbox' | 'dashboard' | 'chat';
 
@@ -57,55 +56,11 @@ const App: React.FC = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [widgets, setWidgets] = useState<AnalysisWidget[]>(() => getOfflineDashboardSeed());
   const [mobileView, setMobileView] = useState<MobileView>('toolbox');
-  const [modelOptions, setModelOptions] = useState<LlmModelOption[]>([]);
-  const [selectedModel, setSelectedModel] = useState(DEFAULT_CHAT_MODEL.id);
+  const analysisModelId = DEFAULT_CHAT_MODEL.id;
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const chatContainerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    let isCancelled = false;
-
-    const fetchModels = async () => {
-      try {
-        const response = await fetch('/api/models');
-        if (!response.ok) {
-          return;
-        }
-        const data = await response.json();
-        if (isCancelled) {
-          return;
-        }
-
-        const maybeModels = Array.isArray(data?.models)
-          ? (data.models as LlmModelOption[])
-          : undefined;
-
-        if (maybeModels && maybeModels.length > 0) {
-          setModelOptions(maybeModels);
-
-          // Set default model to the first model marked as default, or the first available model
-          const defaultModel = maybeModels.find(m => m.isDefault) || maybeModels[0];
-          setSelectedModel(current => {
-            if (current === defaultModel.id) {
-              return current;
-            }
-            const isCurrentAvailable = maybeModels.some(option => option.id === current);
-            return isCurrentAvailable ? current : defaultModel.id;
-          });
-        }
-      } catch (error) {
-        console.error('Failed to load configured models:', error);
-      }
-    };
-
-    fetchModels();
-
-    return () => {
-      isCancelled = true;
-    };
-  }, []);
 
   useEffect(() => {
     if (!chatContainerRef.current) {
@@ -161,7 +116,7 @@ const App: React.FC = () => {
 
     try {
       if (['Divergence Analysis', 'Ghost Pattern', 'Options Strategy'].includes(featureType)) {
-        const response = await analyzeStockData(prompt, { model: selectedModel });
+        const response = await analyzeStockData(prompt, { model: analysisModelId });
         const responseText = response.response ?? '';
 
         let jsonData: any;
@@ -218,7 +173,7 @@ const App: React.FC = () => {
         throw new Error('No data returned from analysis.');
       }
 
-      const response = await searchWithGrounding(prompt, { model: selectedModel });
+      const response = await searchWithGrounding(prompt, { model: analysisModelId });
       const text = response.response ?? '';
       const sources = response.candidates?.[0]?.groundingMetadata?.groundingChunks as Source[] | undefined;
 
@@ -270,7 +225,7 @@ const App: React.FC = () => {
       let sources: Source[] | undefined;
 
       if (image) {
-        const response = await analyzeImage(message || 'Analyze this image.', image, { model: selectedModel });
+        const response = await analyzeImage(message || 'Analyze this image.', image, { model: analysisModelId });
         responseText = response.response ?? '';
       } else {
         const history = messages
@@ -280,7 +235,7 @@ const App: React.FC = () => {
             parts: [{ text: m.content }],
           }));
 
-        const response = await sendMessage(message, history, { model: selectedModel });
+        const response = await sendMessage(message, history);
         responseText = response.response ?? '';
       }
 
@@ -401,16 +356,14 @@ const App: React.FC = () => {
         {/* Chat Sidebar */}
         <aside className={`flex flex-col bg-gradient-to-b from-slate-900/50 to-slate-950/50 backdrop-blur-sm border-l border-slate-800/50 max-h-full md:col-span-3 lg:col-auto ${mobileView === 'chat' ? 'flex' : 'hidden'} md:flex`}>
           <div className="border-b border-slate-800/50 px-4 py-4 bg-slate-900/30">
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-1">
               <h2 className="text-sm font-semibold text-gray-300 tracking-wider flex items-center gap-2">
                 <Icon icon="bot" className="w-4 h-4 text-cyan-400" />
                 AI ASSISTANT
               </h2>
-              <ModelSelector
-                selectedModel={selectedModel}
-                modelOptions={modelOptions}
-                onChange={setSelectedModel}
-              />
+              <p className="text-xs text-gray-500">
+                Powered by a DeepSeek R1 + MiniMax M2 hybrid for consistent responses.
+              </p>
             </div>
           </div>
           <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-4 md:p-5 lg:p-6 space-y-4">

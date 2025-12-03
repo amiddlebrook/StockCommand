@@ -147,15 +147,11 @@ async function handleChatRequest(request: Request, env: Env): Promise<Response> 
     }
 
     const chatMessages = buildChatMessages(body.history || [], body.message);
-    const { selectedModel, providerConfig } = selectModelAndProvider(body.model);
-    const responseText = await runChatCompletion(providerConfig, selectedModel, chatMessages.map(msg => ({
-      role: msg.role as 'user' | 'assistant' | 'system',
-      content: msg.content
-    })));
+    const hybridResult = await runHybridChatCompletion(chatMessages);
 
     return jsonResponse({
-      response: responseText,
-      model: selectedModel.id,
+      response: hybridResult.response,
+      model: hybridResult.model,
     });
   } catch (error) {
     console.error('Error in chat request:', error);
@@ -270,8 +266,8 @@ function getValidatedModel(model?: unknown): LlmModelOption {
   return DEFAULT_CHAT_MODEL;
 }
 
-function buildChatMessages(history: any, latestMessage: string) {
-  const normalisedHistory = Array.isArray(history)
+function buildChatMessages(history: any, latestMessage: string): NormalisedMessage[] {
+  const normalisedHistory: NormalisedMessage[] = Array.isArray(history)
     ? history
         .map((entry: any) => {
           if (!entry || typeof entry !== 'object') {
@@ -288,9 +284,9 @@ function buildChatMessages(history: any, latestMessage: string) {
             return null;
           }
 
-          return { role, content };
+          return { role, content } as NormalisedMessage;
         })
-        .filter((entry: any): entry is { role: string; content: string } => Boolean(entry))
+        .filter((entry): entry is NormalisedMessage => Boolean(entry))
     : [];
 
   return [...normalisedHistory, { role: 'user', content: latestMessage }];
@@ -498,6 +494,56 @@ function selectModelAndProvider(model?: unknown): { selectedModel: LlmModelOptio
   }
 
   return { selectedModel, providerConfig };
+}
+
+const HYBRID_REASONING_MODEL_ID = 'openrouter-deepseek-r1';
+const HYBRID_RESPONSE_MODEL_ID = 'openrouter-minimax-m2';
+
+async function runHybridChatCompletion(messages: NormalisedMessage[]): Promise<{ response: string; model: string }> {
+  const { model: reasoningModel, providerConfig: reasoningConfig } = getModelAndProviderById(HYBRID_REASONING_MODEL_ID);
+  const reasoningOutput = await runChatCompletion(reasoningConfig, reasoningModel, messages);
+
+  const conversationSummary = stringifyConversation(messages);
+  const finalMessages: NormalisedMessage[] = [
+    {
+      role: 'system',
+      content:
+        'You are StockBrain, a decisive financial strategist. Use the provided reasoning notes to craft a clear, actionable answer. Never mention the notes explicitly.',
+    },
+    {
+      role: 'user',
+      content: `Conversation so far:\n${conversationSummary}\n\nDeepSeek R1 reasoning notes:\n${reasoningOutput}\n\nProvide the final response for the user, incorporating the reasoning above.`,
+    },
+  ];
+
+  const { model: responseModel, providerConfig: responseConfig } = getModelAndProviderById(HYBRID_RESPONSE_MODEL_ID);
+  const finalResponse = await runChatCompletion(responseConfig, responseModel, finalMessages);
+
+  return {
+    response: finalResponse,
+    model: `${reasoningModel.id}+${responseModel.id}`,
+  };
+}
+
+function stringifyConversation(messages: NormalisedMessage[]): string {
+  return messages
+    .map(msg => `${msg.role.toUpperCase()}: ${msg.content}`)
+    .join('\n\n');
+}
+
+function getModelAndProviderById(modelId: string): { model: LlmModelOption; providerConfig: APIConfig } {
+  const modelOption = LLM_MODEL_LOOKUP[modelId];
+  if (!modelOption) {
+    throw new Error(`Model ${modelId} is not defined.`);
+  }
+
+  const providers = getAllConfiguredProviders();
+  const providerConfig = providers.find(config => config.provider === modelOption.provider);
+  if (!providerConfig) {
+    throw new Error(`Provider ${modelOption.provider} is not configured.`);
+  }
+
+  return { model: modelOption, providerConfig };
 }
 
 function getConfiguredModelOptions(): LlmModelOption[] {
