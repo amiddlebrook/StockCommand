@@ -57,6 +57,11 @@ export interface Env {
   OPENROUTER_QWEN3_235B_API_KEY?: string;
   ODDS_API_KEY?: string;
 
+  // Stock API keys
+  ALPHA_VANTAGE_API_KEY?: string;
+  FINNHUB_API_KEY?: string;
+  IEXCLOUD_API_KEY?: string;
+
   // Environment variables
   APP_NAME: string;
   APP_VERSION: string;
@@ -65,10 +70,22 @@ export interface Env {
   RATE_LIMIT_REQUESTS: string;
   RATE_LIMIT_WINDOW: string;
   CACHE_TTL: string;
+  DEFAULT_STOCK_PROVIDER: string;
+  STOCK_API_TIMEOUT: string;
 
-  // Optional bindings (commented out until needed)
-  // CACHE_KV: KVNamespace;
-  // DB: D1Database;
-  // QUEUE: Queue<unknown>;
-  // ANALYTICS: AnalyticsEngineDataset;
+  // KV Namespaces
+  STOCK_CACHE_KV: KVNamespace;
+  USER_SESSIONS_KV: KVNamespace;
+
+  // D1 Database
+  DB: D1Database;
+
+  // R2 Storage
+  STORAGE: R2Bucket;
+
+  // Queue
+  STOCK_DATA_QUEUE: Queue<unknown>;
+
+  // Analytics Engine
+  ANALYTICS: AnalyticsEngineDataset;
 }

@@ -2,7 +2,7 @@
  * Cloudflare Worker API
  *
  * This worker acts as a secure proxy for AI API calls and serves static assets.
- * Features: CORS, rate limiting, security headers, AI proxy, static asset serving
+ * Features: CORS, rate limiting, security headers, AI proxy, stock data, static asset serving
  */
 import {
   OPENAI_CHAT_COMPLETIONS_URL,
@@ -21,6 +21,7 @@ import {
   LLM_MODEL_LOOKUP,
   DEFAULT_CHAT_MODEL,
 } from '../lib/constants/llmModels';
+import { createStockAPI } from './stock';
 import type { Env } from '../types';
 
 const DEFAULT_IMAGE_MODEL = '@cf/unum/uform-gen2-qwen-500m';
@@ -104,6 +105,31 @@ async function handleApiRequest(request: Request, env: Env, ctx: ExecutionContex
     return handleAnalyzeImageRequest(request, env);
   }
 
+  // Stock data endpoints
+  if (url.pathname === '/api/stock/quote') {
+    return handleStockQuoteRequest(request, env);
+  }
+
+  if (url.pathname === '/api/stock/intraday') {
+    return handleStockIntradayRequest(request, env);
+  }
+
+  if (url.pathname === '/api/stock/profile') {
+    return handleStockProfileRequest(request, env);
+  }
+
+  if (url.pathname === '/api/stock/search') {
+    return handleStockSearchRequest(request, env);
+  }
+
+  if (url.pathname === '/api/stock/watchlist') {
+    return handleWatchlistRequest(request, env);
+  }
+
+  if (url.pathname === '/api/stock/upload') {
+    return handleFileUploadRequest(request, env);
+  }
+
   // Default API response
   return new Response('API endpoint not found', { status: 404 });
 }
@@ -122,7 +148,10 @@ async function handleChatRequest(request: Request, env: Env): Promise<Response> 
 
     const chatMessages = buildChatMessages(body.history || [], body.message);
     const { selectedModel, providerConfig } = selectModelAndProvider(body.model);
-    const responseText = await runChatCompletion(providerConfig, selectedModel, chatMessages);
+    const responseText = await runChatCompletion(providerConfig, selectedModel, chatMessages.map(msg => ({
+      role: msg.role as 'user' | 'assistant' | 'system',
+      content: msg.content
+    })));
 
     return jsonResponse({
       response: responseText,
@@ -388,7 +417,7 @@ function ensureArray<T>(value: T | T[]): T[] {
   return [value];
 }
 
-function jsonResponse(payload: Record<string, unknown>, init: ResponseInit = {}): Response {
+function jsonResponse(payload: any, init: ResponseInit = {}): Response {
   return new Response(JSON.stringify(payload), {
     headers: { 'Content-Type': 'application/json' },
     ...init,
@@ -721,5 +750,156 @@ async function checkRateLimit(request: Request, env: Env): Promise<Response | nu
   console.log(`Rate limit check for IP: ${clientIP}, limit: ${limit}/${window}s`);
   
   return null; // Allow request for now
+}
+
+// Stock API handlers
+async function handleStockQuoteRequest(request: Request, env: Env): Promise<Response> {
+  if (request.method !== 'GET') {
+    return new Response('Method not allowed', { status: 405 });
+  }
+
+  try {
+    const url = new URL(request.url);
+    const symbol = url.searchParams.get('symbol');
+
+    if (!symbol) {
+      return new Response('Symbol is required', { status: 400 });
+    }
+
+    const stockAPI = createStockAPI(env);
+    const quote = await stockAPI.getQuote(symbol);
+
+    return jsonResponse(quote);
+  } catch (error) {
+    console.error('Error in stock quote request:', error);
+    return new Response('Internal server error', { status: 500 });
+  }
+}
+
+async function handleStockIntradayRequest(request: Request, env: Env): Promise<Response> {
+  if (request.method !== 'GET') {
+    return new Response('Method not allowed', { status: 405 });
+  }
+
+  try {
+    const url = new URL(request.url);
+    const symbol = url.searchParams.get('symbol');
+    const interval = url.searchParams.get('interval') || '1min';
+
+    if (!symbol) {
+      return new Response('Symbol is required', { status: 400 });
+    }
+
+    const stockAPI = createStockAPI(env);
+    const data = await stockAPI.getIntradayData(symbol, interval);
+
+    return jsonResponse(data);
+  } catch (error) {
+    console.error('Error in intraday request:', error);
+    return new Response('Internal server error', { status: 500 });
+  }
+}
+
+async function handleStockProfileRequest(request: Request, env: Env): Promise<Response> {
+  if (request.method !== 'GET') {
+    return new Response('Method not allowed', { status: 405 });
+  }
+
+  try {
+    const url = new URL(request.url);
+    const symbol = url.searchParams.get('symbol');
+
+    if (!symbol) {
+      return new Response('Symbol is required', { status: 400 });
+    }
+
+    const stockAPI = createStockAPI(env);
+    const profile = await stockAPI.getCompanyProfile(symbol);
+
+    return jsonResponse(profile);
+  } catch (error) {
+    console.error('Error in profile request:', error);
+    return new Response('Internal server error', { status: 500 });
+  }
+}
+
+async function handleStockSearchRequest(request: Request, env: Env): Promise<Response> {
+  if (request.method !== 'GET') {
+    return new Response('Method not allowed', { status: 405 });
+  }
+
+  try {
+    const url = new URL(request.url);
+    const query = url.searchParams.get('q');
+
+    if (!query) {
+      return new Response('Query is required', { status: 400 });
+    }
+
+    const stockAPI = createStockAPI(env);
+    const results = await stockAPI.searchSymbols(query);
+
+    return jsonResponse(results);
+  } catch (error) {
+    console.error('Error in search request:', error);
+    return new Response('Internal server error', { status: 500 });
+  }
+}
+
+async function handleWatchlistRequest(request: Request, env: Env): Promise<Response> {
+  const stockAPI = createStockAPI(env);
+
+  if (request.method === 'GET') {
+    try {
+      const url = new URL(request.url);
+      const userId = url.searchParams.get('userId') || 'anonymous';
+
+      const watchlist = await stockAPI.getWatchlist(userId);
+      return jsonResponse({ watchlist });
+    } catch (error) {
+      console.error('Error getting watchlist:', error);
+      return new Response('Internal server error', { status: 500 });
+    }
+  }
+
+  if (request.method === 'POST') {
+    try {
+      const body = await request.json() as { userId?: string; symbols?: string[] };
+      const userId = body.userId || 'anonymous';
+      const symbols = body.symbols || [];
+
+      await stockAPI.saveWatchlist(userId, symbols);
+      return jsonResponse({ success: true });
+    } catch (error) {
+      console.error('Error saving watchlist:', error);
+      return new Response('Internal server error', { status: 500 });
+    }
+  }
+
+  return new Response('Method not allowed', { status: 405 });
+}
+
+async function handleFileUploadRequest(request: Request, env: Env): Promise<Response> {
+  if (request.method !== 'POST') {
+    return new Response('Method not allowed', { status: 405 });
+  }
+
+  try {
+    const formData = await request.formData();
+    const file = formData.get('file') as File;
+    const key = formData.get('key') as string;
+
+    if (!file || !key) {
+      return new Response('File and key are required', { status: 400 });
+    }
+
+    const stockAPI = createStockAPI(env);
+    const fileKey = await stockAPI.uploadFile(key, await file.arrayBuffer(), file.type);
+
+    return jsonResponse({ success: true, key: fileKey });
+  } catch (error) {
+    console.error('Error in file upload:', error);
+    return new Response('Internal server error', { status: 500 });
+  }
 }
 

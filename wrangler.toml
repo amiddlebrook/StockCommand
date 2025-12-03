@@ -27,6 +27,10 @@ RATE_LIMIT_WINDOW = "60"
 # Cache configuration
 CACHE_TTL = "3600"
 
+# Stock API configuration
+DEFAULT_STOCK_PROVIDER = "alphavantage"
+STOCK_API_TIMEOUT = "5000"
+
 # The following secrets need to be configured in Cloudflare dashboard or via CLI:
 # - OPENAI_API_KEY
 # - GEMINI_API_KEY  
@@ -38,23 +42,40 @@ CACHE_TTL = "3600"
 # - OPENROUTER_GLM_45_AIR_API_KEY
 # - OPENROUTER_QWEN3_235B_API_KEY
 # - ODDS_API_KEY
+# - ALPHA_VANTAGE_API_KEY
+# - FINNHUB_API_KEY
+# - IEXCLOUD_API_KEY
 
-# KV Namespaces for caching (optional)
-# [[kv_namespaces]]
-# binding = "CACHE_KV"
-# id = "your-kv-namespace-id"
+# KV Namespaces for caching
+[[kv_namespaces]]
+binding = "STOCK_CACHE_KV"
+id = "stock-cache-kv-namespace-id"
+preview_id = "stock-cache-kv-preview-id"
 
-# D1 Database (optional for future features)
-# [[d1_databases]]
-# binding = "DB"
-# database_name = "stockbrain-db"
-# database_id = "your-database-id"
+[[kv_namespaces]]
+binding = "USER_SESSIONS_KV"
+id = "user-sessions-kv-namespace-id"
+preview_id = "user-sessions-kv-preview-id"
 
-# Queue for background processing (optional)
-# [[queues.producers]]
-# binding = "QUEUE"
-# queue = "stockbrain-queue"
+# D1 Database for user data and stock analysis storage
+[[d1_databases]]
+binding = "DB"
+database_name = "stockbrain-db"
+database_id = "your-database-id"
 
-# Analytics Engine (optional)
-# [[analytics_engine_datasets]]
-# binding = "ANALYTICS"
+# R2 Storage for file uploads and images
+[[r2_buckets]]
+binding = "STORAGE"
+bucket_name = "stockbrain-storage"
+
+# Queue for background stock data processing
+[[queues.producers]]
+binding = "STOCK_DATA_QUEUE"
+queue = "stockbrain-queue"
+
+[[queues.consumers]]
+queue = "stockbrain-queue"
+
+# Analytics Engine for usage tracking
+[[analytics_engine_datasets]]
+binding = "ANALYTICS"
