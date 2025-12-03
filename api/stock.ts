@@ -43,6 +43,13 @@ export interface CompanyProfile {
   exchange: string;
 }
 
+export class StockAPIError extends Error {
+  constructor(message: string, public status = 500, public code?: string) {
+    super(message);
+    this.name = 'StockAPIError';
+  }
+}
+
 class StockAPIService {
   constructor(private env: Env) {}
 
@@ -265,23 +272,34 @@ class StockAPIService {
 
     const url = `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${symbol}&apikey=${this.env.ALPHA_VANTAGE_API_KEY}`;
     const response = await fetch(url);
-    const data = await response.json();
+    const data = await response.json() as any;
+    this.assertAlphaVantageResponseIsHealthy(data);
 
-    if (data['Global Quote']?.['01. symbol']) {
-      const quote = data['Global Quote'];
+    const quote = data['Global Quote'];
+    if (quote?.['01. symbol']) {
+      const symbolValue = quote['01. symbol'] || symbol.toUpperCase();
+      const price = parseFloat(quote['05. price'] ?? '0') || 0;
+      const change = parseFloat(quote['09. change'] ?? '0') || 0;
+      const changePercentRaw = quote['10. change percent'];
+      const changePercent =
+        typeof changePercentRaw === 'string'
+          ? parseFloat(changePercentRaw.replace('%', '')) || 0
+          : 0;
+      const volume = parseInt(quote['06. volume'] ?? '0', 10) || 0;
+
       return {
-        symbol: quote['01. symbol'],
+        symbol: symbolValue,
         name: symbol,
-        price: parseFloat(quote['05. price']),
-        change: parseFloat(quote['09. change']),
-        changePercent: parseFloat(quote['10. change percent'].replace('%', '')),
-        volume: parseInt(quote['06. volume']),
+        price,
+        change,
+        changePercent,
+        volume,
         marketCap: 0, // Alpha Vantage doesn't provide this in global quote
         timestamp: Date.now()
       };
     }
 
-    throw new Error('Invalid symbol or API error');
+    throw new StockAPIError(`Alpha Vantage returned no quote data for ${symbol.toUpperCase()}.`, 404, 'ALPHA_VANTAGE_NO_QUOTE');
   }
 
   private async fetchFinnhubQuote(symbol: string): Promise<StockQuote> {
@@ -341,13 +359,14 @@ class StockAPIService {
     const apiInterval = intervalMap[interval] || '1min';
     const url = `https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol=${symbol}&interval=${apiInterval}&apikey=${this.env.ALPHA_VANTAGE_API_KEY}`;
     const response = await fetch(url);
-    const data = await response.json();
+    const data = await response.json() as any;
+    this.assertAlphaVantageResponseIsHealthy(data);
 
     const timeSeriesKey = `Time Series (${apiInterval})`;
     const timeSeries = data[timeSeriesKey];
 
     if (!timeSeries) {
-      throw new Error('Invalid symbol or API error');
+      throw new StockAPIError(`Alpha Vantage returned no intraday data for ${symbol.toUpperCase()}.`, 404, 'ALPHA_VANTAGE_NO_INTRADAY');
     }
 
     const dataPoints = Object.entries(timeSeries)
@@ -363,20 +382,9 @@ class StockAPIService {
 
     return {
       symbol: symbol.toUpperCase(),
-      interval,
+      interval: apiInterval,
       data: dataPoints
     };
-  }
-
-  private async fetchProfileFromAPI(symbol: string): Promise<CompanyProfile> {
-    const provider = this.env.DEFAULT_STOCK_PROVIDER || 'alphavantage';
-    
-    switch (provider) {
-      case 'alphavantage':
-        return this.fetchAlphaVantageProfile(symbol);
-      default:
-        throw new Error(`Profile data not implemented for provider: ${provider}`);
-    }
   }
 
   private async fetchAlphaVantageProfile(symbol: string): Promise<CompanyProfile> {
@@ -386,23 +394,20 @@ class StockAPIService {
 
     const url = `https://www.alphavantage.co/query?function=OVERVIEW&symbol=${symbol}&apikey=${this.env.ALPHA_VANTAGE_API_KEY}`;
     const response = await fetch(url);
-    const data = await response.json();
+    const data = await response.json() as any;
+    this.assertAlphaVantageResponseIsHealthy(data);
 
-    if (data.Symbol) {
-      return {
-        symbol: data.Symbol,
-        name: data.Name || symbol,
-        description: data.Description || '',
-        sector: data.Sector || '',
-        industry: data.Industry || '',
-        ceo: data.CEO || '',
-        employees: parseInt(data.EmployeesOverall || '0'),
-        website: data.Website || '',
-        exchange: data.Exchange || ''
-      };
-    }
-
-    throw new Error('Invalid symbol or API error');
+    return {
+      symbol: data.Symbol,
+      name: data.Name || symbol,
+      description: data.Description || '',
+      sector: data.Sector || '',
+      industry: data.Industry || '',
+      ceo: data.CEO || '',
+      employees: parseInt(data.EmployeesOverall || '0'),
+      website: data.Website || '',
+      exchange: data.Exchange || ''
+    };
   }
 
   private async searchSymbolsFromAPI(query: string): Promise<Array<{ symbol: string; name: string }>> {
@@ -423,16 +428,33 @@ class StockAPIService {
 
     const url = `https://www.alphavantage.co/query?function=SYMBOL_SEARCH&keywords=${query}&apikey=${this.env.ALPHA_VANTAGE_API_KEY}`;
     const response = await fetch(url);
-    const data = await response.json();
+    const data = await response.json() as any;
+    this.assertAlphaVantageResponseIsHealthy(data);
 
-    if (data.bestMatches) {
-      return data.bestMatches.map((match: any) => ({
-        symbol: match['1. symbol'],
-        name: match['2. name']
-      }));
+    const matches = Array.isArray(data.bestMatches) ? data.bestMatches : [];
+
+    return matches.map((match: any) => ({
+      symbol: match['1. symbol'],
+      name: match['2. name']
+    }));
+  }
+
+  private assertAlphaVantageResponseIsHealthy(data: any): void {
+    if (!data || typeof data !== 'object') {
+      throw new StockAPIError('Invalid response from Alpha Vantage.', 502, 'ALPHA_VANTAGE_INVALID_RESPONSE');
     }
 
-    return [];
+    if (typeof data['Error Message'] === 'string' && data['Error Message'].length > 0) {
+      throw new StockAPIError(data['Error Message'], 400, 'ALPHA_VANTAGE_ERROR');
+    }
+
+    if (typeof data.Note === 'string' && data.Note.length > 0) {
+      throw new StockAPIError(data.Note, 429, 'ALPHA_VANTAGE_RATE_LIMIT');
+    }
+
+    if (typeof data.Information === 'string' && data.Information.length > 0) {
+      throw new StockAPIError(data.Information, 503, 'ALPHA_VANTAGE_INFORMATION');
+    }
   }
 
   private async logAnalytics(event: string, data: Record<string, any>): Promise<void> {
