@@ -315,18 +315,124 @@ class StockAPIService {
   }
 
   private async fetchIntradayFromAPI(symbol: string, interval: string): Promise<IntradayData> {
-    // Implementation for intraday data
-    throw new Error('Intraday API not implemented yet');
+    const provider = this.env.DEFAULT_STOCK_PROVIDER || 'alphavantage';
+    
+    switch (provider) {
+      case 'alphavantage':
+        return this.fetchAlphaVantageIntraday(symbol, interval);
+      default:
+        throw new Error(`Intraday data not implemented for provider: ${provider}`);
+    }
+  }
+
+  private async fetchAlphaVantageIntraday(symbol: string, interval: string): Promise<IntradayData> {
+    if (!this.env.ALPHA_VANTAGE_API_KEY) {
+      throw new Error('Alpha Vantage API key not configured');
+    }
+
+    const intervalMap: { [key: string]: string } = {
+      '1min': '1min',
+      '5min': '5min',
+      '15min': '15min',
+      '30min': '30min',
+      '60min': '60min'
+    };
+
+    const apiInterval = intervalMap[interval] || '1min';
+    const url = `https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol=${symbol}&interval=${apiInterval}&apikey=${this.env.ALPHA_VANTAGE_API_KEY}`;
+    const response = await fetch(url);
+    const data = await response.json();
+
+    const timeSeriesKey = `Time Series (${apiInterval})`;
+    const timeSeries = data[timeSeriesKey];
+
+    if (!timeSeries) {
+      throw new Error('Invalid symbol or API error');
+    }
+
+    const dataPoints = Object.entries(timeSeries)
+      .map(([timestamp, values]: [string, any]) => ({
+        timestamp: new Date(timestamp).getTime(),
+        open: parseFloat(values['1. open']),
+        high: parseFloat(values['2. high']),
+        low: parseFloat(values['3. low']),
+        close: parseFloat(values['4. close']),
+        volume: parseInt(values['5. volume'])
+      }))
+      .reverse(); // Reverse to get chronological order
+
+    return {
+      symbol: symbol.toUpperCase(),
+      interval,
+      data: dataPoints
+    };
   }
 
   private async fetchProfileFromAPI(symbol: string): Promise<CompanyProfile> {
-    // Implementation for company profile
-    throw new Error('Profile API not implemented yet');
+    const provider = this.env.DEFAULT_STOCK_PROVIDER || 'alphavantage';
+    
+    switch (provider) {
+      case 'alphavantage':
+        return this.fetchAlphaVantageProfile(symbol);
+      default:
+        throw new Error(`Profile data not implemented for provider: ${provider}`);
+    }
+  }
+
+  private async fetchAlphaVantageProfile(symbol: string): Promise<CompanyProfile> {
+    if (!this.env.ALPHA_VANTAGE_API_KEY) {
+      throw new Error('Alpha Vantage API key not configured');
+    }
+
+    const url = `https://www.alphavantage.co/query?function=OVERVIEW&symbol=${symbol}&apikey=${this.env.ALPHA_VANTAGE_API_KEY}`;
+    const response = await fetch(url);
+    const data = await response.json();
+
+    if (data.Symbol) {
+      return {
+        symbol: data.Symbol,
+        name: data.Name || symbol,
+        description: data.Description || '',
+        sector: data.Sector || '',
+        industry: data.Industry || '',
+        ceo: data.CEO || '',
+        employees: parseInt(data.EmployeesOverall || '0'),
+        website: data.Website || '',
+        exchange: data.Exchange || ''
+      };
+    }
+
+    throw new Error('Invalid symbol or API error');
   }
 
   private async searchSymbolsFromAPI(query: string): Promise<Array<{ symbol: string; name: string }>> {
-    // Implementation for symbol search
-    throw new Error('Search API not implemented yet');
+    const provider = this.env.DEFAULT_STOCK_PROVIDER || 'alphavantage';
+    
+    switch (provider) {
+      case 'alphavantage':
+        return this.fetchAlphaVantageSearch(query);
+      default:
+        throw new Error(`Search not implemented for provider: ${provider}`);
+    }
+  }
+
+  private async fetchAlphaVantageSearch(query: string): Promise<Array<{ symbol: string; name: string }>> {
+    if (!this.env.ALPHA_VANTAGE_API_KEY) {
+      throw new Error('Alpha Vantage API key not configured');
+    }
+
+    const url = `https://www.alphavantage.co/query?function=SYMBOL_SEARCH&keywords=${query}&apikey=${this.env.ALPHA_VANTAGE_API_KEY}`;
+    const response = await fetch(url);
+    const data = await response.json();
+
+    if (data.bestMatches) {
+      return data.bestMatches.map((match: any) => ({
+        symbol: match['1. symbol'],
+        name: match['2. name']
+      }));
+    }
+
+    return [];
   }
 
   private async logAnalytics(event: string, data: Record<string, any>): Promise<void> {
