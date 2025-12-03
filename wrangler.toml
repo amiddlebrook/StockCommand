@@ -49,19 +49,19 @@ STOCK_API_TIMEOUT = "5000"
 # KV Namespaces for caching
 [[kv_namespaces]]
 binding = "STOCK_CACHE_KV"
-id = "stock-cache-kv-namespace-id"
-preview_id = "stock-cache-kv-preview-id"
+id = "fa0ae101b0174f93a89abf2cfaa68f9f"
+preview_id = "fa0ae101b0174f93a89abf2cfaa68f9f"
 
 [[kv_namespaces]]
 binding = "USER_SESSIONS_KV"
-id = "user-sessions-kv-namespace-id"
-preview_id = "user-sessions-kv-preview-id"
+id = "10f7f3c4a0ed4c069ce1802d06393ca8"
+preview_id = "10f7f3c4a0ed4c069ce1802d06393ca8"
 
 # D1 Database for user data and stock analysis storage
 [[d1_databases]]
 binding = "DB"
 database_name = "stockbrain-db"
-database_id = "your-database-id"
+database_id = "4827eede-850e-469c-9ea4-4b17a79408aa"
 
 # R2 Storage for file uploads and images
 [[r2_buckets]]
@@ -73,8 +73,9 @@ bucket_name = "stockbrain-storage"
 binding = "STOCK_DATA_QUEUE"
 queue = "stockbrain-queue"
 
-[[queues.consumers]]
-queue = "stockbrain-queue"
+# Note: Queue consumer handler needs to be implemented
+# [[queues.consumers]]
+# queue = "stockbrain-queue"
 
 # Analytics Engine for usage tracking
 [[analytics_engine_datasets]]
