@@ -4,7 +4,7 @@ import { FRAMEWORK_TEXT } from './framework-context';
 
 export class LLMService {
     private apiKey: string;
-    private modelName: string = "gpt-4o"; // Using GPT-4o for live data capability
+    private modelName: string = "deepseek/deepseek-chat";
 
     constructor(apiKey: string) {
         this.apiKey = apiKey;
@@ -61,13 +61,15 @@ export class LLMService {
       - "recommended_actions": An array of objects matching this interface: { type: 'BUY'|'SELL'|'HOLD'|'TRIM'|'ALERT', ticker: string, sleeve: string, reason: string, confidence: number (0-1) }
     `;
 
-        // 3. Call OpenAI LLM via Fetch
+        // 3. Call OpenAI-compatible LLM via Fetch (OpenRouter)
         try {
-            const response = await fetch("https://api.openai.com/v1/chat/completions", {
+            const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
-                    "Authorization": `Bearer ${this.apiKey}`
+                    "Authorization": `Bearer ${this.apiKey}`,
+                    "HTTP-Referer": "https://stockcommand.workers.dev", // Optional, for OpenRouter rankings
+                    "X-Title": "StockCommand Agent"
                 },
                 body: JSON.stringify({
                     model: this.modelName,
@@ -82,7 +84,7 @@ export class LLMService {
 
             if (!response.ok) {
                 const err = await response.text();
-                throw new Error(`OpenAI API Error: ${response.status} - ${err}`);
+                throw new Error(`OpenRouter API Error: ${response.status} - ${err}`);
             }
 
             const data = await response.json() as any;

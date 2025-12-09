@@ -36,23 +36,23 @@ export async function runAgentWorkflow(
     console.log(`Starting StockCommand Agent Workflow (Scope: ${scope})...`);
 
     const AV_KEY = env.ALPHA_VANTAGE_API_KEY || '';
-    const OPENAI_KEY = env.OPENAI_API_KEY || '';
+    const DEEPSEEK_KEY = env.OPENROUTER_DEEPSEEK_CHAT_API_KEY || '';
 
     if (!AV_KEY) {
         console.error("Missing ALPHA_VANTAGE_API_KEY");
         return { analysis: "Error: Missing Alpha Vantage API Key", actions: [] };
     }
 
-    if (!OPENAI_KEY) {
-        console.error("Missing OPENAI_API_KEY");
-        return { analysis: "Error: Missing OpenAI API Key", actions: [] };
+    if (!DEEPSEEK_KEY) {
+        console.error("Missing OPENROUTER_DEEPSEEK_CHAT_API_KEY");
+        return { analysis: "Error: Missing DeepSeek API Key", actions: [] };
     }
 
-    console.log(`DEBUG: OpenAI Key Length: ${OPENAI_KEY.length}`);
-    if (OPENAI_KEY.length > 5) {
-        console.log(`DEBUG: OpenAI Key Start: ${OPENAI_KEY.substring(0, 4)}... End: ...${OPENAI_KEY.slice(-4)}`);
+    console.log(`DEBUG: DeepSeek Key Length: ${DEEPSEEK_KEY.length}`);
+    if (DEEPSEEK_KEY.length > 5) {
+        console.log(`DEBUG: DeepSeek Key Start: ${DEEPSEEK_KEY.substring(0, 4)}... End: ...${DEEPSEEK_KEY.slice(-4)}`);
     } else {
-        console.log(`DEBUG: OpenAI Key is too short! (${OPENAI_KEY})`);
+        console.log(`DEBUG: DeepSeek Key is too short! (${DEEPSEEK_KEY})`);
     }
 
     // 1. Refresh Data
@@ -60,7 +60,7 @@ export async function runAgentWorkflow(
     const portfolio = await fetchPortfolioState();
 
     // 2. Research & Analyze (Engine with LLM)
-    const engine = new AgentEngine(OPENAI_KEY);
+    const engine = new AgentEngine(DEEPSEEK_KEY);
     const { analysis, actions } = await engine.evaluate(scope, marketData, portfolio, target);
 
     // 3. Act
