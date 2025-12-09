@@ -585,7 +585,7 @@ async function runHybridChatCompletion(
     {
       role: 'system',
       content:
-        'You are StockBrain, a decisive financial strategist. Use the provided reasoning notes to craft a clear, actionable answer. Never mention the notes explicitly.',
+        'You are StockCommand, a decisive financial strategist. Use the provided reasoning notes to craft a clear, actionable answer. Never mention the notes explicitly.',
     },
     {
       role: 'user',
@@ -735,7 +735,7 @@ async function runOpenRouterCompletion(apiKey: string, modelId: string, messages
       'Content-Type': 'application/json',
       Authorization: `Bearer ${apiKey}`,
       'HTTP-Referer': 'https://stockbrain.averymiddlebrook2014.workers.dev/',
-      'X-Title': 'StockBrain',
+      'X-Title': 'StockCommand',
     },
     body: JSON.stringify({
       model: modelId,
@@ -879,7 +879,7 @@ async function generatePortfolioReportPayload({
       {
         role: 'system',
         content:
-          'You are StockBrain, an institutional-grade portfolio strategist. Return ONLY valid JSON with keys summary (string), allocations (array), riskNotes (string array), and playbook (string array). Each allocation entry must include symbol, thesis, and weight as a decimal between 0 and 1.',
+          'You are StockCommand, an institutional-grade portfolio strategist. Return ONLY valid JSON with keys summary (string), allocations (array), riskNotes (string array), and playbook (string array). Each allocation entry must include symbol, thesis, and weight as a decimal between 0 and 1.',
       },
       {
         role: 'user',

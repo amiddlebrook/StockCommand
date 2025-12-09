@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# Cloudflare Secrets Setup Script for StockBrain
-# This script configures all required secrets for the StockBrain app
+# Cloudflare Secrets Setup Script for StockCommand
+# This script configures all required secrets for the StockCommand app
 
-echo "🚀 Setting up Cloudflare secrets for StockBrain..."
+echo "🚀 Setting up Cloudflare secrets for StockCommand..."
 
 # Check if wrangler is installed
 if ! command -v wrangler &> /dev/null; then

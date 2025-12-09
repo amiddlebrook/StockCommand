@@ -1,4 +1,4 @@
-# StockBrain Architecture Summary
+# StockCommand Architecture Summary
 
 ## Current Architecture
 

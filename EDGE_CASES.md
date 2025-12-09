@@ -2,7 +2,7 @@
 
 ## Introduction
 
-This document identifies potential edge cases and failure modes in the StockBrain application,
+This document identifies potential edge cases and failure modes in the StockCommand application,
 along with recommended mitigation strategies.
 
 ## Data Layer Edge Cases

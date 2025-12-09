@@ -1,5 +1,5 @@
 /**
- * Utility functions for the StockBrain application
+ * Utility functions for the StockCommand application
  */
 
 /**

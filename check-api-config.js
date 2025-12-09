@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * API Configuration Checker
- * Verifies that API keys are properly configured for StockBrain
+ * Verifies that API keys are properly configured for StockCommand
  */
 
 import { readFileSync, existsSync } from 'fs';
@@ -51,7 +51,7 @@ function maskKey(key) {
   return key.substring(0, 4) + '***' + key.substring(key.length - 4);
 }
 
-console.log('🔍 StockBrain API Configuration Checker\n');
+console.log('🔍 StockCommand API Configuration Checker\n');
 
 const envLocalPath = join(__dirname, '.env.local');
 const envPath = join(__dirname, '.env');

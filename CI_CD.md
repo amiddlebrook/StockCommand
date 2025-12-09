@@ -1,10 +1,10 @@
-# CI/CD Setup for StockBrain
+# CI/CD Setup for StockCommand
 
-This document describes the continuous integration and deployment pipeline for the StockBrain application.
+This document describes the continuous integration and deployment pipeline for the StockCommand application.
 
 ## Overview
 
-StockBrain uses GitHub Actions for automated building, testing, and deployment to Cloudflare Workers.
+StockCommand uses GitHub Actions for automated building, testing, and deployment to Cloudflare Workers.
 
 ## Workflows
 
@@ -134,6 +134,6 @@ npm run build
 Add these to your README.md:
 
 ```markdown
-[![Deploy to Cloudflare Workers](https://github.com/amiddlebrook/StockBrain/actions/workflows/deploy.yml/badge.svg)](https://github.com/amiddlebrook/StockBrain/actions/workflows/deploy.yml)
-[![CI - Pull Request Checks](https://github.com/amiddlebrook/StockBrain/actions/workflows/pr-checks.yml/badge.svg)](https://github.com/amiddlebrook/StockBrain/actions/workflows/pr-checks.yml)
+[![Deploy to Cloudflare Workers](https://github.com/amiddlebrook/StockCommand/actions/workflows/deploy.yml/badge.svg)](https://github.com/amiddlebrook/StockCommand/actions/workflows/deploy.yml)
+[![CI - Pull Request Checks](https://github.com/amiddlebrook/StockCommand/actions/workflows/pr-checks.yml/badge.svg)](https://github.com/amiddlebrook/StockCommand/actions/workflows/pr-checks.yml)
 ```

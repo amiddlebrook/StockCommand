@@ -1,0 +1,28 @@
+import { MarketData, RotationRule, AgentAction, PortfolioState } from './types';
+import { LLMService } from './llm-service';
+
+export class AgentEngine {
+    private llmService: LLMService;
+
+    constructor(apiKey: string) {
+        this.llmService = new LLMService(apiKey);
+    }
+
+    public async evaluate(
+        scope: 'FULL' | 'SLEEVE' | 'TICKER',
+        marketData: Record<string, MarketData>,
+        portfolio: PortfolioState, // Passed but LLM currently focuses on market data + text
+        target?: string
+    ): Promise<{ analysis: string; actions: AgentAction[] }> {
+
+        console.log(`[Engine] Running AI evaluation for scope: ${scope}, target: ${target}`);
+
+        // Delegate complex reasoning to LLM
+        const result = await this.llmService.analyze(scope, marketData, target);
+
+        // We could potentially add "Hard encoded" safety checks here
+        // e.g. "Never sell > 50% of NVDA" regardless of LLM output
+
+        return result;
+    }
+}

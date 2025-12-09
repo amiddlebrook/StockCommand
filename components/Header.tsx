@@ -21,7 +21,7 @@ export const Header: React.FC = () => {
             {/* Title */}
             <div className="flex flex-col">
               <h1 className="text-xl md:text-2xl font-bold bg-gradient-to-r from-cyan-400 via-purple-400 to-cyan-400 bg-clip-text text-transparent tracking-tight">
-                StockBrain
+                StockCommand
               </h1>
               <p className="text-xs text-gray-500 tracking-wider hidden sm:block">AI-Powered Market Intelligence</p>
             </div>

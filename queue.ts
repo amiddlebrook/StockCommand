@@ -1,5 +1,5 @@
 /**
- * Cloudflare Queue Handler for StockBrain
+ * Cloudflare Queue Handler for StockCommand
  * 
  * This handler processes background stock data refreshes and other async tasks
  */

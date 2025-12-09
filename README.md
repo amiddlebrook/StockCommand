@@ -1,9 +1,9 @@
 
 
-# StockBrain - AI Stock Analyzer
+# StockCommand - AI Stock Analyzer
 
-[![Deploy to Cloudflare Workers](https://github.com/amiddlebrook/StockBrain/actions/workflows/deploy.yml/badge.svg)](https://github.com/amiddlebrook/StockBrain/actions/workflows/deploy.yml)
-[![CI - Pull Request Checks](https://github.com/amiddlebrook/StockBrain/actions/workflows/pr-checks.yml/badge.svg)](https://github.com/amiddlebrook/StockBrain/actions/workflows/pr-checks.yml)
+[![Deploy to Cloudflare Workers](https://github.com/amiddlebrook/StockCommand/actions/workflows/deploy.yml/badge.svg)](https://github.com/amiddlebrook/StockCommand/actions/workflows/deploy.yml)
+[![CI - Pull Request Checks](https://github.com/amiddlebrook/StockCommand/actions/workflows/pr-checks.yml/badge.svg)](https://github.com/amiddlebrook/StockCommand/actions/workflows/pr-checks.yml)
 
 An adaptive AI environment where users can analyze stocks and options through natural conversation. The AI generates data tables, divergence counts, visual patterns, and strategy suggestions dynamically.
 
@@ -28,7 +28,7 @@ This contains everything you need to run your app locally and deploy to Cloudfla
 
 ## API Configuration
 
-StockBrain supports multiple AI providers. Configure at least one of the following:
+StockCommand supports multiple AI providers. Configure at least one of the following:
 
 ### AI Providers (choose one or more)
 
@@ -64,7 +64,7 @@ The app will automatically use the first available provider in order of priority
 
 ## Deploy to Cloudflare Workers
 
-StockBrain is configured to deploy to Cloudflare Workers using Wrangler.
+StockCommand is configured to deploy to Cloudflare Workers using Wrangler.
 
 **Prerequisites:** Wrangler CLI and a Cloudflare account
 
@@ -110,7 +110,7 @@ Your app will be deployed to a `*.workers.dev` subdomain. You can configure a cu
 
 ### Configuration for Production
 
-StockBrain uses a **secure API proxy architecture** where:
+StockCommand uses a **secure API proxy architecture** where:
 - **API keys are stored as Cloudflare secrets** (server-side only)
 - The Cloudflare Worker acts as a secure proxy for all AI API calls
 - External LLM providers (OpenAI, Claude, Gemini, OpenRouter) are accessed through the worker
@@ -135,7 +135,7 @@ Configure at least one AI provider using `wrangler secret put`:
 
 ## CI/CD Pipeline
 
-StockBrain uses GitHub Actions for automated deployment to Cloudflare Workers.
+StockCommand uses GitHub Actions for automated deployment to Cloudflare Workers.
 
 - **Pull Requests:** Automatically build and validate the application
 - **Main Branch:** Automatically build and deploy to production

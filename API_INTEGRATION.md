@@ -1,10 +1,10 @@
 # API Integration Guide
 
-This document provides detailed information about the multi-provider API integration in StockBrain.
+This document provides detailed information about the multi-provider API integration in StockCommand.
 
 ## Overview
 
-StockBrain now supports multiple AI providers, allowing you to choose from:
+StockCommand now supports multiple AI providers, allowing you to choose from:
 - Google Gemini
 - OpenAI
 - Anthropic Claude
@@ -33,7 +33,7 @@ StockBrain now supports multiple AI providers, allowing you to choose from:
 ### Google Gemini (Recommended)
 - **Environment Variable**: `VITE_GEMINI_API_KEY`
 - **Get API Key**: https://ai.google.dev/
-- **Features**: Full support for all StockBrain features
+- **Features**: Full support for all StockCommand features
 - **Cost**: Free tier available
 
 ### OpenAI
@@ -142,5 +142,5 @@ The app automatically selects the first available provider in this order:
 If you encounter issues:
 1. Check the browser console for error messages
 2. Verify your API keys are valid
-3. Ensure you're using the latest version of StockBrain
+3. Ensure you're using the latest version of StockCommand
 4. Open an issue on GitHub with details about your setup
