@@ -71,6 +71,9 @@ const App: React.FC = () => {
   const [agentOutput, setAgentOutput] = useState<string | null>(null);
   const [isAgentRunning, setIsAgentRunning] = useState(false);
 
+  // Uncurated Ticker State
+  const [uncuratedTicker, setUncuratedTicker] = useState<string | null>(null);
+
   // Profile State
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
@@ -93,9 +96,31 @@ const App: React.FC = () => {
     return acc;
   }, {} as Record<string, typeof UNIVERSE>);
 
+  const handleActionAddUncurated = (symbol: string) => {
+    handleAddSymbol(symbol);
+    setUncuratedTicker(null); // Dismiss warning after adding
+  };
+
+  const handleActionOverride = () => {
+    setUncuratedTicker(null); // Just dismiss
+  };
+
+  const checkCurated = (symbol: string) => {
+    const isCurated = UNIVERSE.some(t => t.symbol === symbol);
+    if (!isCurated) {
+      setUncuratedTicker(symbol);
+    } else {
+      setUncuratedTicker(null);
+    }
+  };
 
   const handleRunAgentScan = async (scope: 'FULL' | 'SLEEVE' | 'TICKER', target?: string) => {
     setIsAgentRunning(true);
+    if (scope === 'TICKER' && target) {
+      checkCurated(target);
+    } else {
+      setUncuratedTicker(null);
+    }
     setAgentOutput(`Initializing ${scope} scan...`);
 
     try {
@@ -209,6 +234,7 @@ const App: React.FC = () => {
   const handleAnalysisRequest = async (featureType: string, rawSymbol: string) => {
     const symbol = rawSymbol.trim().toUpperCase();
     if (!symbol) return;
+    checkCurated(symbol);
 
     setIsDashboardLoading(true);
     setMobileView('dashboard');
@@ -515,6 +541,41 @@ const App: React.FC = () => {
 
           {/* Auto-Scroll Content Area */}
           <div className="flex-1 overflow-y-auto p-6 space-y-8 scrollbar-thin scrollbar-thumb-slate-700 custom-markdown">
+
+            {/* UNCURATED WARNING */}
+            {uncuratedTicker && (
+              <div className="bg-red-900/20 border border-red-500/50 rounded-lg p-4 animate-scaleIn relative overflow-hidden">
+                <div className="absolute top-0 right-0 p-2 opacity-20">
+                  <Icon icon="alert" className="w-16 h-16 text-red-500" />
+                </div>
+                <div className="relative z-10">
+                  <h3 className="text-red-400 font-bold text-sm uppercase tracking-wider mb-1 flex items-center gap-2">
+                    <Icon icon="alert" className="w-4 h-4" />
+                    Uncurated Ticker Detected: {uncuratedTicker}
+                  </h3>
+                  <p className="text-gray-300 text-xs mb-3 max-w-lg">
+                    This asset is <strong>outside the scope</strong> of the Core Portfolio Strategy (2026-2031).
+                    The AI Agent can analyze it, but it lacks the customized role-based context defined in the main framework.
+                    Results may be generic.
+                  </p>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleActionOverride}
+                      className="px-3 py-1 bg-red-800/40 hover:bg-red-700/50 text-red-200 text-xs rounded border border-red-700/50 transition-colors"
+                    >
+                      Override & View Analysis
+                    </button>
+                    <button
+                      onClick={() => handleActionAddUncurated(uncuratedTicker)}
+                      className="px-3 py-1 bg-slate-700 hover:bg-slate-600 text-white text-xs rounded border border-slate-600 transition-colors"
+                    >
+                      Add to Custom Portfolio
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Agent Output */}
             {agentOutput && (
               <div className="animate-fadeIn">
