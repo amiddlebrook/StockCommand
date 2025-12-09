@@ -13,13 +13,18 @@ interface PortfolioViewProps {
 export const PortfolioView: React.FC<PortfolioViewProps> = ({ sleevesWithStats, totalLiquidity = 1240500 }) => {
     // Use a Record to track open state for each sleeve
     const [openSleeves, setOpenSleeves] = useState<Record<string, boolean>>(() => {
-        // Default open the first one if available
-        return sleevesWithStats.length > 0 ? { [sleevesWithStats[0].sleeveName]: true } : {};
+        // Default all closed for the grid view initally, or maybe first one open?
+        // Let's keep closed for a clean "dashboard" look
+        return {};
     });
 
     const toggleSleeve = (sleeveName: string) => {
         setOpenSleeves(prev => ({
             ...prev,
+            // If we want accordion style (one at a time), we would do:
+            // [sleeveName]: !prev[sleeveName], ...mapOtherToFalse
+            // But multiple open might be useful? For grid, usually single expansion is cleaner.
+            // Let's toggle individually.
             [sleeveName]: !prev[sleeveName]
         }));
     };
@@ -88,82 +93,123 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({ sleevesWithStats, 
                     </div>
                 </div>
 
-                {/* Sleeves Accordion List */}
-                <div className="p-6 md:p-8 space-y-4">
-                    {sleevesWithStats.map((sleeve) => {
-                        const isOpen = openSleeves[sleeve.sleeveName];
-                        return (
-                            <div key={sleeve.sleeveName} className="border border-slate-800 rounded-xl bg-slate-900/30 overflow-hidden transition-all duration-200">
+                {/* Sleeves Grid */}
+                <div className="p-6 md:p-8">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {sleevesWithStats.map((sleeve) => {
+                            const isOpen = openSleeves[sleeve.sleeveName];
 
-                                {/* Accordion Header */}
+                            // Dynamic class to handle spanning
+                            const gridSpanClass = isOpen ? 'col-span-1 md:col-span-3' : 'col-span-1';
+
+                            return (
                                 <div
-                                    className="p-4 flex items-center justify-between cursor-pointer hover:bg-slate-800/50 transition-colors"
-                                    onClick={() => toggleSleeve(sleeve.sleeveName)}
+                                    key={sleeve.sleeveName}
+                                    className={`
+                            ${gridSpanClass} 
+                            border border-slate-800 rounded-xl bg-slate-900/30 overflow-hidden transition-all duration-300 ease-in-out
+                            ${isOpen ? 'ring-1 ring-slate-700 shadow-xl' : 'hover:bg-slate-800/50 hover:border-slate-700'}
+                          `}
                                 >
-                                    <div className="flex items-center gap-4">
-                                        <div className={`p-1 rounded bg-slate-800/50 text-gray-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}>
-                                            <Icon icon="chevron-down" className="w-4 h-4" />
-                                        </div>
-                                        <div>
-                                            <div className="flex items-center gap-3">
-                                                <h3 className="font-bold text-lg text-slate-200">{sleeve.sleeveName}</h3>
-                                                <span className="px-2 py-0.5 rounded-full bg-slate-800 text-xs text-gray-500 font-mono">
-                                                    {sleeve.items.length} Assets
-                                                </span>
+
+                                    {/* Card Header (Clickable) */}
+                                    <div
+                                        className="p-4 flex items-center justify-between cursor-pointer"
+                                        onClick={() => toggleSleeve(sleeve.sleeveName)}
+                                    >
+                                        <div className="flex items-center gap-4">
+                                            <div className={`
+                                        p-1.5 rounded-lg bg-slate-800 text-gray-400 transition-transform duration-300
+                                        ${isOpen ? 'rotate-180 bg-slate-700 text-cyan-400' : ''}
+                                   `}>
+                                                <Icon icon="chevron-down" className="w-4 h-4" />
+                                            </div>
+                                            <div>
+                                                <div className="flex items-center gap-3">
+                                                    <h3 className="font-bold text-base text-slate-200">{sleeve.sleeveName}</h3>
+                                                    {!isOpen && (
+                                                        <span className="px-2 py-0.5 rounded-full bg-slate-800 text-[10px] text-gray-500 font-mono border border-slate-700/50">
+                                                            {sleeve.items.length}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                {/* Mini stats preview when collapsed */}
+                                                {!isOpen && (
+                                                    <div className="flex gap-2 mt-1.5">
+                                                        {/* Simple pill indicators */}
+                                                        {(sleeve.stats.green > 0 || sleeve.stats.yellow > 0 || sleeve.stats.red > 0) ? (
+                                                            <div className="flex h-1.5 gap-0.5">
+                                                                {[...Array(sleeve.stats.green)].map((_, i) => <div key={`g-${i}`} className="w-3 rounded-full bg-emerald-500/50"></div>)}
+                                                                {[...Array(sleeve.stats.yellow)].map((_, i) => <div key={`y-${i}`} className="w-3 rounded-full bg-amber-500/50"></div>)}
+                                                                {[...Array(sleeve.stats.red)].map((_, i) => <div key={`r-${i}`} className="w-3 rounded-full bg-red-500/50"></div>)}
+                                                            </div>
+                                                        ) : <span className="text-[10px] text-gray-600">No signals</span>}
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
+
+                                        <div className="flex gap-2">
+                                            {/* Full stats pills only show when open or on large screens? 
+                                       Let's show a summary pill if open
+                                   */}
+                                            {isOpen && (
+                                                <div className="flex gap-2">
+                                                    {sleeve.stats.green > 0 && <span className="text-xs bg-emerald-500/10 text-emerald-400 px-2 py-1 rounded border border-emerald-500/20 font-mono">{sleeve.stats.green} Bullish</span>}
+                                                    {sleeve.stats.yellow > 0 && <span className="text-xs bg-amber-500/10 text-amber-400 px-2 py-1 rounded border border-amber-500/20 font-mono">{sleeve.stats.yellow} Neutral</span>}
+                                                    {sleeve.stats.red > 0 && <span className="text-xs bg-red-500/10 text-red-400 px-2 py-1 rounded border border-red-500/20 font-mono">{sleeve.stats.red} Bearish</span>}
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
 
-                                    <div className="flex gap-2">
-                                        {sleeve.stats.green > 0 && <span className="hidden sm:inline-block text-xs bg-emerald-500/10 text-emerald-400 px-2 py-1 rounded border border-emerald-500/20 font-mono">{sleeve.stats.green} Bullish</span>}
-                                        {sleeve.stats.yellow > 0 && <span className="hidden sm:inline-block text-xs bg-amber-500/10 text-amber-400 px-2 py-1 rounded border border-amber-500/20 font-mono">{sleeve.stats.yellow} Neutral</span>}
-                                        {sleeve.stats.red > 0 && <span className="hidden sm:inline-block text-xs bg-red-500/10 text-red-400 px-2 py-1 rounded border border-red-500/20 font-mono">{sleeve.stats.red} Bearish</span>}
-                                    </div>
-                                </div>
-
-                                {/* Accordion Body (Table) */}
-                                {isOpen && (
-                                    <div className="border-t border-slate-800/50">
-                                        <table className="w-full text-left text-sm">
-                                            <thead>
-                                                <tr className="border-b border-slate-800/50 text-gray-500 text-xs uppercase tracking-wider bg-slate-900/20">
-                                                    <th className="px-6 py-3 font-medium pl-14">Symbol</th>
-                                                    <th className="px-6 py-3 font-medium">Name</th>
-                                                    <th className="px-6 py-3 font-medium text-right">Allocation</th>
-                                                    <th className="px-6 py-3 font-medium text-right">Trend Status</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="divide-y divide-slate-800/30">
-                                                {sleeve.items.map((ticker) => {
-                                                    const status = ['bg-emerald-500', 'bg-amber-500', 'bg-red-500'][ticker.symbol.length % 3];
-                                                    const statusLabel = ['Bullish', 'Neutral', 'Bearish'][ticker.symbol.length % 3];
-                                                    const statusColor = ['text-emerald-400', 'text-amber-400', 'text-red-400'][ticker.symbol.length % 3];
-
-                                                    return (
-                                                        <tr key={ticker.symbol} className="hover:bg-slate-800/30 transition-colors group">
-                                                            <td className="px-6 py-3 font-mono text-cyan-400 font-bold pl-14 group-hover:text-cyan-300 transition-colors">
-                                                                {ticker.symbol}
-                                                            </td>
-                                                            <td className="px-6 py-3 text-gray-300 font-medium">{ticker.name}</td>
-                                                            <td className="px-6 py-3 text-right font-mono text-gray-400">
-                                                                {(100 / sleeve.items.length).toFixed(1)}%
-                                                            </td>
-                                                            <td className="px-6 py-3 text-right">
-                                                                <div className="inline-flex items-center justify-end gap-2 px-3 py-1 rounded-full bg-slate-900/50 border border-slate-800/50">
-                                                                    <span className={`text-[10px] font-semibold uppercase tracking-wide ${statusColor}`}>{statusLabel}</span>
-                                                                    <div className={`w-1.5 h-1.5 rounded-full ${status}`}></div>
-                                                                </div>
-                                                            </td>
+                                    {/* Card Body (Table) - Only rendered if open */}
+                                    {isOpen && (
+                                        <div className="border-t border-slate-800/50 animate-fadeIn">
+                                            <div className="bg-slate-950/30">
+                                                <table className="w-full text-left text-sm">
+                                                    {/* Minimal Header */}
+                                                    <thead className="bg-slate-900/50 text-gray-500 text-xs uppercase tracking-wider">
+                                                        <tr>
+                                                            <th className="px-6 py-3 font-medium pl-14">Symbol</th>
+                                                            <th className="px-6 py-3 font-medium">Name</th>
+                                                            <th className="px-6 py-3 font-medium text-right">Allocation</th>
+                                                            <th className="px-6 py-3 font-medium text-right">Trend Status</th>
                                                         </tr>
-                                                    );
-                                                })}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                )}
-                            </div>
-                        );
-                    })}
+                                                    </thead>
+                                                    <tbody className="divide-y divide-slate-800/30">
+                                                        {sleeve.items.map((ticker) => {
+                                                            const status = ['bg-emerald-500', 'bg-amber-500', 'bg-red-500'][ticker.symbol.length % 3];
+                                                            const statusLabel = ['Bullish', 'Neutral', 'Bearish'][ticker.symbol.length % 3];
+                                                            const statusColor = ['text-emerald-400', 'text-amber-400', 'text-red-400'][ticker.symbol.length % 3];
+
+                                                            return (
+                                                                <tr key={ticker.symbol} className="hover:bg-slate-800/30 transition-colors group">
+                                                                    <td className="px-6 py-3 font-mono text-cyan-400 font-bold pl-14 group-hover:text-cyan-300 transition-colors">
+                                                                        {ticker.symbol}
+                                                                    </td>
+                                                                    <td className="px-6 py-3 text-gray-300 font-medium">{ticker.name}</td>
+                                                                    <td className="px-6 py-3 text-right font-mono text-gray-400">
+                                                                        {(100 / sleeve.items.length).toFixed(1)}%
+                                                                    </td>
+                                                                    <td className="px-6 py-3 text-right">
+                                                                        <div className="inline-flex items-center justify-end gap-2 px-3 py-1 rounded-full bg-slate-900/50 border border-slate-800/50">
+                                                                            <span className={`text-[10px] font-semibold uppercase tracking-wide ${statusColor}`}>{statusLabel}</span>
+                                                                            <div className={`w-1.5 h-1.5 rounded-full ${status}`}></div>
+                                                                        </div>
+                                                                    </td>
+                                                                </tr>
+                                                            );
+                                                        })}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
                 </div>
             </div>
         </div>
