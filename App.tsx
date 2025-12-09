@@ -631,24 +631,31 @@ const App: React.FC = () => {
           <div className="flex-1 overflow-y-auto p-4 space-y-6 scrollbar-thin scrollbar-thumb-slate-700">
             {/* Clocks */}
             <div className="space-y-3">
-              {[
-                { label: 'Liquidity Cycle', status: 'green' },
-                { label: 'Commodity Cycle', status: 'yellow' },
-                { label: 'VIX Regime', status: 'red' },
-                { label: 'Inflation Trend', status: 'yellow' },
-                { label: 'Credit Impulse', status: 'green' },
-                { label: 'Dollar Strength', status: 'red' }
-              ].map(clock => (
-                <div key={clock.label} className="bg-slate-800/50 p-3 rounded border border-slate-700/50 flex justify-between items-center group hover:border-amber-500/30 transition-colors cursor-default">
-                  <span className="text-gray-400 text-xs font-medium group-hover:text-gray-200">{clock.label}</span>
-                  <div className="flex items-center gap-2">
-                    <div className={`w-2 h-2 rounded-full ${clock.status === 'green' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' :
-                      clock.status === 'yellow' ? 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]' :
-                        'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]'
-                      }`} />
+              {/* Clocks */}
+              <div className="space-y-3">
+                {[
+                  { label: 'Liquidity Cycle', status: 'green', code: 'CLOCK_LIQUIDITY_CYCLE' },
+                  { label: 'Commodity Cycle', status: 'yellow', code: 'CLOCK_COMMODITY_CYCLE' },
+                  { label: 'VIX Regime', status: 'red', code: 'CLOCK_VIX_REGIME' },
+                  { label: 'Inflation Trend', status: 'yellow', code: 'CLOCK_INFLATION_TREND' },
+                  { label: 'Credit Impulse', status: 'green', code: 'CLOCK_CREDIT_IMPULSE' },
+                  { label: 'Dollar Strength', status: 'red', code: 'CLOCK_DOLLAR_STRENGTH' }
+                ].map(clock => (
+                  <div
+                    key={clock.label}
+                    className="bg-slate-800/50 p-3 rounded border border-slate-700/50 flex justify-between items-center group hover:border-amber-500/30 transition-colors cursor-pointer hover:bg-slate-800"
+                    onClick={() => handleRunAgentScan('TOOL', clock.code)}
+                  >
+                    <span className="text-gray-400 text-xs font-medium group-hover:text-cyan-400 transition-colors">{clock.label}</span>
+                    <div className="flex items-center gap-2">
+                      <div className={`w-2 h-2 rounded-full ${clock.status === 'green' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' :
+                        clock.status === 'yellow' ? 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]' :
+                          'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]'
+                        }`} />
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
 
             {/* Sleeves Accordion */}
@@ -700,12 +707,12 @@ const App: React.FC = () => {
                               <span className="text-xs text-gray-400 font-mono group-hover:text-cyan-400 transition-colors">{ticker.symbol}</span>
                               {/* Ticker Status Clock Icon */}
                               <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full border ${status === 'green' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' :
-                                  status === 'yellow' ? 'bg-amber-500/10 border-amber-500/20 text-amber-400' :
-                                    'bg-red-500/10 border-red-500/20 text-red-400'
+                                status === 'yellow' ? 'bg-amber-500/10 border-amber-500/20 text-amber-400' :
+                                  'bg-red-500/10 border-red-500/20 text-red-400'
                                 }`}>
                                 <div className={`w-1.5 h-1.5 rounded-full ${status === 'green' ? 'bg-emerald-500' :
-                                    status === 'yellow' ? 'bg-amber-500' :
-                                      'bg-red-500'
+                                  status === 'yellow' ? 'bg-amber-500' :
+                                    'bg-red-500'
                                   }`} />
                                 <Icon icon="clock" className="w-3 h-3" />
                               </div>

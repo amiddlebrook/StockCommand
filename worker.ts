@@ -62,6 +62,55 @@ export default {
             });
         }
 
-        return new Response("StockCommand Worker Active. Endpoints: /api/agent/scan (POST), /api/agent/latest (GET)", { status: 200 });
+        if (url.pathname === "/api/chat" && request.method === "POST") {
+            try {
+                const body = await request.json() as any;
+                const { message, history } = body;
+                const apiKey = env.OPENROUTER_DEEPSEEK_CHAT_API_KEY;
+
+                if (!apiKey) {
+                    throw new Error("Missing OPENROUTER_DEEPSEEK_CHAT_API_KEY");
+                }
+
+                // Construct conversation for DeepSeek
+                const systemPrompt = "You are StockCommand, an advanced AI financial analyst. Answer queries concisely and professionally.";
+                const messages = [
+                    { role: "system", content: systemPrompt },
+                    ...history.map((h: any) => ({ role: h.role === 'model' ? 'assistant' : 'user', content: h.parts[0].text })),
+                    { role: "user", content: message }
+                ];
+
+                const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+                    method: "POST",
+                    headers: {
+                        "Authorization": `Bearer ${apiKey}`,
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        model: "deepseek/deepseek-chat",
+                        messages: messages,
+                        max_tokens: 1000
+                    })
+                });
+
+                const data: any = await response.json();
+                const reply = data.choices?.[0]?.message?.content || "No response generated.";
+
+                return new Response(JSON.stringify({ response: reply }), {
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Access-Control-Allow-Origin": "*"
+                    }
+                });
+
+            } catch (e: any) {
+                return new Response(JSON.stringify({ error: e.message }), {
+                    status: 500,
+                    headers: { "Access-Control-Allow-Origin": "*" }
+                });
+            }
+        }
+
+        return new Response("StockCommand Worker Active. Endpoints: /api/agent/scan (POST), /api/agent/latest (GET), /api/chat (POST)", { status: 200 });
     },
 };

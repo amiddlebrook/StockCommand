@@ -12,7 +12,15 @@ const TOOL_PROMPTS: Record<string, string> = {
     'Sentiment Analysis': 'Gauge the current market sentiment (Bullish/Bearish/Neutral) based on price action and volume flow.',
     'Technical Indicators': 'Calculate and interpret key technicals: RSI, MACD, Bollinger Bands, Moving Averages (50/200).',
     'Earnings Analysis': 'Analyze the most recent earnings print. EPS beat/miss? Revenue growth? Guidance tone?',
-    'Market Overview': 'Explain how this asset fits into the current broader Macro environment (Interest Rates, GDP, Sector Rotation).'
+    'Market Overview': 'Explain how this asset fits into the current broader Macro environment (Interest Rates, GDP, Sector Rotation).',
+
+    // Macro / Clock Prompts
+    'CLOCK_LIQUIDITY_CYCLE': 'Analyze the Global Liquidity Cycle. Focus on Central Bank balance sheets (Fed, ECB, PBoC), Repo market conditions, and M2 money supply trends. Proxy tickers: BTC-USD (Risk-on liquidity proxy), HYG (Credit conditions). Determine if we are in Expansion or Contraction.',
+    'CLOCK_COMMODITY_CYCLE': 'Analyze the Commodity Supercycle. Focus on Energy (XLE, Oil) and Base Metals (Copper, DBB). Are we in a structural supply deficit or surplus? Use DBC and USO as proxies.',
+    'CLOCK_VIX_REGIME': 'Analyze the Volatility Regime using VIX. Are we in Low Vol (<15), Structural Vol (15-25), or Crisis Vol (>25)? Assess the term structure of VIX futures if possible (Contango vs Backwardation).',
+    'CLOCK_INFLATION_TREND': 'Analyze the Inflation Trend. Compare TIPS (TIP) vs Nominal Treasuries (IEF) to gauge Breakeven Inflation expectations. Look at CPI/PCE trends. Are we Disinflationary or Reflationary?',
+    'CLOCK_CREDIT_IMPULSE': 'Analyze the Credit Impulse. focus on High Yield (HYG) vs Investment Grade (LQD) spreads. Are spreads widening (Defensive) or tightening (Risk-on)?',
+    'CLOCK_DOLLAR_STRENGTH': 'Analyze typical USD Strength (DXY/UUP). A rising dollar often tightens global financial conditions. Is the trend Bullish or Bearish and what does it mean for Emerging Markets and Gold?'
 };
 
 export class LLMService {
