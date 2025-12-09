@@ -104,6 +104,337 @@ const App: React.FC = () => {
     }
   };
 
+  // Auto-scroll chat
+  useEffect(() => {
+    if (!chatContainerRef.current) {
+      return;
+    }
+    chatContainerRef.current.scrollTo({
+      top: chatContainerRef.current.scrollHeight,
+      behavior: 'smooth',
+    });
+  }, [messages]);
+
+  const removeWidget = (id: string) => {
+    setWidgets(prev => prev.filter(widget => widget.id !== id));
+  };
+
+  const ensureSnapshotForSymbol = useCallback(async (symbol: string) => {
+    const upper = symbol.toUpperCase();
+    if (loadedSnapshotsRef.current.has(upper)) {
+      return;
+    }
+    loadedSnapshotsRef.current.add(upper);
+
+    try {
+      const snapshot = await fetchStockSnapshot(upper);
+      const text = `Price: $${snapshot.price.toFixed(2)} (${snapshot.changePercent.toFixed(2)}%)\n` +
+        `Change: ${snapshot.change.toFixed(2)} | Volume: ${snapshot.volume.toLocaleString()}\n` +
+        (snapshot.sector ? `Sector: ${snapshot.sector}\n` : '') +
+        (snapshot.industry ? `Industry: ${snapshot.industry}\n` : '') +
+        (snapshot.description ? `\n${snapshot.description}` : '');
+
+      const widget: AnalysisWidget = {
+        id: `snapshot-${upper}-${Date.now()}`,
+        type: 'profile',
+        title: `${upper} Snapshot`,
+        data: { text, sources: snapshot.sources },
+      };
+      setWidgets(prev => [widget, ...prev]);
+    } catch (error) {
+      console.error('Failed to load live snapshot:', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    symbols.forEach(symbol => {
+      ensureSnapshotForSymbol(symbol);
+    });
+  }, [symbols, ensureSnapshotForSymbol]);
+
+  const renderWidget = (widget: AnalysisWidget) => {
+    switch (widget.type) {
+      case 'divergence':
+        return <StockDivergenceChart id={widget.id} data={widget.data} onRemove={removeWidget} />;
+      case 'ghost':
+        return <GhostPatternChart id={widget.id} data={widget.data} onRemove={removeWidget} />;
+      case 'options':
+        return <OptionsStrategyCard id={widget.id} data={widget.data} onRemove={removeWidget} />;
+      case 'portfolio':
+        return (
+          <PortfolioReportWidget
+            id={widget.id}
+            title={widget.title}
+            data={widget.data}
+            onRemove={removeWidget}
+          />
+        );
+      case 'profile':
+      case 'news':
+      case 'comparison':
+      case 'error':
+      default:
+        return (
+          <TextWidget
+            id={widget.id}
+            title={widget.title}
+            text={widget.data?.text ?? ''}
+            sources={widget.data?.sources}
+            onRemove={removeWidget}
+          />
+        );
+    }
+  };
+
+  const handleAnalysisRequest = async (featureType: string, rawSymbol: string) => {
+    const symbol = rawSymbol.trim().toUpperCase();
+    if (!symbol) {
+      return;
+    }
+
+    setIsDashboardLoading(true);
+    setMobileView('dashboard');
+
+    const promptTemplate = FEATURE_PROMPTS[featureType] ?? `Provide a ${featureType} for SYMBOL.`;
+    const prompt = promptTemplate.replace(/SYMBOL/g, symbol);
+    const widgetId = `${featureType}-${symbol}-${Date.now()}`;
+
+    try {
+      if (['Divergence Analysis', 'Ghost Pattern', 'Options Strategy'].includes(featureType)) {
+        const response = await analyzeStockData(prompt, { model: analysisModelId });
+        const responseText = response.response ?? '';
+
+        let jsonData: any;
+        try {
+          jsonData = responseText ? JSON.parse(responseText) : undefined;
+        } catch (error) {
+          console.error('Failed to parse analysis response:', error);
+        }
+
+        if (featureType === 'Divergence Analysis' && jsonData?.divergenceData) {
+          const widget: AnalysisWidget = {
+            id: widgetId,
+            type: 'divergence',
+            title: `Divergence: ${symbol}`,
+            data: jsonData.divergenceData,
+          };
+          setWidgets(prev => [widget, ...prev]);
+          return;
+        }
+
+        if (featureType === 'Ghost Pattern' && jsonData?.ghostPatternData) {
+          const widget: AnalysisWidget = {
+            id: widgetId,
+            type: 'ghost',
+            title: `Ghost Pattern: ${symbol}`,
+            data: jsonData.ghostPatternData,
+          };
+          setWidgets(prev => [widget, ...prev]);
+          return;
+        }
+
+        if (featureType === 'Options Strategy' && jsonData?.optionsStrategy) {
+          const widget: AnalysisWidget = {
+            id: widgetId,
+            type: 'options',
+            title: `Options Strategy: ${symbol}`,
+            data: jsonData.optionsStrategy,
+          };
+          setWidgets(prev => [widget, ...prev]);
+          return;
+        }
+
+        if (jsonData?.analysisSummary) {
+          const widget: AnalysisWidget = {
+            id: widgetId,
+            type: 'profile',
+            title: `${featureType}: ${symbol}`,
+            data: { text: jsonData.analysisSummary, sources: [] },
+          };
+          setWidgets(prev => [widget, ...prev]);
+          return;
+        }
+
+        throw new Error('No data returned from analysis.');
+      }
+
+      const response = await searchWithGrounding(prompt, { model: analysisModelId });
+      const text = response.response ?? '';
+      const sources = response.candidates?.[0]?.groundingMetadata?.groundingChunks as Source[] | undefined;
+
+      const widget: AnalysisWidget = {
+        id: widgetId,
+        type: 'profile',
+        title: `${featureType}: ${symbol}`,
+        data: { text: text || 'No information available at the moment.', sources },
+      };
+      setWidgets(prev => [widget, ...prev]);
+    } catch (error) {
+      console.error(`Error during ${featureType} analysis:`, error);
+      const fallbackWidget = {
+        id: `${widgetId}-error`,
+        type: 'error' as const,
+        title: `Error: ${featureType} for ${symbol}`,
+        data: { text: 'Failed to generate analysis. Please try again.', sources: [] },
+      };
+      setWidgets(prev => [fallbackWidget, ...prev]);
+    } finally {
+      setIsDashboardLoading(false);
+    }
+  };
+
+  const handleSendMessage = async (message: string, image?: File) => {
+    if (!message.trim() && !image) {
+      return;
+    }
+
+    const userMessage: ChatMessageType = {
+      id: `user-${Date.now()}`,
+      role: 'user',
+      content: message,
+    };
+
+    const modelMessageId = `model-${Date.now() + 1}`;
+    const loadingMessage: ChatMessageType = {
+      id: modelMessageId,
+      role: 'model',
+      content: '',
+      isLoading: true,
+    };
+
+    setMessages(prev => [...prev, userMessage, loadingMessage]);
+    setIsChatLoading(true);
+
+    try {
+      let responseText = '';
+      let sources: Source[] | undefined;
+
+      if (image) {
+        const response = await analyzeImage(message || 'Analyze this image.', image, { model: analysisModelId });
+        responseText = response.response ?? '';
+      } else {
+        const history = messages
+          .filter(m => (m.role === 'user' || m.role === 'model') && !m.isLoading)
+          .map(m => ({
+            role: m.role as 'user' | 'model',
+            parts: [{ text: m.content }],
+          }));
+
+        const response = await sendMessage(message, history, {
+          activeSymbol,
+          watchlist: symbols,
+        });
+        responseText = response.response ?? '';
+      }
+
+      const newBotMessage: ChatMessageType = {
+        id: modelMessageId,
+        role: 'model',
+        content: responseText || "Sorry, I couldn't process that request.",
+        sources,
+        isLoading: false,
+      };
+
+      setMessages(prev => prev.map(msg => (msg.id === modelMessageId ? newBotMessage : msg)));
+    } catch (error) {
+      console.error('Error handling message:', error);
+      const errorMessage: ChatMessageType = {
+        id: modelMessageId,
+        role: 'model',
+        content: 'An error occurred. Please try again.',
+        isLoading: false,
+      };
+      setMessages(prev => prev.map(msg => (msg.id === modelMessageId ? errorMessage : msg)));
+    } finally {
+      setIsChatLoading(false);
+    }
+  };
+
+  const handleStartRecording = async () => {
+    try {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        throw new Error('Audio recording is not supported in this browser.');
+      }
+
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = recorder;
+      audioChunksRef.current = [];
+
+      recorder.ondataavailable = event => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      recorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        console.info('Recorded audio blob', audioBlob);
+      };
+
+      recorder.start();
+      setIsRecording(true);
+    } catch (error) {
+      console.error('Failed to start recording:', error);
+    }
+  };
+
+  const handleStopRecording = () => {
+    const recorder = mediaRecorderRef.current;
+    if (!recorder) {
+      return;
+    }
+
+    if (recorder.state !== 'inactive') {
+      recorder.stop();
+    }
+
+    mediaRecorderRef.current = null;
+    setIsRecording(false);
+  };
+
+  const handleAddSymbol = (symbol: string) => {
+    const upper = symbol.toUpperCase();
+    setSymbols(prev => (prev.includes(upper) ? prev : [...prev, upper]));
+    setActiveSymbol(upper);
+    ensureSnapshotForSymbol(upper);
+    handleAnalysisRequest('Company Profile', upper);
+  };
+
+  const handleRemoveSymbol = (symbol: string) => {
+    const upper = symbol.toUpperCase();
+    setSymbols(prev => prev.filter(s => s !== upper));
+    setWidgets(prev => prev.filter(widget => !widget.title?.includes(upper)));
+    if (activeSymbol === upper) {
+      const remaining = symbols.filter(s => s !== upper);
+      setActiveSymbol(remaining[0] ?? null);
+    }
+  };
+
+  const handleSelectSymbol = (symbol: string) => {
+    setActiveSymbol(symbol);
+  };
+
+  const handleGeneratePortfolioReport = async (tickers: string[], goal: string) => {
+    setIsPortfolioGenerating(true);
+    try {
+      const report = await generatePortfolioReport(tickers, goal);
+      const widget: AnalysisWidget = {
+        id: `portfolio-${Date.now()}`,
+        type: 'portfolio',
+        title: `Portfolio Report (${tickers.join(', ')})`,
+        data: report,
+      };
+      setWidgets(prev => [widget, ...prev]);
+      setIsPortfolioModalOpen(false);
+      setMobileView('dashboard');
+    } catch (error) {
+      console.error('Failed to generate portfolio report:', error);
+    } finally {
+      setIsPortfolioGenerating(false);
+    }
+  };
+
   // Load persisted agent run on mount
   useEffect(() => {
     const loadPersistedRun = async () => {
