@@ -23,6 +23,7 @@ import { DEFAULT_CHAT_MODEL } from './lib/constants/llmModels';
 import { fetchStockSnapshot } from './services/stockData';
 import { PortfolioReportModal } from './components/PortfolioReportModal';
 import { PortfolioReportWidget } from './components/PortfolioReportWidget';
+import { PortfolioView } from './components/PortfolioView';
 import { UNIVERSE } from './lib/agent/universe';
 import { ProfileModal } from './components/ProfileModal';
 
@@ -61,6 +62,7 @@ const App: React.FC = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [widgets, setWidgets] = useState<AnalysisWidget[]>([]);
   const [mobileView, setMobileView] = useState<MobileView>('toolbox');
+  const [activeTab, setActiveTab] = useState<'command-center' | 'portfolio'>('command-center');
   const analysisModelId = DEFAULT_CHAT_MODEL.id;
   const [symbols, setSymbols] = useState<string[]>(DEFAULT_SYMBOLS);
   const [activeSymbol, setActiveSymbol] = useState<string | null>(DEFAULT_SYMBOLS[0]);
@@ -494,282 +496,288 @@ const App: React.FC = () => {
   return (
     <div className="h-screen w-screen bg-slate-950 text-gray-100 flex flex-col overflow-hidden font-sans">
       <div className="flex-none z-50 shadow-md">
-        <Header onOpenProfile={() => setIsProfileOpen(true)} />
+        <Header activeTab={activeTab} onTabChange={setActiveTab} onOpenProfile={() => setIsProfileOpen(true)} />
       </div>
 
       <div className="flex-1 flex overflow-hidden">
-        {/* LEFT COLUMN: Portfolio & Actions (25%) */}
-        <div className="w-[300px] xl:w-[350px] flex flex-col border-r border-slate-800 bg-slate-900/40">
-          <div className="p-3 bg-slate-900 border-b border-slate-800 font-semibold text-xs text-cyan-400 tracking-wider">
-            PORTFOLIO CONTEXT
-          </div>
-          <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin scrollbar-thumb-slate-700">
-            {/* Fake Portfolio Summary */}
-            <div className="bg-slate-800/50 rounded p-3 border border-slate-700/50">
-              <div className="flex justify-between items-end mb-2">
-                <span className="text-gray-400 text-xs">Total Liquidity</span>
-                <span className="text-xl font-bold font-mono text-emerald-400">$1,240,500</span>
+        {activeTab === 'command-center' ? (
+          <>
+            {/* LEFT COLUMN: Portfolio & Actions (25%) */}
+            <div className="w-[300px] xl:w-[350px] flex flex-col border-r border-slate-800 bg-slate-900/40">
+              <div className="p-3 bg-slate-900 border-b border-slate-800 font-semibold text-xs text-cyan-400 tracking-wider">
+                PORTFOLIO CONTEXT
               </div>
-              <div className="h-1.5 w-full bg-slate-700 rounded-full overflow-hidden">
-                <div className="h-full bg-gradient-to-r from-cyan-500 to-blue-500 w-[65%]" />
-              </div>
-              <div className="flex justify-between text-[10px] text-gray-500 mt-1">
-                <span>Core: 65%</span>
-                <span>Cash: 35%</span>
-              </div>
-            </div>
-
-            {/* Toolbox for Quick Access */}
-            <Toolbox
-              symbols={symbols}
-              activeSymbol={activeSymbol}
-              onAddSymbol={handleAddSymbol}
-              onRemoveSymbol={handleRemoveSymbol}
-              onSelectSymbol={handleSelectSymbol}
-              onAnalysisRequested={handleAnalysisRequest}
-              onPortfolioReport={() => setIsPortfolioModalOpen(true)}
-              isLoading={isDashboardLoading}
-            />
-          </div>
-        </div>
-
-        {/* MIDDLE COLUMN: Command Center (50%) */}
-        <div className="flex-1 flex flex-col min-w-0 bg-slate-950 relative">
-          <div className="p-3 bg-slate-900/80 backdrop-blur border-b border-slate-800 flex justify-between items-center z-10">
-            <div className="font-semibold text-xs text-emerald-400 tracking-wider flex items-center gap-2">
-              <Icon icon="bot" className="w-4 h-4" />
-              AGENT COMMAND CENTER
-            </div>
-            {isAgentRunning && <span className="text-xs text-amber-400 animate-pulse">Processing...</span>}
-          </div>
-
-          {/* Agent Controls Overlay */}
-          <div className="p-4 border-b border-slate-800/50 flex gap-2 overflow-x-auto bg-slate-900/20">
-            <button
-              onClick={() => handleRunAgentScan('FULL')}
-              disabled={isAgentRunning}
-              className="whitespace-nowrap px-4 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded text-xs font-semibold shadow-sm transition-all disabled:opacity-50"
-            >
-              RUN FULL SCAN
-            </button>
-            <div className="h-6 w-px bg-slate-700 mx-1" />
-            <select
-              id="sleeve-select"
-              className="bg-slate-800 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200 outline-none focus:border-blue-500"
-              onChange={(e) => {
-                if (e.target.value) handleRunAgentScan('SLEEVE', e.target.value);
-                e.target.value = ""; // reset
-              }}
-            >
-              <option value="">Analyze Sleeve...</option>
-              <option value="Core Tech">Core Tech</option>
-              <option value="Rotatable Tech">Rotatable Tech</option>
-              <option value="Specialized: Energy">Energy</option>
-              <option value="Physical Precious Metals">Metals</option>
-            </select>
-            <input
-              type="text"
-              placeholder="Ticker..."
-              className="bg-slate-800 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200 w-24 outline-none focus:border-blue-500 transition-all focus:w-32"
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  const val = (e.currentTarget as HTMLInputElement).value;
-                  if (val) handleRunAgentScan('TICKER', val.toUpperCase());
-                  (e.currentTarget as HTMLInputElement).value = "";
-                }
-              }}
-            />
-          </div>
-
-          {/* Chat Input Area (moved to top) */}
-          <div className="p-4 border-b border-slate-800 bg-slate-900/40 backdrop-blur">
-            <ChatInput
-              onSendMessage={handleSendMessage}
-              onStartRecording={handleStartRecording}
-              onStopRecording={handleStopRecording}
-              isRecording={isRecording}
-              isLoading={isChatLoading}
-            />
-          </div>
-
-          {/* Auto-Scroll Content Area */}
-          <div className="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-thin scrollbar-thumb-slate-700 custom-markdown">
-
-            {/* UNCURATED WARNING */}
-            {uncuratedTicker && (
-              <div className="bg-red-900/20 border border-red-500/50 rounded-lg p-4 animate-scaleIn relative overflow-hidden mb-6">
-                <div className="absolute top-0 right-0 p-2 opacity-20">
-                  <Icon icon="alert" className="w-16 h-16 text-red-500" />
-                </div>
-                <div className="relative z-10">
-                  <h3 className="text-red-400 font-bold text-sm uppercase tracking-wider mb-1 flex items-center gap-2">
-                    <Icon icon="alert" className="w-4 h-4" />
-                    Uncurated Ticker Detected: {uncuratedTicker}
-                  </h3>
-                  <p className="text-gray-300 text-xs mb-3 max-w-lg">
-                    This asset is <strong>outside the scope</strong> of the Core Portfolio Strategy (2026-2031).
-                    The AI Agent can analyze it, but it lacks the customized role-based context defined in the main framework.
-                    Results may be generic.
-                  </p>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={handleActionOverride}
-                      className="px-3 py-1 bg-red-800/40 hover:bg-red-700/50 text-red-200 text-xs rounded border border-red-700/50 transition-colors"
-                    >
-                      Override & View Analysis
-                    </button>
-                    <button
-                      onClick={() => handleActionAddUncurated(uncuratedTicker)}
-                      className="px-3 py-1 bg-slate-700 hover:bg-slate-600 text-white text-xs rounded border border-slate-600 transition-colors"
-                    >
-                      Add to Custom Portfolio
-                    </button>
-                    <button
-                      onClick={() => setUncuratedTicker(null)}
-                      className="px-3 py-1 hover:bg-slate-700 text-gray-400 text-xs rounded transition-colors"
-                    >
-                      Cancel
-                    </button>
+              <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin scrollbar-thumb-slate-700">
+                {/* Fake Portfolio Summary */}
+                <div className="bg-slate-800/50 rounded p-3 border border-slate-700/50">
+                  <div className="flex justify-between items-end mb-2">
+                    <span className="text-gray-400 text-xs">Total Liquidity</span>
+                    <span className="text-xl font-bold font-mono text-emerald-400">$1,240,500</span>
+                  </div>
+                  <div className="h-1.5 w-full bg-slate-700 rounded-full overflow-hidden">
+                    <div className="h-full bg-gradient-to-r from-cyan-500 to-blue-500 w-[65%]" />
+                  </div>
+                  <div className="flex justify-between text-[10px] text-gray-500 mt-1">
+                    <span>Core: 65%</span>
+                    <span>Cash: 35%</span>
                   </div>
                 </div>
-              </div>
-            )}
 
-            {/* Combined Feed: Messages & Agent Reports */}
-            <div className="space-y-6">
-              {messages.map((msg) => (
-                <div key={msg.id} className="animate-fadeIn">
-                  {/* Distinguish Agent Reports vs Regular Chat */}
-                  {msg.role === 'agent' ? (
-                    <div className="mb-8">
-                      <div className="flex items-center gap-2 mb-2">
-                        <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]" />
-                        <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Latest Intelligence Report</span>
-                      </div>
-                      <div className="prose prose-invert prose-sm max-w-none bg-slate-900/50 p-6 rounded-lg border border-slate-800/50 shadow-inner">
-                        <TextWidget id={`report-${msg.id}`} title="" text={msg.content} />
-                      </div>
-                    </div>
-                  ) : (
-                    <ChatMessage message={{ ...msg, role: msg.role === 'model' ? 'model' : 'user' }} />
-                  )}
-                </div>
-              ))}
+                {/* Toolbox for Quick Access */}
+                <Toolbox
+                  symbols={symbols}
+                  activeSymbol={activeSymbol}
+                  onAddSymbol={handleAddSymbol}
+                  onRemoveSymbol={handleRemoveSymbol}
+                  onSelectSymbol={handleSelectSymbol}
+                  onAnalysisRequested={handleAnalysisRequest}
+                  onPortfolioReport={() => setIsPortfolioModalOpen(true)}
+                  isLoading={isDashboardLoading}
+                />
+              </div>
             </div>
 
-            {/* Regular Widgets */}
-            {widgets.filter(w => !w.title.includes('Agent')).map(widget => (
-              <div key={widget.id} className="animate-fadeIn">{renderWidget(widget)}</div>
-            ))}
-          </div>
+            {/* MIDDLE COLUMN: Command Center (50%) */}
+            <div className="flex-1 flex flex-col min-w-0 bg-slate-950 relative">
+              <div className="p-3 bg-slate-900/80 backdrop-blur border-b border-slate-800 flex justify-between items-center z-10">
+                <div className="font-semibold text-xs text-emerald-400 tracking-wider flex items-center gap-2">
+                  <Icon icon="bot" className="w-4 h-4" />
+                  AGENT COMMAND CENTER
+                </div>
+                {isAgentRunning && <span className="text-xs text-amber-400 animate-pulse">Processing...</span>}
+              </div>
 
-          <div ref={chatContainerRef} />
-        </div>
+              {/* Agent Controls Overlay */}
+              <div className="p-4 border-b border-slate-800/50 flex gap-2 overflow-x-auto bg-slate-900/20">
+                <button
+                  onClick={() => handleRunAgentScan('FULL')}
+                  disabled={isAgentRunning}
+                  className="whitespace-nowrap px-4 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded text-xs font-semibold shadow-sm transition-all disabled:opacity-50"
+                >
+                  RUN FULL SCAN
+                </button>
+                <div className="h-6 w-px bg-slate-700 mx-1" />
+                <select
+                  id="sleeve-select"
+                  className="bg-slate-800 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200 outline-none focus:border-blue-500"
+                  onChange={(e) => {
+                    if (e.target.value) handleRunAgentScan('SLEEVE', e.target.value);
+                    e.target.value = ""; // reset
+                  }}
+                >
+                  <option value="">Analyze Sleeve...</option>
+                  <option value="Core Tech">Core Tech</option>
+                  <option value="Rotatable Tech">Rotatable Tech</option>
+                  <option value="Specialized: Energy">Energy</option>
+                  <option value="Physical Precious Metals">Metals</option>
+                </select>
+                <input
+                  type="text"
+                  placeholder="Ticker..."
+                  className="bg-slate-800 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200 w-24 outline-none focus:border-blue-500 transition-all focus:w-32"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      const val = (e.currentTarget as HTMLInputElement).value;
+                      if (val) handleRunAgentScan('TICKER', val.toUpperCase());
+                      (e.currentTarget as HTMLInputElement).value = "";
+                    }
+                  }}
+                />
+              </div>
 
-        {/* RIGHT COLUMN: Market Data & Clocks (25%) */}
-        <div className="w-[300px] xl:w-[350px] flex flex-col border-l border-slate-800 bg-slate-900/40">
-          <div className="p-3 bg-slate-900 border-b border-slate-800 font-semibold text-xs text-amber-400 tracking-wider">
-            MARKET CLOCKS
-          </div>
-          <div className="flex-1 overflow-y-auto p-4 space-y-6 scrollbar-thin scrollbar-thumb-slate-700">
-            {/* Clocks */}
-            <div className="space-y-3">
-              {/* Clocks */}
-              <div className="space-y-3">
-                {[
-                  { label: 'Liquidity Cycle', status: 'green', code: 'CLOCK_LIQUIDITY_CYCLE' },
-                  { label: 'Commodity Cycle', status: 'yellow', code: 'CLOCK_COMMODITY_CYCLE' },
-                  { label: 'VIX Regime', status: 'red', code: 'CLOCK_VIX_REGIME' },
-                  { label: 'Inflation Trend', status: 'yellow', code: 'CLOCK_INFLATION_TREND' },
-                  { label: 'Credit Impulse', status: 'green', code: 'CLOCK_CREDIT_IMPULSE' },
-                  { label: 'Dollar Strength', status: 'red', code: 'CLOCK_DOLLAR_STRENGTH' }
-                ].map(clock => (
-                  <div
-                    key={clock.label}
-                    className="bg-slate-800/50 p-3 rounded border border-slate-700/50 flex justify-between items-center group hover:border-amber-500/30 transition-colors cursor-pointer hover:bg-slate-800"
-                    onClick={() => handleRunAgentScan('TOOL', clock.code)}
-                  >
-                    <span className="text-gray-400 text-xs font-medium group-hover:text-cyan-400 transition-colors">{clock.label}</span>
-                    <div className="flex items-center gap-2">
-                      <div className={`w-2 h-2 rounded-full ${clock.status === 'green' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' :
-                        clock.status === 'yellow' ? 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]' :
-                          'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]'
-                        }`} />
+              {/* Chat Input Area (moved to top) */}
+              <div className="p-4 border-b border-slate-800 bg-slate-900/40 backdrop-blur">
+                <ChatInput
+                  onSendMessage={handleSendMessage}
+                  onStartRecording={handleStartRecording}
+                  onStopRecording={handleStopRecording}
+                  isRecording={isRecording}
+                  isLoading={isChatLoading}
+                />
+              </div>
+
+              {/* Auto-Scroll Content Area */}
+              <div className="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-thin scrollbar-thumb-slate-700 custom-markdown">
+
+                {/* UNCURATED WARNING */}
+                {uncuratedTicker && (
+                  <div className="bg-red-900/20 border border-red-500/50 rounded-lg p-4 animate-scaleIn relative overflow-hidden mb-6">
+                    <div className="absolute top-0 right-0 p-2 opacity-20">
+                      <Icon icon="alert" className="w-16 h-16 text-red-500" />
+                    </div>
+                    <div className="relative z-10">
+                      <h3 className="text-red-400 font-bold text-sm uppercase tracking-wider mb-1 flex items-center gap-2">
+                        <Icon icon="alert" className="w-4 h-4" />
+                        Uncurated Ticker Detected: {uncuratedTicker}
+                      </h3>
+                      <p className="text-gray-300 text-xs mb-3 max-w-lg">
+                        This asset is <strong>outside the scope</strong> of the Core Portfolio Strategy (2026-2031).
+                        The AI Agent can analyze it, but it lacks the customized role-based context defined in the main framework.
+                        Results may be generic.
+                      </p>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={handleActionOverride}
+                          className="px-3 py-1 bg-red-800/40 hover:bg-red-700/50 text-red-200 text-xs rounded border border-red-700/50 transition-colors"
+                        >
+                          Override & View Analysis
+                        </button>
+                        <button
+                          onClick={() => handleActionAddUncurated(uncuratedTicker)}
+                          className="px-3 py-1 bg-slate-700 hover:bg-slate-600 text-white text-xs rounded border border-slate-600 transition-colors"
+                        >
+                          Add to Custom Portfolio
+                        </button>
+                        <button
+                          onClick={() => setUncuratedTicker(null)}
+                          className="px-3 py-1 hover:bg-slate-700 text-gray-400 text-xs rounded transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      </div>
                     </div>
                   </div>
+                )}
+
+                {/* Combined Feed: Messages & Agent Reports */}
+                <div className="space-y-6">
+                  {messages.map((msg) => (
+                    <div key={msg.id} className="animate-fadeIn">
+                      {/* Distinguish Agent Reports vs Regular Chat */}
+                      {msg.role === 'agent' ? (
+                        <div className="mb-8">
+                          <div className="flex items-center gap-2 mb-2">
+                            <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]" />
+                            <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Latest Intelligence Report</span>
+                          </div>
+                          <div className="prose prose-invert prose-sm max-w-none bg-slate-900/50 p-6 rounded-lg border border-slate-800/50 shadow-inner">
+                            <TextWidget id={`report-${msg.id}`} title="" text={msg.content} />
+                          </div>
+                        </div>
+                      ) : (
+                        <ChatMessage message={{ ...msg, role: msg.role === 'model' ? 'model' : 'user' }} />
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Regular Widgets */}
+                {widgets.filter(w => !w.title.includes('Agent')).map(widget => (
+                  <div key={widget.id} className="animate-fadeIn">{renderWidget(widget)}</div>
                 ))}
               </div>
+
+              <div ref={chatContainerRef} />
             </div>
 
-            {/* Sleeves Accordion */}
-            <div>
-              <div className="text-xs font-semibold text-gray-500 mb-3 uppercase tracking-wider">Portfolio Sleeves</div>
-              <div className="space-y-2">
-                {sleevesWithStats.map(({ sleeveName, items, stats }) => (
-                  <div key={sleeveName} className="border border-slate-800 rounded bg-slate-900/30 overflow-hidden">
-                    <div
-                      className="p-2.5 flex justify-between items-center cursor-pointer hover:bg-slate-800/50 transition-colors"
-                      onClick={() => toggleSleeve(sleeveName)}
-                    >
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-gray-300">{sleeveName}</span>
-                        {/* Sleeve Checksum / Light Summary */}
-                        <div className="flex gap-1 ml-2">
-                          {stats.green > 0 && (
-                            <div className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-slate-900 border border-slate-700">
-                              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_4px_rgba(16,185,129,0.5)]" />
-                              <span className="text-[9px] font-mono text-emerald-400">{stats.green}</span>
-                            </div>
-                          )}
-                          {stats.yellow > 0 && (
-                            <div className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-slate-900 border border-slate-700">
-                              <div className="w-1.5 h-1.5 rounded-full bg-amber-500 shadow-[0_0_4px_rgba(245,158,11,0.5)]" />
-                              <span className="text-[9px] font-mono text-amber-400">{stats.yellow}</span>
-                            </div>
-                          )}
-                          {stats.red > 0 && (
-                            <div className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-slate-900 border border-slate-700">
-                              <div className="w-1.5 h-1.5 rounded-full bg-red-500 shadow-[0_0_4px_rgba(239,68,68,0.5)]" />
-                              <span className="text-[9px] font-mono text-red-400">{stats.red}</span>
-                            </div>
-                          )}
+            {/* RIGHT COLUMN: Market Data & Clocks (25%) */}
+            <div className="w-[300px] xl:w-[350px] flex flex-col border-l border-slate-800 bg-slate-900/40">
+              <div className="p-3 bg-slate-900 border-b border-slate-800 font-semibold text-xs text-amber-400 tracking-wider">
+                MARKET CLOCKS
+              </div>
+              <div className="flex-1 overflow-y-auto p-4 space-y-6 scrollbar-thin scrollbar-thumb-slate-700">
+                {/* Clocks */}
+                <div className="space-y-3">
+                  {/* Clocks */}
+                  <div className="space-y-3">
+                    {[
+                      { label: 'Liquidity Cycle', status: 'green', code: 'CLOCK_LIQUIDITY_CYCLE' },
+                      { label: 'Commodity Cycle', status: 'yellow', code: 'CLOCK_COMMODITY_CYCLE' },
+                      { label: 'VIX Regime', status: 'red', code: 'CLOCK_VIX_REGIME' },
+                      { label: 'Inflation Trend', status: 'yellow', code: 'CLOCK_INFLATION_TREND' },
+                      { label: 'Credit Impulse', status: 'green', code: 'CLOCK_CREDIT_IMPULSE' },
+                      { label: 'Dollar Strength', status: 'red', code: 'CLOCK_DOLLAR_STRENGTH' }
+                    ].map(clock => (
+                      <div
+                        key={clock.label}
+                        className="bg-slate-800/50 p-3 rounded border border-slate-700/50 flex justify-between items-center group hover:border-amber-500/30 transition-colors cursor-pointer hover:bg-slate-800"
+                        onClick={() => handleRunAgentScan('TOOL', clock.code)}
+                      >
+                        <span className="text-gray-400 text-xs font-medium group-hover:text-cyan-400 transition-colors">{clock.label}</span>
+                        <div className="flex items-center gap-2">
+                          <div className={`w-2 h-2 rounded-full ${clock.status === 'green' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' :
+                            clock.status === 'yellow' ? 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]' :
+                              'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]'
+                            }`} />
                         </div>
                       </div>
-                      <Icon icon="chevron-down" className={`w-3 h-3 text-gray-500 transition-transform ${expandedSleeves[sleeveName] ? 'rotate-180' : ''}`} />
-                    </div>
-                    {expandedSleeves[sleeveName] && (
-                      <div className="bg-slate-950/50 border-t border-slate-800/50">
-                        {items.map(ticker => {
-                          const status = getMockTickerStatus(ticker.symbol);
-                          return (
-                            <div
-                              key={ticker.symbol}
-                              className="px-3 py-1.5 flex justify-between items-center hover:bg-slate-800/30 cursor-pointer group border-l-2 border-transparent hover:border-blue-500 transition-all"
-                              onClick={() => handleAnalysisRequest('Company Profile', ticker.symbol)}
-                            >
-                              <span className="text-xs text-gray-400 font-mono group-hover:text-cyan-400 transition-colors">{ticker.symbol}</span>
-                              {/* Ticker Status Clock Icon */}
-                              <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full border ${status === 'green' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' :
-                                status === 'yellow' ? 'bg-amber-500/10 border-amber-500/20 text-amber-400' :
-                                  'bg-red-500/10 border-red-500/20 text-red-400'
-                                }`}>
-                                <div className={`w-1.5 h-1.5 rounded-full ${status === 'green' ? 'bg-emerald-500' :
-                                  status === 'yellow' ? 'bg-amber-500' :
-                                    'bg-red-500'
-                                  }`} />
-                                <Icon icon="clock" className="w-3 h-3" />
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
+                    ))}
                   </div>
-                ))}
+                </div>
+
+                {/* Sleeves Accordion */}
+                <div>
+                  <div className="text-xs font-semibold text-gray-500 mb-3 uppercase tracking-wider">Portfolio Sleeves</div>
+                  <div className="space-y-2">
+                    {sleevesWithStats.map(({ sleeveName, items, stats }) => (
+                      <div key={sleeveName} className="border border-slate-800 rounded bg-slate-900/30 overflow-hidden">
+                        <div
+                          className="p-2.5 flex justify-between items-center cursor-pointer hover:bg-slate-800/50 transition-colors"
+                          onClick={() => toggleSleeve(sleeveName)}
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-gray-300">{sleeveName}</span>
+                            {/* Sleeve Checksum / Light Summary */}
+                            <div className="flex gap-1 ml-2">
+                              {stats.green > 0 && (
+                                <div className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-slate-900 border border-slate-700">
+                                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_4px_rgba(16,185,129,0.5)]" />
+                                  <span className="text-[9px] font-mono text-emerald-400">{stats.green}</span>
+                                </div>
+                              )}
+                              {stats.yellow > 0 && (
+                                <div className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-slate-900 border border-slate-700">
+                                  <div className="w-1.5 h-1.5 rounded-full bg-amber-500 shadow-[0_0_4px_rgba(245,158,11,0.5)]" />
+                                  <span className="text-[9px] font-mono text-amber-400">{stats.yellow}</span>
+                                </div>
+                              )}
+                              {stats.red > 0 && (
+                                <div className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-slate-900 border border-slate-700">
+                                  <div className="w-1.5 h-1.5 rounded-full bg-red-500 shadow-[0_0_4px_rgba(239,68,68,0.5)]" />
+                                  <span className="text-[9px] font-mono text-red-400">{stats.red}</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          <Icon icon="chevron-down" className={`w-3 h-3 text-gray-500 transition-transform ${expandedSleeves[sleeveName] ? 'rotate-180' : ''}`} />
+                        </div>
+                        {expandedSleeves[sleeveName] && (
+                          <div className="bg-slate-950/50 border-t border-slate-800/50">
+                            {items.map(ticker => {
+                              const status = getMockTickerStatus(ticker.symbol);
+                              return (
+                                <div
+                                  key={ticker.symbol}
+                                  className="px-3 py-1.5 flex justify-between items-center hover:bg-slate-800/30 cursor-pointer group border-l-2 border-transparent hover:border-blue-500 transition-all"
+                                  onClick={() => handleAnalysisRequest('Company Profile', ticker.symbol)}
+                                >
+                                  <span className="text-xs text-gray-400 font-mono group-hover:text-cyan-400 transition-colors">{ticker.symbol}</span>
+                                  {/* Ticker Status Clock Icon */}
+                                  <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full border ${status === 'green' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' :
+                                    status === 'yellow' ? 'bg-amber-500/10 border-amber-500/20 text-amber-400' :
+                                      'bg-red-500/10 border-red-500/20 text-red-400'
+                                    }`}>
+                                    <div className={`w-1.5 h-1.5 rounded-full ${status === 'green' ? 'bg-emerald-500' :
+                                      status === 'yellow' ? 'bg-amber-500' :
+                                        'bg-red-500'
+                                      }`} />
+                                    <Icon icon="clock" className="w-3 h-3" />
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
-        </div>
+          </>
+        ) : (
+          <PortfolioView sleevesWithStats={sleevesWithStats} />
+        )}
       </div>
 
       <PortfolioReportModal
@@ -785,7 +793,7 @@ const App: React.FC = () => {
         isOpen={isProfileOpen}
         onClose={() => setIsProfileOpen(false)}
       />
-    </div>
+    </div >
   );
 };
 
