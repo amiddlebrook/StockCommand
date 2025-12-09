@@ -33,13 +33,13 @@ export class ActionExecutor {
         // Generate CSV content
         const header = 'Type,Ticker,Sleeve,Reason,Confidence\n';
         const rows = actions.map(a =>
-        \`\${a.type},\${a.ticker || ''},\${a.sleeve || ''},"\${a.reason.replace(/"/g, '""')}",\${a.confidence}\`
-    ).join('\n');
-    
-    const csvContent = header + rows;
-    
-    console.log(\`--> [SPREADSHEET] Generated \${filename}.csv:\n\${csvContent}\`);
-    // In a browser context, we could trigger a download
-    // In a worker context, we might upload this to R2 or email it as attachment
-  }
+            `${a.type},${a.ticker || ''},${a.sleeve || ''},"${a.reason.replace(/"/g, '""')}",${a.confidence}`
+        ).join('\n');
+
+        const csvContent = header + rows;
+
+        console.log(`--> [SPREADSHEET] Generated ${filename}.csv:\n${csvContent}`);
+        // In a browser context, we could trigger a download
+        // In a worker context, we might upload this to R2 or email it as attachment
+    }
 }

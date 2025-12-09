@@ -1,4 +1,4 @@
-export const FRAMEWORK_TEXT = \`Portfolio Rotation Framework – 2026-2031 Strategy
+export const FRAMEWORK_TEXT = `Portfolio Rotation Framework – 2026-2031 Strategy
 Professional Multi-Clock Allocation and Trading Playbook
 
 This document defines a professional-grade capital rotation framework for a multi-sleeve portfolio
@@ -372,4 +372,4 @@ The work is not to predict exact paths, but to:
 Traders distributing or operating under this playbook should adhere to the rotation logic,
 sizing discipline, and sleeve definitions herein. Deviations should be explicit, documented,
 and limited in scope.
-\`;
+`;
