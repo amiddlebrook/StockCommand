@@ -36,23 +36,23 @@ export async function runAgentWorkflow(
     console.log(`Starting StockCommand Agent Workflow (Scope: ${scope})...`);
 
     const AV_KEY = env.ALPHA_VANTAGE_API_KEY || '';
-    const GEMINI_KEY = env.GEMINI_API_KEY || '';
+    const OPENAI_KEY = env.OPENAI_API_KEY || '';
 
     if (!AV_KEY) {
         console.error("Missing ALPHA_VANTAGE_API_KEY");
         return { analysis: "Error: Missing Alpha Vantage API Key", actions: [] };
     }
 
-    if (!GEMINI_KEY) {
-        console.error("Missing GEMINI_API_KEY");
-        return { analysis: "Error: Missing Gemini API Key", actions: [] };
+    if (!OPENAI_KEY) {
+        console.error("Missing OPENAI_API_KEY");
+        return { analysis: "Error: Missing OpenAI API Key", actions: [] };
     }
 
-    console.log(`DEBUG: Gemini Key Length: ${GEMINI_KEY.length}`);
-    if (GEMINI_KEY.length > 5) {
-        console.log(`DEBUG: Gemini Key Start: ${GEMINI_KEY.substring(0, 4)}... End: ...${GEMINI_KEY.slice(-4)}`);
+    console.log(`DEBUG: OpenAI Key Length: ${OPENAI_KEY.length}`);
+    if (OPENAI_KEY.length > 5) {
+        console.log(`DEBUG: OpenAI Key Start: ${OPENAI_KEY.substring(0, 4)}... End: ...${OPENAI_KEY.slice(-4)}`);
     } else {
-        console.log(`DEBUG: Gemini Key is too short! (${GEMINI_KEY})`);
+        console.log(`DEBUG: OpenAI Key is too short! (${OPENAI_KEY})`);
     }
 
     // 1. Refresh Data
@@ -60,7 +60,7 @@ export async function runAgentWorkflow(
     const portfolio = await fetchPortfolioState();
 
     // 2. Research & Analyze (Engine with LLM)
-    const engine = new AgentEngine(GEMINI_KEY);
+    const engine = new AgentEngine(OPENAI_KEY);
     const { analysis, actions } = await engine.evaluate(scope, marketData, portfolio, target);
 
     // 3. Act

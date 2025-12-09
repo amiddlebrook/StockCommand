@@ -10,8 +10,6 @@
     "check-config": "node check-api-config.js"
   },
   "dependencies": {
-    "@google/genai": "^1.27.0",
-    "@google/generative-ai": "^0.24.1",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "recharts": "^3.3.0"

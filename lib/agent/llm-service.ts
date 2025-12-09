@@ -1,20 +1,13 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { MarketData, AgentAction, Ticker } from './types';
 import { UNIVERSE } from './universe';
-
-// Need to read the framework document content.
-// In a worker environment, we can't use 'fs'. We should import it as a string or constant.
-// For now, assuming we can load it or pass it in. Ideally, we bake it into the build.
-// I will create a separate file `lib/agent/framework-context.ts` to hold the text content to make it importable.
 import { FRAMEWORK_TEXT } from './framework-context';
 
 export class LLMService {
-    private genAI: GoogleGenerativeAI;
-    private model: any;
+    private apiKey: string;
+    private modelName: string = "gpt-4o"; // Using GPT-4o for live data capability
 
     constructor(apiKey: string) {
-        this.genAI = new GoogleGenerativeAI(apiKey);
-        this.model = this.genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        this.apiKey = apiKey;
     }
 
     public async analyze(
@@ -44,9 +37,9 @@ export class LLMService {
             return `${t.symbol} (${t.sleeve}): Price $${data.price.toFixed(2)}, Change ${data.changePercent.toFixed(2)}%, Vol ${data.volume}`;
         }).join('\n');
 
-        const prompt = `
-      You are the "StockCommand" AI Agent, an expert portfolio manager running a specific Multi-Clock Rotation Framework.
-      
+        const systemPrompt = `You are the "StockCommand" AI Agent, an expert portfolio manager running a specific Multi-Clock Rotation Framework.`;
+
+        const userPrompt = `
       FRAMEWORK DOCUMENT:
       """
       ${FRAMEWORK_TEXT}
@@ -63,31 +56,48 @@ export class LLMService {
       3. Provide a clear rationale citing the specific "Clock" or rule from the document.
       
       OUTPUT FORMAT:
-      Return a JSON object with two fields:
+      Return a STRICT JSON object with two fields (do not use markdown blocks):
       - "markdown_report": A string containing a concise markdown report formatted for a trader.
       - "recommended_actions": An array of objects matching this interface: { type: 'BUY'|'SELL'|'HOLD'|'TRIM'|'ALERT', ticker: string, sleeve: string, reason: string, confidence: number (0-1) }
-      
-      Do not use markdown code blocks for the JSON, just raw JSON.
     `;
 
-        // 3. Call LLM
+        // 3. Call OpenAI LLM via Fetch
         try {
-            const result = await this.model.generateContent(prompt);
-            const response = result.response;
-            const text = response.text();
+            const response = await fetch("https://api.openai.com/v1/chat/completions", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${this.apiKey}`
+                },
+                body: JSON.stringify({
+                    model: this.modelName,
+                    messages: [
+                        { role: "system", content: systemPrompt },
+                        { role: "user", content: userPrompt }
+                    ],
+                    temperature: 0.2, // Low temperature for analytical precision
+                    response_format: { type: "json_object" } // Force JSON
+                })
+            });
 
-            // Clean up potential markdown formatting if the model adds it
-            const cleanText = text.replace(/```json/g, '').replace(/```/g, '').trim();
+            if (!response.ok) {
+                const err = await response.text();
+                throw new Error(`OpenAI API Error: ${response.status} - ${err}`);
+            }
 
-            const parsed = JSON.parse(cleanText);
+            const data = await response.json() as any;
+            const content = data.choices[0].message.content;
+
+            const parsed = JSON.parse(content);
             return {
                 analysis: parsed.markdown_report,
                 actions: parsed.recommended_actions
             };
-        } catch (error) {
+
+        } catch (error: any) {
             console.error("LLM Analysis Failed:", error);
             return {
-                analysis: "Failed to generate analysis due to error.",
+                analysis: `Failed to generate analysis due to error: ${error.message}`,
                 actions: []
             };
         }
