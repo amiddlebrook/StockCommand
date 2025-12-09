@@ -581,8 +581,19 @@ const App: React.FC = () => {
             />
           </div>
 
+          {/* Chat Input Area (moved to top) */}
+          <div className="p-4 border-b border-slate-800 bg-slate-900/40 backdrop-blur">
+            <ChatInput
+              onSendMessage={handleSendMessage}
+              onStartRecording={handleStartRecording}
+              onStopRecording={handleStopRecording}
+              isRecording={isRecording}
+              isLoading={isChatLoading}
+            />
+          </div>
+
           {/* Auto-Scroll Content Area */}
-          <div className="flex-1 overflow-y-auto p-6 space-y-8 scrollbar-thin scrollbar-thumb-slate-700 custom-markdown">
+          <div className="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-thin scrollbar-thumb-slate-700 custom-markdown">
 
             {/* UNCURATED WARNING */}
             {uncuratedTicker && (
@@ -618,9 +629,9 @@ const App: React.FC = () => {
               </div>
             )}
 
-            {/* Agent Output */}
+            {/* Agent Output (Latest Report) */}
             {agentOutput && (
-              <div className="animate-fadeIn">
+              <div className="animate-fadeIn mb-8">
                 <div className="flex items-center gap-2 mb-2">
                   <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]" />
                   <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Latest Intelligence Report</span>
@@ -631,23 +642,19 @@ const App: React.FC = () => {
               </div>
             )}
 
-            {/* Regular Chat/Widgets */}
-            {widgets.filter(w => !w.title.includes('Agent')).map(widget => (
-              <div key={widget.id} className="animate-fadeIn">{renderWidget(widget)}</div>
-            ))}
+            {/* Chat History / Widgets Feed */}
+            <div className="space-y-4">
+              {messages.map((msg) => (
+                <ChatMessage key={msg.id} message={msg} />
+              ))}
+
+              {/* Regular Widgets */}
+              {widgets.filter(w => !w.title.includes('Agent')).map(widget => (
+                <div key={widget.id} className="animate-fadeIn">{renderWidget(widget)}</div>
+              ))}
+            </div>
 
             <div ref={chatContainerRef} />
-          </div>
-
-          {/* Chat Input Area */}
-          <div className="p-4 border-t border-slate-800 bg-slate-900/80 backdrop-blur">
-            <ChatInput
-              onSendMessage={handleSendMessage}
-              onStartRecording={handleStartRecording}
-              onStopRecording={handleStopRecording}
-              isRecording={isRecording}
-              isLoading={isChatLoading}
-            />
           </div>
         </div>
 
