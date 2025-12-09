@@ -1,4 +1,3 @@
-import yahooFinance from 'yahoo-finance2';
 import { MarketData } from './types';
 
 interface AlphaVantageGlobalQuote {
@@ -22,7 +21,6 @@ export class MarketDataService {
 
         for (const symbol of symbols) {
             if (symbol === 'MASTERWORKS') {
-                // Special case for manual asset, mock or skip
                 results[symbol] = { price: 100, changePercent: 0, volume: 0 };
                 continue;
             }
@@ -31,14 +29,13 @@ export class MarketDataService {
                 // 1. Try Alpha Vantage
                 const data = await this.fetchAlphaVantage(symbol);
                 results[symbol] = data;
-                // Small delay to be nice to rate limits if running sequentially
                 await new Promise(resolve => setTimeout(resolve, 200));
             } catch (error: any) {
                 console.warn(`[MarketData] Alpha Vantage failed for ${symbol}: ${error.message}`);
 
                 if (this.useYahooFallback) {
                     try {
-                        console.log(`[MarketData] Falling back to Yahoo Finance for ${symbol}`);
+                        console.log(`[MarketData] Falling back to Yahoo Finance (Chart API) for ${symbol}`);
                         const data = await this.fetchYahooFinance(symbol);
                         results[symbol] = data;
                     } catch (yahooError: any) {
@@ -56,7 +53,7 @@ export class MarketDataService {
 
         const url = `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${symbol}&apikey=${this.alphaVantageKey}`;
         const response = await fetch(url);
-        const data = await response.json();
+        const data = await response.json() as any;
 
         if (data['Note'] || data['Information']) {
             throw new Error(`API Limit or Info: ${JSON.stringify(data)}`);
@@ -76,17 +73,44 @@ export class MarketDataService {
     }
 
     private async fetchYahooFinance(symbol: string): Promise<MarketData> {
-        // Yahoo Finance tickers might need mapping (e.g. BTC -> BTC-USD), but usually auto-handled
+        // Fallback using unofficial Yahoo Chart API which works well for basic current price
+        // No Auth required usually
         let ySymbol = symbol;
         if (symbol === 'BTC') ySymbol = 'BTC-USD';
         if (symbol === 'ETH') ySymbol = 'ETH-USD';
 
-        const quote = await yahooFinance.quote(ySymbol) as any;
+        // https://query1.finance.yahoo.com/v8/finance/chart/AAPL?interval=1d&range=1d
+        const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ySymbol}?interval=1d&range=1d`;
+
+        const response = await fetch(url, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0'
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`Yahoo API error: ${response.status}`);
+        }
+
+        const data = await response.json() as any;
+        const result = data.chart?.result?.[0];
+
+        if (!result) throw new Error("No Yahoo data found");
+
+        const meta = result.meta;
+        const price = meta.regularMarketPrice;
+        const prevClose = meta.previousClose;
+        const volume = result.indicators?.quote?.[0]?.volume?.[0] || 0;
+
+        let changePercent = 0;
+        if (price && prevClose) {
+            changePercent = ((price - prevClose) / prevClose) * 100;
+        }
 
         return {
-            price: quote.regularMarketPrice || 0,
-            changePercent: quote.regularMarketChangePercent || 0,
-            volume: quote.regularMarketVolume || 0
+            price: price || 0,
+            changePercent: changePercent,
+            volume: volume
         };
     }
 }

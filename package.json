@@ -14,8 +14,7 @@
     "@google/generative-ai": "^0.24.1",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "recharts": "^3.3.0",
-    "yahoo-finance2": "^3.10.2"
+    "recharts": "^3.3.0"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20251014.0",
