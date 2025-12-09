@@ -23,6 +23,8 @@ import { DEFAULT_CHAT_MODEL } from './lib/constants/llmModels';
 import { fetchStockSnapshot } from './services/stockData';
 import { PortfolioReportModal } from './components/PortfolioReportModal';
 import { PortfolioReportWidget } from './components/PortfolioReportWidget';
+import { UNIVERSE } from './lib/agent/universe';
+import { ProfileModal } from './components/ProfileModal';
 
 type MobileView = 'toolbox' | 'dashboard' | 'chat';
 
@@ -69,10 +71,28 @@ const App: React.FC = () => {
   const [agentOutput, setAgentOutput] = useState<string | null>(null);
   const [isAgentRunning, setIsAgentRunning] = useState(false);
 
+  // Profile State
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+
+  // Sleeve State
+  const [expandedSleeves, setExpandedSleeves] = useState<Record<string, boolean>>({ 'Core Tech': true });
+
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const loadedSnapshotsRef = useRef<Set<string>>(new Set());
+
+  const toggleSleeve = (sleeve: string) => {
+    setExpandedSleeves(prev => ({ ...prev, [sleeve]: !prev[sleeve] }));
+  };
+
+  // Group Universe by Sleeve
+  const sleeves = UNIVERSE.reduce((acc, ticker) => {
+    if (!acc[ticker.sleeve]) acc[ticker.sleeve] = [];
+    acc[ticker.sleeve].push(ticker);
+    return acc;
+  }, {} as Record<string, typeof UNIVERSE>);
+
 
   const handleRunAgentScan = async (scope: 'FULL' | 'SLEEVE' | 'TICKER', target?: string) => {
     setIsAgentRunning(true);
@@ -211,14 +231,8 @@ const App: React.FC = () => {
 
       setAgentOutput(analysisText);
 
-      // Add a widget for valid response
-      const widget: AnalysisWidget = {
-        id: `tool-${featureType}-${Date.now()}`,
-        type: 'profile',
-        title: `${featureType}: ${symbol}`,
-        data: { text: analysisText, sources: [] }
-      };
-      setWidgets(prev => [widget, ...prev]);
+      // CHANGED: We DO NOT create a separate Widget for TOOLS anymore, 
+      // as requested ("just have that one shown" in command center).
 
     } catch (e: any) {
       setAgentOutput(`Error running tool: ${e.message}`);
@@ -412,7 +426,7 @@ const App: React.FC = () => {
   return (
     <div className="h-screen w-screen bg-slate-950 text-gray-100 flex flex-col overflow-hidden font-sans">
       <div className="flex-none z-50 shadow-md">
-        <Header />
+        <Header onOpenProfile={() => setIsProfileOpen(true)} />
       </div>
 
       <div className="flex-1 flex overflow-hidden">
@@ -539,24 +553,55 @@ const App: React.FC = () => {
           <div className="p-3 bg-slate-900 border-b border-slate-800 font-semibold text-xs text-amber-400 tracking-wider">
             MARKET CLOCKS
           </div>
-          <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin scrollbar-thumb-slate-700">
-            {/* Mock Clocks */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-6 scrollbar-thin scrollbar-thumb-slate-700">
+            {/* Clocks */}
             <div className="space-y-3">
-              {['Liquidity Cycle', 'Commodity Cycle', 'VIX Regime'].map(label => (
-                <div key={label} className="bg-slate-800/50 p-3 rounded border border-slate-700/50 flex justify-between items-center group hover:border-amber-500/30 transition-colors cursor-default">
-                  <span className="text-gray-400 text-xs font-medium group-hover:text-gray-200">{label}</span>
-                  <span className="text-[10px] bg-slate-700 px-2 py-0.5 rounded text-gray-300">NEUTRAL</span>
+              {[
+                { label: 'Liquidity Cycle', status: 'green' },
+                { label: 'Commodity Cycle', status: 'yellow' },
+                { label: 'VIX Regime', status: 'red' },
+                { label: 'Inflation Trend', status: 'yellow' },
+                { label: 'Credit Impulse', status: 'green' },
+                { label: 'Dollar Strength', status: 'red' }
+              ].map(clock => (
+                <div key={clock.label} className="bg-slate-800/50 p-3 rounded border border-slate-700/50 flex justify-between items-center group hover:border-amber-500/30 transition-colors cursor-default">
+                  <span className="text-gray-400 text-xs font-medium group-hover:text-gray-200">{clock.label}</span>
+                  <div className="flex items-center gap-2">
+                    <div className={`w-2 h-2 rounded-full ${clock.status === 'green' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' :
+                      clock.status === 'yellow' ? 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]' :
+                        'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]'
+                      }`} />
+                  </div>
                 </div>
               ))}
             </div>
 
-            <div className="mt-8">
-              <div className="text-xs font-semibold text-gray-500 mb-3 uppercase tracking-wider">Watchlist</div>
-              <div className="space-y-1">
-                {symbols.map(sym => (
-                  <div key={sym} className="flex justify-between items-center p-2 hover:bg-slate-800/50 rounded cursor-pointer transition-colors" onClick={() => handleAnalysisRequest('Company Profile', sym)}>
-                    <span className="font-mono text-sm font-bold text-gray-300">{sym}</span>
-                    <span className="text-xs text-gray-500">Live</span>
+            {/* Sleeves Accordion */}
+            <div>
+              <div className="text-xs font-semibold text-gray-500 mb-3 uppercase tracking-wider">Portfolio Sleeves</div>
+              <div className="space-y-2">
+                {Object.entries(sleeves).map(([sleeveName, items]) => (
+                  <div key={sleeveName} className="border border-slate-800 rounded bg-slate-900/30 overflow-hidden">
+                    <div
+                      className="p-2.5 flex justify-between items-center cursor-pointer hover:bg-slate-800/50 transition-colors"
+                      onClick={() => toggleSleeve(sleeveName)}
+                    >
+                      <span className="text-xs font-bold text-gray-300">{sleeveName}</span>
+                      <span className="text-[10px] text-gray-500 font-mono">{items.length}</span>
+                    </div>
+                    {expandedSleeves[sleeveName] && (
+                      <div className="bg-slate-950/50 border-t border-slate-800/50">
+                        {items.map(ticker => (
+                          <div
+                            key={ticker.symbol}
+                            className="px-3 py-1.5 flex justify-between items-center hover:bg-slate-800/30 cursor-pointer group"
+                            onClick={() => handleAnalysisRequest('Company Profile', ticker.symbol)}
+                          >
+                            <span className="text-xs text-gray-400 font-mono group-hover:text-cyan-400 transition-colors">{ticker.symbol}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -572,6 +617,11 @@ const App: React.FC = () => {
         isGenerating={isPortfolioGenerating}
         onClose={() => setIsPortfolioModalOpen(false)}
         onSubmit={handleGeneratePortfolioReport}
+      />
+
+      <ProfileModal
+        isOpen={isProfileOpen}
+        onClose={() => setIsProfileOpen(false)}
       />
     </div>
   );
