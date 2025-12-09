@@ -48,6 +48,13 @@ export async function runAgentWorkflow(
         return { analysis: "Error: Missing Gemini API Key", actions: [] };
     }
 
+    console.log(`DEBUG: Gemini Key Length: ${GEMINI_KEY.length}`);
+    if (GEMINI_KEY.length > 5) {
+        console.log(`DEBUG: Gemini Key Start: ${GEMINI_KEY.substring(0, 4)}... End: ...${GEMINI_KEY.slice(-4)}`);
+    } else {
+        console.log(`DEBUG: Gemini Key is too short! (${GEMINI_KEY})`);
+    }
+
     // 1. Refresh Data
     const marketData = await fetchMarketData(AV_KEY);
     const portfolio = await fetchPortfolioState();
