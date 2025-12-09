@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Icon } from './Icon';
 
 interface PortfolioViewProps {
@@ -11,156 +11,160 @@ interface PortfolioViewProps {
 }
 
 export const PortfolioView: React.FC<PortfolioViewProps> = ({ sleevesWithStats, totalLiquidity = 1240500 }) => {
-    const [selectedSleeveName, setSelectedSleeveName] = useState<string>('');
+    // Use a Record to track open state for each sleeve
+    const [openSleeves, setOpenSleeves] = useState<Record<string, boolean>>(() => {
+        // Default open the first one if available
+        return sleevesWithStats.length > 0 ? { [sleevesWithStats[0].sleeveName]: true } : {};
+    });
 
-    // Initialize selection
-    useEffect(() => {
-        if (sleevesWithStats.length > 0 && !selectedSleeveName) {
-            setSelectedSleeveName(sleevesWithStats[0].sleeveName);
-        }
-    }, [sleevesWithStats, selectedSleeveName]);
-
-    const activeSleeve = sleevesWithStats.find(s => s.sleeveName === selectedSleeveName) || sleevesWithStats[0];
+    const toggleSleeve = (sleeveName: string) => {
+        setOpenSleeves(prev => ({
+            ...prev,
+            [sleeveName]: !prev[sleeveName]
+        }));
+    };
 
     return (
         <div className="flex-1 flex flex-col bg-slate-950 overflow-hidden relative h-full">
-            {/* Top Section: Fixed (Header + Cards) */}
-            <div className="flex-none p-6 md:p-8 border-b border-slate-800/50 bg-slate-950 z-10">
 
-                {/* Header Section */}
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-6 gap-4">
-                    <div>
-                        <h2 className="text-2xl font-bold text-white mb-1">Portfolio Strategy</h2>
-                        <p className="text-gray-400 text-sm">2026-2031 Core Framework</p>
-                    </div>
-                    <div className="flex flex-col items-end">
-                        <span className="text-gray-500 text-xs uppercase tracking-wider mb-1">Total Liquidity</span>
-                        <div className="text-3xl font-mono font-bold text-emerald-400">
-                            ${totalLiquidity.toLocaleString()}
+            {/* Scrollable Container for the entire view */}
+            <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-700">
+
+                {/* Top Strategy Section */}
+                <div className="p-6 md:p-8 border-b border-slate-800/50 bg-slate-950">
+                    {/* Header Section */}
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-6 gap-4">
+                        <div>
+                            <h2 className="text-2xl font-bold text-white mb-1">Portfolio Strategy</h2>
+                            <p className="text-gray-400 text-sm">2026-2031 Core Framework</p>
                         </div>
-                        <div className="flex gap-3 text-xs text-gray-400 mt-1">
-                            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-cyan-500"></span>Core: 65%</span>
-                            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-500"></span>Cash: 35%</span>
+                        <div className="flex flex-col items-end">
+                            <span className="text-gray-500 text-xs uppercase tracking-wider mb-1">Total Liquidity</span>
+                            <div className="text-3xl font-mono font-bold text-emerald-400">
+                                ${totalLiquidity.toLocaleString()}
+                            </div>
+                            <div className="flex gap-3 text-xs text-gray-400 mt-1">
+                                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-cyan-500"></span>Core: 65%</span>
+                                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-500"></span>Cash: 35%</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Strategy Overview Cards */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4 flex flex-col justify-between">
+                            <div className="flex items-center gap-3 mb-2">
+                                <div className="p-1.5 bg-purple-500/10 rounded-lg">
+                                    <Icon icon="strategy" className="w-4 h-4 text-purple-400" />
+                                </div>
+                                <span className="text-white font-semibold text-sm">Active Rotation</span>
+                            </div>
+                            <p className="text-xs text-gray-400 leading-relaxed">
+                                Dynamic allocation between Core Tech & Specialized sectors.
+                            </p>
+                        </div>
+                        <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4 flex flex-col justify-between">
+                            <div className="flex items-center gap-3 mb-2">
+                                <div className="p-1.5 bg-emerald-500/10 rounded-lg">
+                                    <Icon icon="chart" className="w-4 h-4 text-emerald-400" />
+                                </div>
+                                <span className="text-white font-semibold text-sm">Risk Management</span>
+                            </div>
+                            <p className="text-xs text-gray-400 leading-relaxed">
+                                Automated stop-loss & VIX regime monitoring.
+                            </p>
+                        </div>
+                        <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4 flex flex-col justify-between">
+                            <div className="flex items-center gap-3 mb-2">
+                                <div className="p-1.5 bg-amber-500/10 rounded-lg">
+                                    <Icon icon="ghost" className="w-4 h-4 text-amber-400" />
+                                </div>
+                                <span className="text-white font-semibold text-sm">Ghost Patterns</span>
+                            </div>
+                            <p className="text-xs text-gray-400 leading-relaxed">
+                                AI-driven accumulation/distribution detection.
+                            </p>
                         </div>
                     </div>
                 </div>
 
-                {/* Strategy Overview Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4 flex flex-col justify-between">
-                        <div className="flex items-center gap-3 mb-2">
-                            <div className="p-1.5 bg-purple-500/10 rounded-lg">
-                                <Icon icon="strategy" className="w-4 h-4 text-purple-400" />
+                {/* Sleeves Accordion List */}
+                <div className="p-6 md:p-8 space-y-4">
+                    {sleevesWithStats.map((sleeve) => {
+                        const isOpen = openSleeves[sleeve.sleeveName];
+                        return (
+                            <div key={sleeve.sleeveName} className="border border-slate-800 rounded-xl bg-slate-900/30 overflow-hidden transition-all duration-200">
+
+                                {/* Accordion Header */}
+                                <div
+                                    className="p-4 flex items-center justify-between cursor-pointer hover:bg-slate-800/50 transition-colors"
+                                    onClick={() => toggleSleeve(sleeve.sleeveName)}
+                                >
+                                    <div className="flex items-center gap-4">
+                                        <div className={`p-1 rounded bg-slate-800/50 text-gray-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}>
+                                            <Icon icon="chevron-down" className="w-4 h-4" />
+                                        </div>
+                                        <div>
+                                            <div className="flex items-center gap-3">
+                                                <h3 className="font-bold text-lg text-slate-200">{sleeve.sleeveName}</h3>
+                                                <span className="px-2 py-0.5 rounded-full bg-slate-800 text-xs text-gray-500 font-mono">
+                                                    {sleeve.items.length} Assets
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex gap-2">
+                                        {sleeve.stats.green > 0 && <span className="hidden sm:inline-block text-xs bg-emerald-500/10 text-emerald-400 px-2 py-1 rounded border border-emerald-500/20 font-mono">{sleeve.stats.green} Bullish</span>}
+                                        {sleeve.stats.yellow > 0 && <span className="hidden sm:inline-block text-xs bg-amber-500/10 text-amber-400 px-2 py-1 rounded border border-amber-500/20 font-mono">{sleeve.stats.yellow} Neutral</span>}
+                                        {sleeve.stats.red > 0 && <span className="hidden sm:inline-block text-xs bg-red-500/10 text-red-400 px-2 py-1 rounded border border-red-500/20 font-mono">{sleeve.stats.red} Bearish</span>}
+                                    </div>
+                                </div>
+
+                                {/* Accordion Body (Table) */}
+                                {isOpen && (
+                                    <div className="border-t border-slate-800/50">
+                                        <table className="w-full text-left text-sm">
+                                            <thead>
+                                                <tr className="border-b border-slate-800/50 text-gray-500 text-xs uppercase tracking-wider bg-slate-900/20">
+                                                    <th className="px-6 py-3 font-medium pl-14">Symbol</th>
+                                                    <th className="px-6 py-3 font-medium">Name</th>
+                                                    <th className="px-6 py-3 font-medium text-right">Allocation</th>
+                                                    <th className="px-6 py-3 font-medium text-right">Trend Status</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-800/30">
+                                                {sleeve.items.map((ticker) => {
+                                                    const status = ['bg-emerald-500', 'bg-amber-500', 'bg-red-500'][ticker.symbol.length % 3];
+                                                    const statusLabel = ['Bullish', 'Neutral', 'Bearish'][ticker.symbol.length % 3];
+                                                    const statusColor = ['text-emerald-400', 'text-amber-400', 'text-red-400'][ticker.symbol.length % 3];
+
+                                                    return (
+                                                        <tr key={ticker.symbol} className="hover:bg-slate-800/30 transition-colors group">
+                                                            <td className="px-6 py-3 font-mono text-cyan-400 font-bold pl-14 group-hover:text-cyan-300 transition-colors">
+                                                                {ticker.symbol}
+                                                            </td>
+                                                            <td className="px-6 py-3 text-gray-300 font-medium">{ticker.name}</td>
+                                                            <td className="px-6 py-3 text-right font-mono text-gray-400">
+                                                                {(100 / sleeve.items.length).toFixed(1)}%
+                                                            </td>
+                                                            <td className="px-6 py-3 text-right">
+                                                                <div className="inline-flex items-center justify-end gap-2 px-3 py-1 rounded-full bg-slate-900/50 border border-slate-800/50">
+                                                                    <span className={`text-[10px] font-semibold uppercase tracking-wide ${statusColor}`}>{statusLabel}</span>
+                                                                    <div className={`w-1.5 h-1.5 rounded-full ${status}`}></div>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                })}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                )}
                             </div>
-                            <span className="text-white font-semibold text-sm">Active Rotation</span>
-                        </div>
-                        <p className="text-xs text-gray-400 leading-relaxed">
-                            Dynamic allocation between Core Tech & Specialized sectors.
-                        </p>
-                    </div>
-                    <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4 flex flex-col justify-between">
-                        <div className="flex items-center gap-3 mb-2">
-                            <div className="p-1.5 bg-emerald-500/10 rounded-lg">
-                                <Icon icon="chart" className="w-4 h-4 text-emerald-400" />
-                            </div>
-                            <span className="text-white font-semibold text-sm">Risk Management</span>
-                        </div>
-                        <p className="text-xs text-gray-400 leading-relaxed">
-                            Automated stop-loss & VIX regime monitoring.
-                        </p>
-                    </div>
-                    <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4 flex flex-col justify-between">
-                        <div className="flex items-center gap-3 mb-2">
-                            <div className="p-1.5 bg-amber-500/10 rounded-lg">
-                                <Icon icon="ghost" className="w-4 h-4 text-amber-400" />
-                            </div>
-                            <span className="text-white font-semibold text-sm">Ghost Patterns</span>
-                        </div>
-                        <p className="text-xs text-gray-400 leading-relaxed">
-                            AI-driven accumulation/distribution detection.
-                        </p>
-                    </div>
+                        );
+                    })}
                 </div>
-            </div>
-
-            {/* Control Section: Sleeve Selector */}
-            <div className="flex-none px-6 md:px-8 py-4 bg-slate-900/30 border-b border-slate-800 flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                    <label htmlFor="sleeve-select" className="text-sm font-semibold text-gray-400 uppercase tracking-wide">Select Sleeve:</label>
-                    <div className="relative">
-                        <select
-                            id="sleeve-select"
-                            value={selectedSleeveName}
-                            onChange={(e) => setSelectedSleeveName(e.target.value)}
-                            className="appearance-none bg-slate-800 border border-slate-700 text-white pl-4 pr-10 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500/50 min-w-[200px]"
-                        >
-                            {sleevesWithStats.map(s => (
-                                <option key={s.sleeveName} value={s.sleeveName}>
-                                    {s.sleeveName} ({s.items.length})
-                                </option>
-                            ))}
-                        </select>
-                        <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
-                            <Icon icon="chevron-down" className="w-4 h-4" />
-                        </div>
-                    </div>
-                </div>
-
-                {/* Active Sleeve Stats Summary */}
-                {activeSleeve && (
-                    <div className="flex gap-2">
-                        {activeSleeve.stats.green > 0 && <span className="text-xs bg-emerald-500/10 text-emerald-400 px-2 py-1 rounded border border-emerald-500/20 font-mono">{activeSleeve.stats.green} Bullish</span>}
-                        {activeSleeve.stats.yellow > 0 && <span className="text-xs bg-amber-500/10 text-amber-400 px-2 py-1 rounded border border-amber-500/20 font-mono">{activeSleeve.stats.yellow} Neutral</span>}
-                        {activeSleeve.stats.red > 0 && <span className="text-xs bg-red-500/10 text-red-400 px-2 py-1 rounded border border-red-500/20 font-mono">{activeSleeve.stats.red} Bearish</span>}
-                    </div>
-                )}
-            </div>
-
-            {/* Detail Section: Scrollable Table */}
-            <div className="flex-1 overflow-y-auto p-6 md:p-8 scrollbar-thin scrollbar-thumb-slate-700">
-                {activeSleeve ? (
-                    <div className="bg-slate-900/30 border border-slate-800 rounded-xl overflow-hidden">
-                        <table className="w-full text-left text-sm">
-                            <thead>
-                                <tr className="border-b border-slate-800/50 text-gray-500 text-xs uppercase tracking-wider bg-slate-900/50 sticky top-0 backdrop-blur-sm z-10">
-                                    <th className="px-6 py-4 font-medium">Symbol</th>
-                                    <th className="px-6 py-4 font-medium">Name</th>
-                                    <th className="px-6 py-4 font-medium text-right">Allocation</th>
-                                    <th className="px-6 py-4 font-medium text-right">Trend Status</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-800/30">
-                                {activeSleeve.items.map((ticker) => {
-                                    const status = ['bg-emerald-500', 'bg-amber-500', 'bg-red-500'][ticker.symbol.length % 3];
-                                    const statusLabel = ['Bullish', 'Neutral', 'Bearish'][ticker.symbol.length % 3];
-                                    const statusColor = ['text-emerald-400', 'text-amber-400', 'text-red-400'][ticker.symbol.length % 3];
-
-                                    return (
-                                        <tr key={ticker.symbol} className="hover:bg-slate-800/30 transition-colors group">
-                                            <td className="px-6 py-4 font-mono text-cyan-400 font-bold text-base group-hover:text-cyan-300 transition-colors">
-                                                {ticker.symbol}
-                                            </td>
-                                            <td className="px-6 py-4 text-gray-300 font-medium">{ticker.name}</td>
-                                            <td className="px-6 py-4 text-right font-mono text-gray-400">
-                                                {(100 / activeSleeve.items.length).toFixed(1)}%
-                                            </td>
-                                            <td className="px-6 py-4 text-right">
-                                                <div className="inline-flex items-center justify-end gap-2 px-3 py-1 rounded-full bg-slate-900/50 border border-slate-800/50">
-                                                    <span className={`text-xs font-semibold ${statusColor}`}>{statusLabel}</span>
-                                                    <div className={`w-2 h-2 rounded-full ${status} shadow-[0_0_8px_rgba(0,0,0,0.3)]`}></div>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
-                    </div>
-                ) : (
-                    <div className="flex items-center justify-center h-full text-gray-500 italic">
-                        Select a sleeve to view holdings.
-                    </div>
-                )}
             </div>
         </div>
     );
