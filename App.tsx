@@ -96,6 +96,23 @@ const App: React.FC = () => {
     return acc;
   }, {} as Record<string, typeof UNIVERSE>);
 
+  // Mock Ticker Status (Deterministic based on symbol char code)
+  const getMockTickerStatus = (symbol: string): 'green' | 'yellow' | 'red' => {
+    const sum = symbol.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    const mod = sum % 3;
+    return mod === 0 ? 'green' : mod === 1 ? 'yellow' : 'red';
+  };
+
+  // Group Universe by Sleeve and Calculate Stats
+  const sleevesWithStats = Object.entries(sleeves).map(([sleeveName, items]) => {
+    const stats = items.reduce((acc, ticker) => {
+      const status = getMockTickerStatus(ticker.symbol);
+      acc[status]++;
+      return acc;
+    }, { green: 0, yellow: 0, red: 0 });
+    return { sleeveName, items, stats };
+  });
+
   const handleActionAddUncurated = (symbol: string) => {
     handleAddSymbol(symbol);
     setUncuratedTicker(null); // Dismiss warning after adding
@@ -256,9 +273,6 @@ const App: React.FC = () => {
       const analysisText = data.analysis || "No analysis returned.";
 
       setAgentOutput(analysisText);
-
-      // CHANGED: We DO NOT create a separate Widget for TOOLS anymore, 
-      // as requested ("just have that one shown" in command center).
 
     } catch (e: any) {
       setAgentOutput(`Error running tool: ${e.message}`);
@@ -641,26 +655,63 @@ const App: React.FC = () => {
             <div>
               <div className="text-xs font-semibold text-gray-500 mb-3 uppercase tracking-wider">Portfolio Sleeves</div>
               <div className="space-y-2">
-                {Object.entries(sleeves).map(([sleeveName, items]) => (
+                {sleevesWithStats.map(({ sleeveName, items, stats }) => (
                   <div key={sleeveName} className="border border-slate-800 rounded bg-slate-900/30 overflow-hidden">
                     <div
                       className="p-2.5 flex justify-between items-center cursor-pointer hover:bg-slate-800/50 transition-colors"
                       onClick={() => toggleSleeve(sleeveName)}
                     >
-                      <span className="text-xs font-bold text-gray-300">{sleeveName}</span>
-                      <span className="text-[10px] text-gray-500 font-mono">{items.length}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-gray-300">{sleeveName}</span>
+                        {/* Sleeve Checksum / Light Summary */}
+                        <div className="flex gap-1 ml-2">
+                          {stats.green > 0 && (
+                            <div className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-slate-900 border border-slate-700">
+                              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_4px_rgba(16,185,129,0.5)]" />
+                              <span className="text-[9px] font-mono text-emerald-400">{stats.green}</span>
+                            </div>
+                          )}
+                          {stats.yellow > 0 && (
+                            <div className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-slate-900 border border-slate-700">
+                              <div className="w-1.5 h-1.5 rounded-full bg-amber-500 shadow-[0_0_4px_rgba(245,158,11,0.5)]" />
+                              <span className="text-[9px] font-mono text-amber-400">{stats.yellow}</span>
+                            </div>
+                          )}
+                          {stats.red > 0 && (
+                            <div className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-slate-900 border border-slate-700">
+                              <div className="w-1.5 h-1.5 rounded-full bg-red-500 shadow-[0_0_4px_rgba(239,68,68,0.5)]" />
+                              <span className="text-[9px] font-mono text-red-400">{stats.red}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <Icon icon="chevron-down" className={`w-3 h-3 text-gray-500 transition-transform ${expandedSleeves[sleeveName] ? 'rotate-180' : ''}`} />
                     </div>
                     {expandedSleeves[sleeveName] && (
                       <div className="bg-slate-950/50 border-t border-slate-800/50">
-                        {items.map(ticker => (
-                          <div
-                            key={ticker.symbol}
-                            className="px-3 py-1.5 flex justify-between items-center hover:bg-slate-800/30 cursor-pointer group"
-                            onClick={() => handleAnalysisRequest('Company Profile', ticker.symbol)}
-                          >
-                            <span className="text-xs text-gray-400 font-mono group-hover:text-cyan-400 transition-colors">{ticker.symbol}</span>
-                          </div>
-                        ))}
+                        {items.map(ticker => {
+                          const status = getMockTickerStatus(ticker.symbol);
+                          return (
+                            <div
+                              key={ticker.symbol}
+                              className="px-3 py-1.5 flex justify-between items-center hover:bg-slate-800/30 cursor-pointer group border-l-2 border-transparent hover:border-blue-500 transition-all"
+                              onClick={() => handleAnalysisRequest('Company Profile', ticker.symbol)}
+                            >
+                              <span className="text-xs text-gray-400 font-mono group-hover:text-cyan-400 transition-colors">{ticker.symbol}</span>
+                              {/* Ticker Status Clock Icon */}
+                              <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full border ${status === 'green' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' :
+                                  status === 'yellow' ? 'bg-amber-500/10 border-amber-500/20 text-amber-400' :
+                                    'bg-red-500/10 border-red-500/20 text-red-400'
+                                }`}>
+                                <div className={`w-1.5 h-1.5 rounded-full ${status === 'green' ? 'bg-emerald-500' :
+                                    status === 'yellow' ? 'bg-amber-500' :
+                                      'bg-red-500'
+                                  }`} />
+                                <Icon icon="clock" className="w-3 h-3" />
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
                   </div>
