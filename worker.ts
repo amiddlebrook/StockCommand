@@ -19,24 +19,48 @@ export default {
         if (url.pathname === "/api/agent/scan" && request.method === "POST") {
             try {
                 const body = await request.json() as any;
-                // Inject env keys into process.env if needed, or pass env to workflow
-                // Since we used process.env in files, we might need a shim or pass it down.
-                // For this quick implementation, we assume keys are available globally or we patch it.
-                // Ideally we refactor 'runAgentWorkflow' to accept 'env'.
-                // Let's rely on the process.env check we added but we need to ensure it's populated.
-                // In Cloudflare modules, 'process' is not available by default unless using nodejs_compat and it's shimmed,
-                // or we manually set it.
-                Object.assign(process.env, env);
 
+                // Run the agent
                 const result = await runAgentWorkflow(env, body.scope, body.target);
+
+                // Persist the result to KV
+                if (env.STOCK_CACHE_KV) {
+                    const storedData = {
+                        ...result,
+                        timestamp: new Date().toISOString(),
+                        scope: body.scope,
+                        target: body.target
+                    };
+                    await env.STOCK_CACHE_KV.put("latest_agent_run", JSON.stringify(storedData));
+                }
+
                 return new Response(JSON.stringify(result), {
-                    headers: { "Content-Type": "application/json" }
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Access-Control-Allow-Origin": "*"
+                    }
                 });
             } catch (e: any) {
-                return new Response(JSON.stringify({ error: e.message }), { status: 500 });
+                return new Response(JSON.stringify({ error: e.message }), {
+                    status: 500,
+                    headers: { "Access-Control-Allow-Origin": "*" }
+                });
             }
         }
 
-        return new Response("StockCommand Worker Active", { status: 200 });
+        if (url.pathname === "/api/agent/latest" && request.method === "GET") {
+            if (!env.STOCK_CACHE_KV) {
+                return new Response(JSON.stringify({ error: "No KV binding" }), { status: 500 });
+            }
+            const data = await env.STOCK_CACHE_KV.get("latest_agent_run");
+            return new Response(data || JSON.stringify({ analysis: null, actions: [] }), {
+                headers: {
+                    "Content-Type": "application/json",
+                    "Access-Control-Allow-Origin": "*"
+                }
+            });
+        }
+
+        return new Response("StockCommand Worker Active. Endpoints: /api/agent/scan (POST), /api/agent/latest (GET)", { status: 200 });
     },
 };

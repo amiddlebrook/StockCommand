@@ -104,475 +104,150 @@ const App: React.FC = () => {
     }
   };
 
+  // Load persisted agent run on mount
   useEffect(() => {
-    if (!chatContainerRef.current) {
-      return;
-    }
-    chatContainerRef.current.scrollTo({
-      top: chatContainerRef.current.scrollHeight,
-      behavior: 'smooth',
-    });
-  }, [messages]);
-
-  const removeWidget = (id: string) => {
-    setWidgets(prev => prev.filter(widget => widget.id !== id));
-  };
-
-  const ensureSnapshotForSymbol = useCallback(async (symbol: string) => {
-    const upper = symbol.toUpperCase();
-    if (loadedSnapshotsRef.current.has(upper)) {
-      return;
-    }
-    loadedSnapshotsRef.current.add(upper);
-
-    try {
-      const snapshot = await fetchStockSnapshot(upper);
-      const text = `Price: $${snapshot.price.toFixed(2)} (${snapshot.changePercent.toFixed(2)}%)\n` +
-        `Change: ${snapshot.change.toFixed(2)} | Volume: ${snapshot.volume.toLocaleString()}\n` +
-        (snapshot.sector ? `Sector: ${snapshot.sector}\n` : '') +
-        (snapshot.industry ? `Industry: ${snapshot.industry}\n` : '') +
-        (snapshot.description ? `\n${snapshot.description}` : '');
-
-      const widget: AnalysisWidget = {
-        id: `snapshot-${upper}-${Date.now()}`,
-        type: 'profile',
-        title: `${upper} Snapshot`,
-        data: { text, sources: snapshot.sources },
-      };
-      setWidgets(prev => [widget, ...prev]);
-    } catch (error) {
-      console.error('Failed to load live snapshot:', error);
-    }
+    const loadPersistedRun = async () => {
+      try {
+        const res = await (window.fetch as any)('/api/agent/latest');
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.analysis) {
+            setAgentOutput(data.analysis);
+            // Add a widget for it
+            const widget: AnalysisWidget = {
+              id: `persisted-agent`,
+              type: 'profile',
+              title: `Last Run: ${data.scope || 'FULL'}`,
+              data: { text: data.analysis, sources: [] }
+            };
+            setWidgets(prev => {
+              if (prev.find(w => w.id === 'persisted-agent')) return prev;
+              return [widget, ...prev];
+            });
+          }
+        }
+      } catch (e) {
+        console.error("Failed to load persisted run", e);
+      }
+    };
+    loadPersistedRun();
   }, []);
 
-  useEffect(() => {
-    symbols.forEach(symbol => {
-      ensureSnapshotForSymbol(symbol);
-    });
-  }, [symbols, ensureSnapshotForSymbol]);
-
-  const renderWidget = (widget: AnalysisWidget) => {
-    switch (widget.type) {
-      case 'divergence':
-        return <StockDivergenceChart id={widget.id} data={widget.data} onRemove={removeWidget} />;
-      case 'ghost':
-        return <GhostPatternChart id={widget.id} data={widget.data} onRemove={removeWidget} />;
-      case 'options':
-        return <OptionsStrategyCard id={widget.id} data={widget.data} onRemove={removeWidget} />;
-      case 'portfolio':
-        return (
-          <PortfolioReportWidget
-            id={widget.id}
-            title={widget.title}
-            data={widget.data}
-            onRemove={removeWidget}
-          />
-        );
-      case 'profile':
-      case 'news':
-      case 'comparison':
-      case 'error':
-      default:
-        return (
-          <TextWidget
-            id={widget.id}
-            title={widget.title}
-            text={widget.data?.text ?? ''}
-            sources={widget.data?.sources}
-            onRemove={removeWidget}
-          />
-        );
-    }
-  };
-
-  const handleAnalysisRequest = async (featureType: string, rawSymbol: string) => {
-    const symbol = rawSymbol.trim().toUpperCase();
-    if (!symbol) {
-      return;
-    }
-
-    setIsDashboardLoading(true);
-    setMobileView('dashboard');
-
-    const promptTemplate = FEATURE_PROMPTS[featureType] ?? `Provide a ${featureType} for SYMBOL.`;
-    const prompt = promptTemplate.replace(/SYMBOL/g, symbol);
-    const widgetId = `${featureType}-${symbol}-${Date.now()}`;
-
-    try {
-      if (['Divergence Analysis', 'Ghost Pattern', 'Options Strategy'].includes(featureType)) {
-        const response = await analyzeStockData(prompt, { model: analysisModelId });
-        const responseText = response.response ?? '';
-
-        let jsonData: any;
-        try {
-          jsonData = responseText ? JSON.parse(responseText) : undefined;
-        } catch (error) {
-          console.error('Failed to parse analysis response:', error);
-        }
-
-        if (featureType === 'Divergence Analysis' && jsonData?.divergenceData) {
-          const widget: AnalysisWidget = {
-            id: widgetId,
-            type: 'divergence',
-            title: `Divergence: ${symbol}`,
-            data: jsonData.divergenceData,
-          };
-          setWidgets(prev => [widget, ...prev]);
-          return;
-        }
-
-        if (featureType === 'Ghost Pattern' && jsonData?.ghostPatternData) {
-          const widget: AnalysisWidget = {
-            id: widgetId,
-            type: 'ghost',
-            title: `Ghost Pattern: ${symbol}`,
-            data: jsonData.ghostPatternData,
-          };
-          setWidgets(prev => [widget, ...prev]);
-          return;
-        }
-
-        if (featureType === 'Options Strategy' && jsonData?.optionsStrategy) {
-          const widget: AnalysisWidget = {
-            id: widgetId,
-            type: 'options',
-            title: `Options Strategy: ${symbol}`,
-            data: jsonData.optionsStrategy,
-          };
-          setWidgets(prev => [widget, ...prev]);
-          return;
-        }
-
-        if (jsonData?.analysisSummary) {
-          const widget: AnalysisWidget = {
-            id: widgetId,
-            type: 'profile',
-            title: `${featureType}: ${symbol}`,
-            data: { text: jsonData.analysisSummary, sources: [] },
-          };
-          setWidgets(prev => [widget, ...prev]);
-          return;
-        }
-
-        throw new Error('No data returned from analysis.');
-      }
-
-      const response = await searchWithGrounding(prompt, { model: analysisModelId });
-      const text = response.response ?? '';
-      const sources = response.candidates?.[0]?.groundingMetadata?.groundingChunks as Source[] | undefined;
-
-      const widget: AnalysisWidget = {
-        id: widgetId,
-        type: 'profile',
-        title: `${featureType}: ${symbol}`,
-        data: { text: text || 'No information available at the moment.', sources },
-      };
-      setWidgets(prev => [widget, ...prev]);
-    } catch (error) {
-      console.error(`Error during ${featureType} analysis:`, error);
-      const fallbackWidget = {
-        id: `${widgetId}-error`,
-        type: 'error' as const,
-        title: `Error: ${featureType} for ${symbol}`,
-        data: { text: 'Failed to generate analysis. Please try again.', sources: [] },
-      };
-      setWidgets(prev => [fallbackWidget, ...prev]);
-    } finally {
-      setIsDashboardLoading(false);
-    }
-  };
-
-  const handleSendMessage = async (message: string, image?: File) => {
-    if (!message.trim() && !image) {
-      return;
-    }
-
-    const userMessage: ChatMessageType = {
-      id: `user-${Date.now()}`,
-      role: 'user',
-      content: message,
-    };
-
-    const modelMessageId = `model-${Date.now() + 1}`;
-    const loadingMessage: ChatMessageType = {
-      id: modelMessageId,
-      role: 'model',
-      content: '',
-      isLoading: true,
-    };
-
-    setMessages(prev => [...prev, userMessage, loadingMessage]);
-    setIsChatLoading(true);
-
-    try {
-      let responseText = '';
-      let sources: Source[] | undefined;
-
-      if (image) {
-        const response = await analyzeImage(message || 'Analyze this image.', image, { model: analysisModelId });
-        responseText = response.response ?? '';
-      } else {
-        const history = messages
-          .filter(m => (m.role === 'user' || m.role === 'model') && !m.isLoading)
-          .map(m => ({
-            role: m.role as 'user' | 'model',
-            parts: [{ text: m.content }],
-          }));
-
-        const response = await sendMessage(message, history, {
-          activeSymbol,
-          watchlist: symbols,
-        });
-        responseText = response.response ?? '';
-      }
-
-      const newBotMessage: ChatMessageType = {
-        id: modelMessageId,
-        role: 'model',
-        content: responseText || "Sorry, I couldn't process that request.",
-        sources,
-        isLoading: false,
-      };
-
-      setMessages(prev => prev.map(msg => (msg.id === modelMessageId ? newBotMessage : msg)));
-    } catch (error) {
-      console.error('Error handling message:', error);
-      const errorMessage: ChatMessageType = {
-        id: modelMessageId,
-        role: 'model',
-        content: 'An error occurred. Please try again.',
-        isLoading: false,
-      };
-      setMessages(prev => prev.map(msg => (msg.id === modelMessageId ? errorMessage : msg)));
-    } finally {
-      setIsChatLoading(false);
-    }
-  };
-
-  const handleStartRecording = async () => {
-    try {
-      if (!navigator.mediaDevices?.getUserMedia) {
-        throw new Error('Audio recording is not supported in this browser.');
-      }
-
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
-      mediaRecorderRef.current = recorder;
-      audioChunksRef.current = [];
-
-      recorder.ondataavailable = event => {
-        if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
-        }
-      };
-
-      recorder.onstop = async () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-        console.info('Recorded audio blob', audioBlob);
-      };
-
-      recorder.start();
-      setIsRecording(true);
-    } catch (error) {
-      console.error('Failed to start recording:', error);
-    }
-  };
-
-  const handleStopRecording = () => {
-    const recorder = mediaRecorderRef.current;
-    if (!recorder) {
-      return;
-    }
-
-    if (recorder.state !== 'inactive') {
-      recorder.stop();
-    }
-
-    mediaRecorderRef.current = null;
-    setIsRecording(false);
-  };
-
-  const handleAddSymbol = (symbol: string) => {
-    const upper = symbol.toUpperCase();
-    setSymbols(prev => (prev.includes(upper) ? prev : [...prev, upper]));
-    setActiveSymbol(upper);
-    ensureSnapshotForSymbol(upper);
-    handleAnalysisRequest('Company Profile', upper);
-  };
-
-  const handleRemoveSymbol = (symbol: string) => {
-    const upper = symbol.toUpperCase();
-    setSymbols(prev => prev.filter(s => s !== upper));
-    setWidgets(prev => prev.filter(widget => !widget.title?.includes(upper)));
-    if (activeSymbol === upper) {
-      const remaining = symbols.filter(s => s !== upper);
-      setActiveSymbol(remaining[0] ?? null);
-    }
-  };
-
-  const handleSelectSymbol = (symbol: string) => {
-    setActiveSymbol(symbol);
-  };
-
-  const handleGeneratePortfolioReport = async (tickers: string[], goal: string) => {
-    setIsPortfolioGenerating(true);
-    try {
-      const report = await generatePortfolioReport(tickers, goal);
-      const widget: AnalysisWidget = {
-        id: `portfolio-${Date.now()}`,
-        type: 'portfolio',
-        title: `Portfolio Report (${tickers.join(', ')})`,
-        data: report,
-      };
-      setWidgets(prev => [widget, ...prev]);
-      setIsPortfolioModalOpen(false);
-      setMobileView('dashboard');
-    } catch (error) {
-      console.error('Failed to generate portfolio report:', error);
-    } finally {
-      setIsPortfolioGenerating(false);
-    }
-  };
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-gray-100 flex flex-col">
-      <Header />
+    <div className="h-screen w-screen bg-slate-950 text-gray-100 flex flex-col overflow-hidden font-sans">
+      <div className="flex-none z-50 shadow-md">
+        <Header />
+      </div>
 
-      {/* Main Content Grid */}
-      <div className="flex-1 grid grid-cols-1 md:grid-cols-12 lg:grid-cols-[300px_minmax(0,_1fr)_420px] xl:grid-cols-[320px_minmax(0,_1fr)_480px] overflow-hidden">
-
-        {/* Toolbox Sidebar */}
-        <aside className={`border-r border-slate-800/50 backdrop-blur-sm bg-slate-900/30 overflow-y-auto md:col-span-3 lg:col-auto ${mobileView === 'toolbox' ? 'block' : 'hidden'} md:block ${isDashboardLoading ? 'opacity-70' : ''}`}>
-          <Toolbox
-            symbols={symbols}
-            activeSymbol={activeSymbol}
-            onAddSymbol={handleAddSymbol}
-            onRemoveSymbol={handleRemoveSymbol}
-            onSelectSymbol={handleSelectSymbol}
-            onAnalysisRequested={handleAnalysisRequest}
-            onPortfolioReport={() => setIsPortfolioModalOpen(true)}
-            isLoading={isDashboardLoading}
-          />
-        </aside>
-
-        {/* Dashboard Main Area */}
-        <main className={`overflow-y-auto p-4 md:p-6 lg:p-8 space-y-6 relative md:col-span-6 lg:col-auto ${mobileView === 'dashboard' ? 'block' : 'hidden'} md:block`}>
-          {isDashboardLoading && (
-            <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center z-20">
-              <div className="flex flex-col items-center gap-4">
-                <LoadingSpinner className="w-12 h-12" />
-                <p className="text-sm text-cyan-400 animate-pulse">Analyzing...</p>
+      <div className="flex-1 flex overflow-hidden">
+        {/* LEFT COLUMN: Portfolio & Actions (25%) */}
+        <div className="w-[300px] xl:w-[350px] flex flex-col border-r border-slate-800 bg-slate-900/40">
+          <div className="p-3 bg-slate-900 border-b border-slate-800 font-semibold text-xs text-cyan-400 tracking-wider">
+            PORTFOLIO CONTEXT
+          </div>
+          <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin scrollbar-thumb-slate-700">
+            {/* Fake Portfolio Summary */}
+            <div className="bg-slate-800/50 rounded p-3 border border-slate-700/50">
+              <div className="flex justify-between items-end mb-2">
+                <span className="text-gray-400 text-xs">Total Liquidity</span>
+                <span className="text-xl font-bold font-mono text-emerald-400">$1,240,500</span>
+              </div>
+              <div className="h-1.5 w-full bg-slate-700 rounded-full overflow-hidden">
+                <div className="h-full bg-gradient-to-r from-cyan-500 to-blue-500 w-[65%]" />
+              </div>
+              <div className="flex justify-between text-[10px] text-gray-500 mt-1">
+                <span>Core: 65%</span>
+                <span>Cash: 35%</span>
               </div>
             </div>
-          )}
 
-          {widgets.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-center p-8">
-              <div className="relative mb-6">
-                <div className="absolute inset-0 bg-cyan-500/20 blur-3xl rounded-full" />
-                <Icon icon="chart" className="w-20 h-20 text-cyan-400 relative" />
-              </div>
-              <h3 className="text-2xl font-bold text-gray-200 mb-3 tracking-tight">Analytics Dashboard</h3>
-              <p className="max-w-md text-gray-400 text-sm leading-relaxed">
-                Your financial analysis widgets will appear here. Select a tool from the toolbox to begin your analysis.
-              </p>
-              <div className="mt-8 flex gap-2">
-                <div className="h-1.5 w-1.5 rounded-full bg-cyan-500 animate-pulse" />
-                <div className="h-1.5 w-1.5 rounded-full bg-cyan-500 animate-pulse delay-75" />
-                <div className="h-1.5 w-1.5 rounded-full bg-cyan-500 animate-pulse delay-150" />
-              </div>
+            {/* Toolbox for Quick Access */}
+            <Toolbox
+              symbols={symbols}
+              activeSymbol={activeSymbol}
+              onAddSymbol={handleAddSymbol}
+              onRemoveSymbol={handleRemoveSymbol}
+              onSelectSymbol={handleSelectSymbol}
+              onAnalysisRequested={handleAnalysisRequest}
+              onPortfolioReport={() => setIsPortfolioModalOpen(true)}
+              isLoading={isDashboardLoading}
+            />
+          </div>
+        </div>
+
+        {/* MIDDLE COLUMN: Command Center (50%) */}
+        <div className="flex-1 flex flex-col min-w-0 bg-slate-950 relative">
+          <div className="p-3 bg-slate-900/80 backdrop-blur border-b border-slate-800 flex justify-between items-center z-10">
+            <div className="font-semibold text-xs text-emerald-400 tracking-wider flex items-center gap-2">
+              <Icon icon="bot" className="w-4 h-4" />
+              AGENT COMMAND CENTER
             </div>
-          ) : (
-            <div className="grid grid-cols-1 gap-6">
-              {widgets.map(widget => (
-                <div key={widget.id} className="animate-fadeIn">{renderWidget(widget)}</div>
-              ))}
-            </div>
-          )}
-        </main>
+            {isAgentRunning && <span className="text-xs text-amber-400 animate-pulse">Processing...</span>}
+          </div>
 
-        {/* Chat Sidebar */}
-        <aside className={`flex flex-col bg-gradient-to-b from-slate-900/50 to-slate-950/50 backdrop-blur-sm border-l border-slate-800/50 max-h-full md:col-span-3 lg:col-auto ${mobileView === 'chat' ? 'flex' : 'hidden'} md:flex`}>
-          <div className="border-b border-slate-800/50 px-4 py-4 bg-slate-900/30">
-            <div className="flex flex-col gap-4">
+          {/* Agent Controls Overlay */}
+          <div className="p-4 border-b border-slate-800/50 flex gap-2 overflow-x-auto bg-slate-900/20">
+            <button
+              onClick={() => handleRunAgentScan('FULL')}
+              disabled={isAgentRunning}
+              className="whitespace-nowrap px-4 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded text-xs font-semibold shadow-sm transition-all disabled:opacity-50"
+            >
+              RUN FULL SCAN
+            </button>
+            <div className="h-6 w-px bg-slate-700 mx-1" />
+            <select
+              id="sleeve-select"
+              className="bg-slate-800 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200 outline-none focus:border-blue-500"
+              onChange={(e) => {
+                if (e.target.value) handleRunAgentScan('SLEEVE', e.target.value);
+                e.target.value = ""; // reset
+              }}
+            >
+              <option value="">Analyze Sleeve...</option>
+              <option value="Core Tech">Core Tech</option>
+              <option value="Rotatable Tech">Rotatable Tech</option>
+              <option value="Specialized: Energy">Energy</option>
+              <option value="Physical Precious Metals">Metals</option>
+            </select>
+            <input
+              type="text"
+              placeholder="Ticker..."
+              className="bg-slate-800 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200 w-24 outline-none focus:border-blue-500 transition-all focus:w-32"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  const val = (e.currentTarget as HTMLInputElement).value;
+                  if (val) handleRunAgentScan('TICKER', val.toUpperCase());
+                  (e.currentTarget as HTMLInputElement).value = "";
+                }
+              }}
+            />
+          </div>
 
-              {/* Command Center */}
-              <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-lg">
-                <h2 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                  StockCommand Agent
-                </h2>
-
-                <div className="flex flex-col gap-3">
-                  <button
-                    onClick={() => handleRunAgentScan('FULL')}
-                    disabled={isAgentRunning}
-                    className="w-full px-3 py-2 bg-blue-600 hover:bg-blue-500 rounded text-sm font-medium transition-colors disabled:opacity-50"
-                  >
-                    {isAgentRunning ? 'Running...' : 'Run Full Scan'}
-                  </button>
-
-                  <div className="flex gap-2">
-                    <select id="sleeve-select" className="bg-slate-800 border border-slate-700 rounded px-2 py-1 text-xs w-full text-slate-300">
-                      <option value="">Select Sleeve...</option>
-                      <option value="Core Tech">Core Tech</option>
-                      <option value="Rotatable Tech">Rotatable Tech</option>
-                      <option value="Specialized: Energy">Energy</option>
-                      <option value="Specialized: AI Infra">AI Infra</option>
-                      <option value="Specialized: Defense">Defense</option>
-                      <option value="Physical Precious Metals">Metals</option>
-                    </select>
-                    <button
-                      onClick={() => {
-                        const sel = document.getElementById('sleeve-select') as unknown as HTMLSelectElement;
-                        if (sel.value) handleRunAgentScan('SLEEVE', sel.value);
-                      }}
-                      disabled={isAgentRunning}
-                      className="px-3 py-1 bg-slate-700 hover:bg-slate-600 rounded text-xs"
-                    >
-                      Analyze
-                    </button>
-                  </div>
-
-                  <div className="flex gap-2">
-                    <input id="ticker-input" type="text" placeholder="Ticker" className="bg-slate-800 border border-slate-700 rounded px-2 py-1 text-xs w-full text-slate-300" />
-                    <button
-                      onClick={() => {
-                        const inp = document.getElementById('ticker-input') as unknown as HTMLInputElement;
-                        if (inp.value) handleRunAgentScan('TICKER', inp.value.toUpperCase());
-                      }}
-                      disabled={isAgentRunning}
-                      className="px-3 py-1 bg-slate-700 hover:bg-slate-600 rounded text-xs"
-                    >
-                      Docs
-                    </button>
-                  </div>
-
-                  {agentOutput && (
-                    <div className="mt-2 p-2 bg-black/40 rounded text-xs font-mono text-green-400 max-h-32 overflow-y-auto">
-                      {agentOutput}
-                    </div>
-                  )}
+          {/* Auto-Scroll Content Area */}
+          <div className="flex-1 overflow-y-auto p-6 space-y-8 scrollbar-thin scrollbar-thumb-slate-700 custom-markdown">
+            {/* Agent Output */}
+            {agentOutput && (
+              <div className="animate-fadeIn">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]" />
+                  <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Latest Intelligence Report</span>
+                </div>
+                <div className="prose prose-invert prose-sm max-w-none bg-slate-900/50 p-6 rounded-lg border border-slate-800/50 shadow-inner">
+                  <TextWidget id="agent-main" title="" text={agentOutput} />
                 </div>
               </div>
+            )}
 
-              <div>
-                <h2 className="text-sm font-semibold text-gray-300 tracking-wider flex items-center gap-2">
-                  <Icon icon="bot" className="w-4 h-4 text-cyan-400" />
-                  AI ASSISTANT
-                </h2>
-                <p className="text-xs text-gray-500">
-                  Powered by StockCommand Logic
-                </p>
-              </div>
-            </div>
-          </div>
-          <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-4 md:p-5 lg:p-6 space-y-4">
-            {messages.map(msg => (
-              <ChatMessage key={msg.id} message={msg} />
+            {/* Regular Chat/Widgets */}
+            {widgets.filter(w => !w.title.includes('Agent')).map(widget => (
+              <div key={widget.id} className="animate-fadeIn">{renderWidget(widget)}</div>
             ))}
+
+            <div ref={chatContainerRef} />
           </div>
-          <div className="border-t border-slate-800/50">
+
+          {/* Chat Input Area */}
+          <div className="p-4 border-t border-slate-800 bg-slate-900/80 backdrop-blur">
             <ChatInput
               onSendMessage={handleSendMessage}
               onStartRecording={handleStartRecording}
@@ -581,13 +256,39 @@ const App: React.FC = () => {
               isLoading={isChatLoading}
             />
           </div>
-        </aside>
+        </div>
 
+        {/* RIGHT COLUMN: Market Data & Clocks (25%) */}
+        <div className="w-[300px] xl:w-[350px] flex flex-col border-l border-slate-800 bg-slate-900/40">
+          <div className="p-3 bg-slate-900 border-b border-slate-800 font-semibold text-xs text-amber-400 tracking-wider">
+            MARKET CLOCKS
+          </div>
+          <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin scrollbar-thumb-slate-700">
+            {/* Mock Clocks */}
+            <div className="space-y-3">
+              {['Liquidity Cycle', 'Commodity Cycle', 'VIX Regime'].map(label => (
+                <div key={label} className="bg-slate-800/50 p-3 rounded border border-slate-700/50 flex justify-between items-center group hover:border-amber-500/30 transition-colors cursor-default">
+                  <span className="text-gray-400 text-xs font-medium group-hover:text-gray-200">{label}</span>
+                  <span className="text-[10px] bg-slate-700 px-2 py-0.5 rounded text-gray-300">NEUTRAL</span>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-8">
+              <div className="text-xs font-semibold text-gray-500 mb-3 uppercase tracking-wider">Watchlist</div>
+              <div className="space-y-1">
+                {symbols.map(sym => (
+                  <div key={sym} className="flex justify-between items-center p-2 hover:bg-slate-800/50 rounded cursor-pointer transition-colors" onClick={() => handleAnalysisRequest('Company Profile', sym)}>
+                    <span className="font-mono text-sm font-bold text-gray-300">{sym}</span>
+                    <span className="text-xs text-gray-500">Live</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Mobile Navigation Spacer */}
-      <div className="md:hidden h-16" />
-      <MobileNav activeView={mobileView} setActiveView={setMobileView} />
       <PortfolioReportModal
         isOpen={isPortfolioModalOpen}
         symbols={symbols}
