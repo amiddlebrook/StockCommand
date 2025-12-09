@@ -1,4 +1,4 @@
-export type SleeveName = 
+export type SleeveName =
   | 'Core Tech'
   | 'Rotatable Tech'
   | 'Specialized: Energy'
@@ -13,7 +13,15 @@ export type SleeveName =
   | 'Specialized: Art'
   | 'Physical Precious Metals'
   | 'USD Cash'
-  | 'Options';
+  | 'Options'
+  | 'Macro';
+
+export interface MarketClock {
+  label: string;
+  status: 'green' | 'yellow' | 'red';
+  code: string;
+  reason?: string;
+}
 
 export interface Ticker {
   symbol: string;

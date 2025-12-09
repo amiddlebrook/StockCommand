@@ -62,7 +62,7 @@ export async function runAgentWorkflow(
 
     // 2. Research & Analyze (Engine with LLM)
     const engine = new AgentEngine(DEEPSEEK_KEY);
-    const { analysis, actions } = await engine.evaluate(scope, marketData, portfolio, target, tool);
+    const { analysis, actions, clocks } = await engine.evaluate(scope, marketData, portfolio, target, tool);
 
     // 3. Act
     console.log("--- ANALYSIS REPORT ---");
@@ -78,5 +78,5 @@ export async function runAgentWorkflow(
     }
 
     console.log('Workflow complete.');
-    return { analysis, actions };
+    return { analysis, actions, clocks };
 }

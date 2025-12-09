@@ -1,4 +1,4 @@
-import { MarketData, RotationRule, AgentAction, PortfolioState } from './types';
+import { MarketData, RotationRule, AgentAction, PortfolioState, MarketClock } from './types';
 import { LLMService } from './llm-service';
 
 export class AgentEngine {
@@ -14,7 +14,7 @@ export class AgentEngine {
         portfolio: PortfolioState, // Passed but LLM currently focuses on market data + text
         target?: string,
         tool?: string
-    ): Promise<{ analysis: string; actions: AgentAction[] }> {
+    ): Promise<{ analysis: string; actions: AgentAction[], clocks?: MarketClock[] }> {
 
         console.log(`[Engine] Running AI evaluation for scope: ${scope}, target: ${target}, tool: ${tool}`);
 

@@ -25,6 +25,7 @@ import { PortfolioReportWidget } from './components/PortfolioReportWidget';
 import { PortfolioView } from './components/PortfolioView';
 import { UNIVERSE } from './lib/agent/universe';
 import { ProfileModal } from './components/ProfileModal';
+import { MarketClock } from './lib/agent/types';
 
 type MobileView = 'toolbox' | 'dashboard' | 'chat';
 
@@ -70,6 +71,7 @@ const App: React.FC = () => {
 
   // Agent State
   const [agentOutput, setAgentOutput] = useState<string | null>(null);
+  const [marketClocks, setMarketClocks] = useState<MarketClock[] | null>(null);
   const [isAgentRunning, setIsAgentRunning] = useState(false);
 
   // Uncurated Ticker State
@@ -472,6 +474,9 @@ const App: React.FC = () => {
           const data = await res.json();
           if (data && data.analysis) {
             setAgentOutput(data.analysis);
+            if (data.clocks) {
+              setMarketClocks(data.clocks);
+            }
             // Add a widget for it
             const widget: AnalysisWidget = {
               id: `persisted-agent`,
@@ -727,21 +732,15 @@ const App: React.FC = () => {
             </div>
             <div className="flex-1 overflow-y-auto p-4 space-y-6 scrollbar-thin scrollbar-thumb-slate-700">
               {/* Clocks */}
+              {/* Clocks */}
               <div className="space-y-3">
-                {/* Clocks */}
-                <div className="space-y-3">
-                  {[
-                    { label: 'Liquidity Cycle', status: 'green', code: 'CLOCK_LIQUIDITY_CYCLE' },
-                    { label: 'Commodity Cycle', status: 'yellow', code: 'CLOCK_COMMODITY_CYCLE' },
-                    { label: 'VIX Regime', status: 'red', code: 'CLOCK_VIX_REGIME' },
-                    { label: 'Inflation Trend', status: 'yellow', code: 'CLOCK_INFLATION_TREND' },
-                    { label: 'Credit Impulse', status: 'green', code: 'CLOCK_CREDIT_IMPULSE' },
-                    { label: 'Dollar Strength', status: 'red', code: 'CLOCK_DOLLAR_STRENGTH' }
-                  ].map(clock => (
+                {marketClocks ? (
+                  marketClocks.map(clock => (
                     <div
-                      key={clock.label}
+                      key={clock.code}
                       className="bg-slate-800/50 p-3 rounded border border-slate-700/50 flex justify-between items-center group hover:border-amber-500/30 transition-colors cursor-pointer hover:bg-slate-800"
                       onClick={() => handleRunAgentScan('TOOL', clock.code)}
+                      title={clock.reason}
                     >
                       <span className="text-gray-400 text-xs font-medium group-hover:text-cyan-400 transition-colors">{clock.label}</span>
                       <div className="flex items-center gap-2">
@@ -751,79 +750,100 @@ const App: React.FC = () => {
                           }`} />
                       </div>
                     </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Sleeves Accordion */}
-              <div>
-                <div className="text-xs font-semibold text-gray-500 mb-3 uppercase tracking-wider">Portfolio Sleeves</div>
-                <div className="space-y-2">
-                  {sleevesWithStats.map(({ sleeveName, items, stats }) => (
-                    <div key={sleeveName} className="border border-slate-800 rounded bg-slate-900/30 overflow-hidden">
-                      <div
-                        className="p-2.5 flex justify-between items-center cursor-pointer hover:bg-slate-800/50 transition-colors"
-                        onClick={() => toggleSleeve(sleeveName)}
-                      >
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-bold text-gray-300">{sleeveName}</span>
-                          {/* Sleeve Checksum / Light Summary */}
-                          <div className="flex gap-1 ml-2">
-                            {stats.green > 0 && (
-                              <div className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-slate-900 border border-slate-700">
-                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_4px_rgba(16,185,129,0.5)]" />
-                                <span className="text-[9px] font-mono text-emerald-400">{stats.green}</span>
-                              </div>
-                            )}
-                            {stats.yellow > 0 && (
-                              <div className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-slate-900 border border-slate-700">
-                                <div className="w-1.5 h-1.5 rounded-full bg-amber-500 shadow-[0_0_4px_rgba(245,158,11,0.5)]" />
-                                <span className="text-[9px] font-mono text-amber-400">{stats.yellow}</span>
-                              </div>
-                            )}
-                            {stats.red > 0 && (
-                              <div className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-slate-900 border border-slate-700">
-                                <div className="w-1.5 h-1.5 rounded-full bg-red-500 shadow-[0_0_4px_rgba(239,68,68,0.5)]" />
-                                <span className="text-[9px] font-mono text-red-400">{stats.red}</span>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                        <Icon icon="chevron-down" className={`w-3 h-3 text-gray-500 transition-transform ${expandedSleeves[sleeveName] ? 'rotate-180' : ''}`} />
+                  ))
+                ) : (
+                  // Skeleton / Default Placeholder State
+                  [
+                    { label: 'Liquidity Cycle', status: 'gray', code: 'CLOCK_LIQUIDITY_CYCLE' },
+                    { label: 'Commodity Cycle', status: 'gray', code: 'CLOCK_COMMODITY_CYCLE' },
+                    { label: 'VIX Regime', status: 'gray', code: 'CLOCK_VIX_REGIME' },
+                    { label: 'Inflation Trend', status: 'gray', code: 'CLOCK_INFLATION_TREND' },
+                    { label: 'Credit Impulse', status: 'gray', code: 'CLOCK_CREDIT_IMPULSE' },
+                    { label: 'Dollar Strength', status: 'gray', code: 'CLOCK_DOLLAR_STRENGTH' }
+                  ].map(clock => (
+                    <div
+                      key={clock.label}
+                      className="bg-slate-800/50 p-3 rounded border border-slate-700/50 flex justify-between items-center opacity-50 cursor-not-allowed"
+                    >
+                      <span className="text-gray-500 text-xs font-medium">{clock.label}</span>
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-slate-600" />
                       </div>
-                      {expandedSleeves[sleeveName] && (
-                        <div className="bg-slate-950/50 border-t border-slate-800/50">
-                          {items.map(ticker => {
-                            const status = getMockTickerStatus(ticker.symbol);
-                            return (
-                              <div
-                                key={ticker.symbol}
-                                className="px-3 py-1.5 flex justify-between items-center hover:bg-slate-800/30 cursor-pointer group border-l-2 border-transparent hover:border-blue-500 transition-all"
-                                onClick={() => handleAnalysisRequest('Company Profile', ticker.symbol)}
-                              >
-                                <span className="text-xs text-gray-400 font-mono group-hover:text-cyan-400 transition-colors">{ticker.symbol}</span>
-                                {/* Ticker Status Clock Icon */}
-                                <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full border ${status === 'green' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' :
-                                  status === 'yellow' ? 'bg-amber-500/10 border-amber-500/20 text-amber-400' :
-                                    'bg-red-500/10 border-red-500/20 text-red-400'
-                                  }`}>
-                                  <div className={`w-1.5 h-1.5 rounded-full ${status === 'green' ? 'bg-emerald-500' :
-                                    status === 'yellow' ? 'bg-amber-500' :
-                                      'bg-red-500'
-                                    }`} />
-                                  <Icon icon="clock" className="w-3 h-3" />
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
                     </div>
-                  ))}
-                </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            {/* Sleeves Accordion */}
+            <div>
+              <div className="text-xs font-semibold text-gray-500 mb-3 uppercase tracking-wider">Portfolio Sleeves</div>
+              <div className="space-y-2">
+                {sleevesWithStats.map(({ sleeveName, items, stats }) => (
+                  <div key={sleeveName} className="border border-slate-800 rounded bg-slate-900/30 overflow-hidden">
+                    <div
+                      className="p-2.5 flex justify-between items-center cursor-pointer hover:bg-slate-800/50 transition-colors"
+                      onClick={() => toggleSleeve(sleeveName)}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-gray-300">{sleeveName}</span>
+                        {/* Sleeve Checksum / Light Summary */}
+                        <div className="flex gap-1 ml-2">
+                          {stats.green > 0 && (
+                            <div className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-slate-900 border border-slate-700">
+                              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_4px_rgba(16,185,129,0.5)]" />
+                              <span className="text-[9px] font-mono text-emerald-400">{stats.green}</span>
+                            </div>
+                          )}
+                          {stats.yellow > 0 && (
+                            <div className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-slate-900 border border-slate-700">
+                              <div className="w-1.5 h-1.5 rounded-full bg-amber-500 shadow-[0_0_4px_rgba(245,158,11,0.5)]" />
+                              <span className="text-[9px] font-mono text-amber-400">{stats.yellow}</span>
+                            </div>
+                          )}
+                          {stats.red > 0 && (
+                            <div className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-slate-900 border border-slate-700">
+                              <div className="w-1.5 h-1.5 rounded-full bg-red-500 shadow-[0_0_4px_rgba(239,68,68,0.5)]" />
+                              <span className="text-[9px] font-mono text-red-400">{stats.red}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <Icon icon="chevron-down" className={`w-3 h-3 text-gray-500 transition-transform ${expandedSleeves[sleeveName] ? 'rotate-180' : ''}`} />
+                    </div>
+                    {expandedSleeves[sleeveName] && (
+                      <div className="bg-slate-950/50 border-t border-slate-800/50">
+                        {items.map(ticker => {
+                          const status = getMockTickerStatus(ticker.symbol);
+                          return (
+                            <div
+                              key={ticker.symbol}
+                              className="px-3 py-1.5 flex justify-between items-center hover:bg-slate-800/30 cursor-pointer group border-l-2 border-transparent hover:border-blue-500 transition-all"
+                              onClick={() => handleAnalysisRequest('Company Profile', ticker.symbol)}
+                            >
+                              <span className="text-xs text-gray-400 font-mono group-hover:text-cyan-400 transition-colors">{ticker.symbol}</span>
+                              {/* Ticker Status Clock Icon */}
+                              <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full border ${status === 'green' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' :
+                                status === 'yellow' ? 'bg-amber-500/10 border-amber-500/20 text-amber-400' :
+                                  'bg-red-500/10 border-red-500/20 text-red-400'
+                                }`}>
+                                <div className={`w-1.5 h-1.5 rounded-full ${status === 'green' ? 'bg-emerald-500' :
+                                  status === 'yellow' ? 'bg-amber-500' :
+                                    'bg-red-500'
+                                  }`} />
+                                <Icon icon="clock" className="w-3 h-3" />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
             </div>
           </div>
+
         </>
       ) : (
         <div className="flex-1 flex flex-col h-screen">
@@ -887,6 +907,7 @@ const App: React.FC = () => {
           <PortfolioView sleevesWithStats={sleevesWithStats} />
         </div>
       )}
+
 
 
       <PortfolioReportModal
