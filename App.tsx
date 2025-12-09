@@ -771,9 +771,6 @@ const App: React.FC = () => {
           </div>
         </div>
       </div>
-    </div>
-
-      </div >
 
       <PortfolioReportModal
         isOpen={isPortfolioModalOpen}
@@ -788,7 +785,7 @@ const App: React.FC = () => {
         isOpen={isProfileOpen}
         onClose={() => setIsProfileOpen(false)}
       />
-    </div >
+    </div>
   );
 };
 
