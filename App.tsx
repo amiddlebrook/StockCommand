@@ -131,20 +131,26 @@ const App: React.FC = () => {
     }
   };
 
-  const handleRunAgentScan = async (scope: 'FULL' | 'SLEEVE' | 'TICKER', target?: string) => {
+  const handleRunAgentScan = async (scope: 'FULL' | 'SLEEVE' | 'TICKER' | 'TOOL', target?: string, toolName?: string) => {
     setIsAgentRunning(true);
     if (scope === 'TICKER' && target) {
       checkCurated(target);
     } else {
       setUncuratedTicker(null);
     }
+
+    // For TOOL scope, the target is usually the tool code (e.g. CLOCK_X) or a symbol if it's a specific analysis tool
     setAgentOutput(`Initializing ${scope} scan...`);
 
     try {
       const res = await (window.fetch as any)('/api/agent/scan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ scope, target })
+        body: JSON.stringify({
+          scope,
+          target: scope === 'TOOL' ? target : target,
+          tool: toolName || (scope === 'TOOL' ? target : undefined)
+        })
       });
       const data = await res.json();
       setAgentOutput(data.analysis || "Analysis complete. See console.");
@@ -153,7 +159,7 @@ const App: React.FC = () => {
       const widget: AnalysisWidget = {
         id: `agent-${Date.now()}`,
         type: 'profile',
-        title: `Agent Report (${scope})`,
+        title: `Agent Report (${scope === 'TOOL' ? toolName || target : scope})`,
         data: { text: data.analysis, sources: [] }
       };
       setWidgets(prev => [widget, ...prev]);
