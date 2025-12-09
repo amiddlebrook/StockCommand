@@ -318,18 +318,40 @@ const App: React.FC = () => {
         const response = await analyzeImage(message || 'Analyze this image.', image, { model: analysisModelId });
         responseText = response.response ?? '';
       } else {
-        const history = messages
-          .filter(m => (m.role === 'user' || m.role === 'model') && !m.isLoading)
-          .map(m => ({
-            role: m.role as 'user' | 'model',
-            parts: [{ text: m.content }],
-          }));
+        // 1. Intercept Commands
+        const lowerMsg = message.toLowerCase().trim();
+        if (lowerMsg.startsWith('analyze ') || lowerMsg.startsWith('scan ')) {
+          const parts = message.split(' ');
+          const target = parts.length > 1 ? parts[1].toUpperCase() : null;
+          if (target) {
+            // Determine if target is a known Sleeve, otherwise assume Ticker
+            const sleeves = ['CORE TECH', 'ROTATABLE TECH', 'ENERGY', 'METALS', 'CASH', 'OPTIONS'];
+            // Simple heuristic
+            if (sleeves.some(s => target.includes(s) || s.includes(target))) {
+              handleRunAgentScan('SLEEVE', target); // You might need better mapping here
+              responseText = `initiating Sleeve Scan for ${target}... check the Command Center.`;
+            } else {
+              handleRunAgentScan('TICKER', target);
+              responseText = `Initiating Ticker Analysis for ${target}... check the Command Center.`;
+            }
+          } else {
+            responseText = "Please specify a target to analyze (e.g., 'Analyze NVDA').";
+          }
+        } else {
+          // 2. Normal Chat with Context
+          const history = messages
+            .filter(m => (m.role === 'user' || m.role === 'model') && !m.isLoading)
+            .map(m => ({
+              role: m.role as 'user' | 'model',
+              parts: [{ text: m.content }],
+            }));
 
-        const response = await sendMessage(message, history, {
-          activeSymbol,
-          watchlist: symbols,
-        });
-        responseText = response.response ?? '';
+          // Pass the latest agent report as context
+          const context = agentOutput ? { latestReport: agentOutput } : undefined;
+
+          const response = await sendMessage(message, history, context);
+          responseText = response.response ?? '';
+        }
       }
 
       const newBotMessage: ChatMessageType = {

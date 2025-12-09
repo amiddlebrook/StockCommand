@@ -65,7 +65,7 @@ export default {
         if (url.pathname === "/api/chat" && request.method === "POST") {
             try {
                 const body = await request.json() as any;
-                const { message, history } = body;
+                const { message, history, context } = body;
                 const apiKey = env.OPENROUTER_DEEPSEEK_CHAT_API_KEY;
 
                 if (!apiKey) {
@@ -73,7 +73,12 @@ export default {
                 }
 
                 // Construct conversation for DeepSeek
-                const systemPrompt = "You are StockCommand, an advanced AI financial analyst. Answer queries concisely and professionally.";
+                let systemPrompt = "You are StockCommand, an advanced AI financial analyst. Answer queries concisely and professionally.";
+
+                if (context && context.latestReport) {
+                    systemPrompt += `\n\nCONTEXT - LATEST AGENT REPORT:\n"""${context.latestReport}"""\n\nUser questions may refer to this report. Answer based on it if relevant.`;
+                }
+
                 const messages = [
                     { role: "system", content: systemPrompt },
                     ...history.map((h: any) => ({ role: h.role === 'model' ? 'assistant' : 'user', content: h.parts[0].text })),
