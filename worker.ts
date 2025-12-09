@@ -21,7 +21,7 @@ export default {
                 const body = await request.json() as any;
 
                 // Run the agent
-                const result = await runAgentWorkflow(env, body.scope, body.target);
+                const result = await runAgentWorkflow(env, body.scope, body.target, body.tool);
 
                 // Persist the result to KV
                 if (env.STOCK_CACHE_KV) {
@@ -29,7 +29,8 @@ export default {
                         ...result,
                         timestamp: new Date().toISOString(),
                         scope: body.scope,
-                        target: body.target
+                        target: body.target,
+                        tool: body.tool
                     };
                     await env.STOCK_CACHE_KV.put("latest_agent_run", JSON.stringify(storedData));
                 }

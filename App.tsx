@@ -188,98 +188,43 @@ const App: React.FC = () => {
 
   const handleAnalysisRequest = async (featureType: string, rawSymbol: string) => {
     const symbol = rawSymbol.trim().toUpperCase();
-    if (!symbol) {
-      return;
-    }
+    if (!symbol) return;
 
     setIsDashboardLoading(true);
     setMobileView('dashboard');
-
-    const promptTemplate = FEATURE_PROMPTS[featureType] ?? `Provide a ${featureType} for SYMBOL.`;
-    const prompt = promptTemplate.replace(/SYMBOL/g, symbol);
-    const widgetId = `${featureType}-${symbol}-${Date.now()}`;
+    setAgentOutput(`Running ${featureType} on ${symbol}...`);
+    setIsAgentRunning(true);
 
     try {
-      if (['Divergence Analysis', 'Ghost Pattern', 'Options Strategy'].includes(featureType)) {
-        const response = await analyzeStockData(prompt, { model: analysisModelId });
-        const responseText = response.response ?? '';
+      const res = await (window.fetch as any)('/api/agent/scan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          scope: 'TOOL',
+          target: symbol,
+          tool: featureType
+        })
+      });
 
-        let jsonData: any;
-        try {
-          jsonData = responseText ? JSON.parse(responseText) : undefined;
-        } catch (error) {
-          console.error('Failed to parse analysis response:', error);
-        }
+      const data = await res.json();
+      const analysisText = data.analysis || "No analysis returned.";
 
-        if (featureType === 'Divergence Analysis' && jsonData?.divergenceData) {
-          const widget: AnalysisWidget = {
-            id: widgetId,
-            type: 'divergence',
-            title: `Divergence: ${symbol}`,
-            data: jsonData.divergenceData,
-          };
-          setWidgets(prev => [widget, ...prev]);
-          return;
-        }
+      setAgentOutput(analysisText);
 
-        if (featureType === 'Ghost Pattern' && jsonData?.ghostPatternData) {
-          const widget: AnalysisWidget = {
-            id: widgetId,
-            type: 'ghost',
-            title: `Ghost Pattern: ${symbol}`,
-            data: jsonData.ghostPatternData,
-          };
-          setWidgets(prev => [widget, ...prev]);
-          return;
-        }
-
-        if (featureType === 'Options Strategy' && jsonData?.optionsStrategy) {
-          const widget: AnalysisWidget = {
-            id: widgetId,
-            type: 'options',
-            title: `Options Strategy: ${symbol}`,
-            data: jsonData.optionsStrategy,
-          };
-          setWidgets(prev => [widget, ...prev]);
-          return;
-        }
-
-        if (jsonData?.analysisSummary) {
-          const widget: AnalysisWidget = {
-            id: widgetId,
-            type: 'profile',
-            title: `${featureType}: ${symbol}`,
-            data: { text: jsonData.analysisSummary, sources: [] },
-          };
-          setWidgets(prev => [widget, ...prev]);
-          return;
-        }
-
-        throw new Error('No data returned from analysis.');
-      }
-
-      const response = await searchWithGrounding(prompt, { model: analysisModelId });
-      const text = response.response ?? '';
-      const sources = response.candidates?.[0]?.groundingMetadata?.groundingChunks as Source[] | undefined;
-
+      // Add a widget for valid response
       const widget: AnalysisWidget = {
-        id: widgetId,
+        id: `tool-${featureType}-${Date.now()}`,
         type: 'profile',
         title: `${featureType}: ${symbol}`,
-        data: { text: text || 'No information available at the moment.', sources },
+        data: { text: analysisText, sources: [] }
       };
       setWidgets(prev => [widget, ...prev]);
-    } catch (error) {
-      console.error(`Error during ${featureType} analysis:`, error);
-      const fallbackWidget = {
-        id: `${widgetId}-error`,
-        type: 'error' as const,
-        title: `Error: ${featureType} for ${symbol}`,
-        data: { text: 'Failed to generate analysis. Please try again.', sources: [] },
-      };
-      setWidgets(prev => [fallbackWidget, ...prev]);
+
+    } catch (e: any) {
+      setAgentOutput(`Error running tool: ${e.message}`);
     } finally {
       setIsDashboardLoading(false);
+      setIsAgentRunning(false);
     }
   };
 

@@ -73,26 +73,7 @@ export const Toolbox: React.FC<ToolboxProps> = ({
                 <div className="h-0.5 w-12 bg-gradient-to-r from-cyan-500 to-transparent rounded-full" />
             </div>
 
-            <div className="mb-6">
-                <div className="bg-gradient-to-br from-cyan-900/30 to-blue-900/20 border border-cyan-500/30 rounded-2xl p-4 shadow-lg shadow-cyan-500/10">
-                    <div className="flex items-center gap-3 mb-3">
-                        <div className="p-2 rounded-xl bg-cyan-500/10 text-cyan-300">
-                            <Icon icon="portfolio" className="w-5 h-5" />
-                        </div>
-                        <div>
-                            <p className="text-xs uppercase font-semibold tracking-wide text-cyan-300">Portfolio Studio</p>
-                            <p className="text-sm text-gray-300">Generate a guided report across multiple tickers.</p>
-                        </div>
-                    </div>
-                    <button
-                        onClick={onPortfolioReport}
-                        disabled={isLoading}
-                        className="w-full bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-all disabled:opacity-50"
-                    >
-                        Launch Report Builder
-                    </button>
-                </div>
-            </div>
+
 
             <div className="mb-6">
                 <label htmlFor="stock-symbol" className="text-xs font-semibold text-gray-400 block mb-2 uppercase tracking-wide">
@@ -128,11 +109,10 @@ export const Toolbox: React.FC<ToolboxProps> = ({
                         symbols.map(symbol => (
                             <div
                                 key={symbol}
-                                className={`group flex items-center gap-2 pl-3 pr-2 py-1.5 text-sm rounded-lg border cursor-pointer transition-all ${
-                                    activeSymbol === symbol
-                                    ? 'bg-gradient-to-r from-cyan-600/20 to-purple-600/20 border-cyan-500/50 text-white shadow-lg shadow-cyan-500/10'
-                                    : 'bg-slate-800/30 border-slate-700/50 text-gray-300 hover:bg-slate-700/40 hover:border-slate-600/50'
-                                }`}
+                                className={`group flex items-center gap-2 pl-3 pr-2 py-1.5 text-sm rounded-lg border cursor-pointer transition-all ${activeSymbol === symbol
+                                        ? 'bg-gradient-to-r from-cyan-600/20 to-purple-600/20 border-cyan-500/50 text-white shadow-lg shadow-cyan-500/10'
+                                        : 'bg-slate-800/30 border-slate-700/50 text-gray-300 hover:bg-slate-700/40 hover:border-slate-600/50'
+                                    }`}
                                 onClick={() => handleSetActiveSymbol(symbol)}
                             >
                                 <span className="font-mono font-bold">{symbol}</span>
