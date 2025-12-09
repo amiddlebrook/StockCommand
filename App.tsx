@@ -597,7 +597,7 @@ const App: React.FC = () => {
 
             {/* UNCURATED WARNING */}
             {uncuratedTicker && (
-              <div className="bg-red-900/20 border border-red-500/50 rounded-lg p-4 animate-scaleIn relative overflow-hidden">
+              <div className="bg-red-900/20 border border-red-500/50 rounded-lg p-4 animate-scaleIn relative overflow-hidden mb-6">
                 <div className="absolute top-0 right-0 p-2 opacity-20">
                   <Icon icon="alert" className="w-16 h-16 text-red-500" />
                 </div>
@@ -624,29 +624,38 @@ const App: React.FC = () => {
                     >
                       Add to Custom Portfolio
                     </button>
+                    <button
+                      onClick={() => setUncuratedTicker(null)}
+                      className="px-3 py-1 hover:bg-slate-700 text-gray-400 text-xs rounded transition-colors"
+                    >
+                      Cancel
+                    </button>
                   </div>
                 </div>
               </div>
             )}
 
-            {/* Agent Output (Latest Report) */}
-            {agentOutput && (
-              <div className="animate-fadeIn mb-8">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]" />
-                  <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Latest Intelligence Report</span>
-                </div>
-                <div className="prose prose-invert prose-sm max-w-none bg-slate-900/50 p-6 rounded-lg border border-slate-800/50 shadow-inner">
-                  <TextWidget id="agent-main" title="" text={agentOutput} />
-                </div>
-              </div>
-            )}
-
-            {/* Chat History / Widgets Feed */}
-            <div className="space-y-4">
-              {messages.map((msg) => (
-                <ChatMessage key={msg.id} message={msg} />
-              ))}
+            {/* Combined Feed: Messages & Agent Reports */}
+            <div className="space-y-6">
+                {messages.map((msg) => (
+                    <div key={msg.id} className="animate-fadeIn">
+                       {/* Distinguish Agent Reports vs Regular Chat */}
+                       {msg.role === 'agent' ? (
+                           <div className="mb-8">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]" />
+                                  <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Latest Intelligence Report</span>
+                                </div>
+                                <div className="prose prose-invert prose-sm max-w-none bg-slate-900/50 p-6 rounded-lg border border-slate-800/50 shadow-inner">
+                                  <TextWidget id={`report-${msg.id}`} title="" text={msg.content} />
+                                </div>
+                           </div>
+                       ) : (
+                           <ChatMessage message={{...msg, role: msg.role === 'model' ? 'model' : 'user'}} />
+                       )}
+                    </div>
+                ))}
+            </div>
 
               {/* Regular Widgets */}
               {widgets.filter(w => !w.title.includes('Agent')).map(widget => (
@@ -777,7 +786,7 @@ const App: React.FC = () => {
         isOpen={isProfileOpen}
         onClose={() => setIsProfileOpen(false)}
       />
-    </div>
+    </div >
   );
 };
 
