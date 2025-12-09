@@ -76,31 +76,31 @@ const App: React.FC = () => {
 
   const handleRunAgentScan = async (scope: 'FULL' | 'SLEEVE' | 'TICKER', target?: string) => {
     setIsAgentRunning(true);
-    setAgentOutput(\`Initializing \${scope} scan...\`);
-    
+    setAgentOutput(`Initializing ${scope} scan...`);
+
     try {
-        const res = await (window.fetch as any)('/api/agent/scan', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ scope, target })
-        });
-        const data = await res.json();
-        setAgentOutput(data.analysis || "Analysis complete. See console.");
-        
-        // Also add a widget for persistent view
-        const widget: AnalysisWidget = {
-            id: \`agent-\${Date.now()}\`,
-            type: 'profile',
-            title: \`Agent Report (\${scope})\`,
-            data: { text: data.analysis, sources: [] }
-        };
-        setWidgets(prev => [widget, ...prev]);
-        setMobileView('dashboard'); // Switch to dashboard to see result
+      const res = await (window.fetch as any)('/api/agent/scan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scope, target })
+      });
+      const data = await res.json();
+      setAgentOutput(data.analysis || "Analysis complete. See console.");
+
+      // Also add a widget for persistent view
+      const widget: AnalysisWidget = {
+        id: `agent-${Date.now()}`,
+        type: 'profile',
+        title: `Agent Report (${scope})`,
+        data: { text: data.analysis, sources: [] }
+      };
+      setWidgets(prev => [widget, ...prev]);
+      setMobileView('dashboard'); // Switch to dashboard to see result
 
     } catch (e: any) {
-        setAgentOutput(\`Error: \${e.message}\`);
+      setAgentOutput(`Error: ${e.message}`);
     } finally {
-        setIsAgentRunning(false);
+      setIsAgentRunning(false);
     }
   };
 
@@ -127,16 +127,16 @@ const App: React.FC = () => {
 
     try {
       const snapshot = await fetchStockSnapshot(upper);
-      const text = \`Price: \$\${snapshot.price.toFixed(2)} (\${snapshot.changePercent.toFixed(2)}%)\n\` +
-        \`Change: \${snapshot.change.toFixed(2)} | Volume: \${snapshot.volume.toLocaleString()}\n\` +
-        (snapshot.sector ? \`Sector: \${snapshot.sector}\n\` : '') +
-        (snapshot.industry ? \`Industry: \${snapshot.industry}\n\` : '') +
-        (snapshot.description ? \`\n\${snapshot.description}\` : '');
+      const text = `Price: $${snapshot.price.toFixed(2)} (${snapshot.changePercent.toFixed(2)}%)\n` +
+        `Change: ${snapshot.change.toFixed(2)} | Volume: ${snapshot.volume.toLocaleString()}\n` +
+        (snapshot.sector ? `Sector: ${snapshot.sector}\n` : '') +
+        (snapshot.industry ? `Industry: ${snapshot.industry}\n` : '') +
+        (snapshot.description ? `\n${snapshot.description}` : '');
 
       const widget: AnalysisWidget = {
-        id: \`snapshot-\${upper}-\${Date.now()}\`,
+        id: `snapshot-${upper}-${Date.now()}`,
         type: 'profile',
-        title: \`\${upper} Snapshot\`,
+        title: `${upper} Snapshot`,
         data: { text, sources: snapshot.sources },
       };
       setWidgets(prev => [widget, ...prev]);
@@ -194,9 +194,9 @@ const App: React.FC = () => {
     setIsDashboardLoading(true);
     setMobileView('dashboard');
 
-    const promptTemplate = FEATURE_PROMPTS[featureType] ?? \`Provide a \${featureType} for SYMBOL.\`;
+    const promptTemplate = FEATURE_PROMPTS[featureType] ?? `Provide a ${featureType} for SYMBOL.`;
     const prompt = promptTemplate.replace(/SYMBOL/g, symbol);
-    const widgetId = \`\${featureType}-\${symbol}-\${Date.now()}\`;
+    const widgetId = `${featureType}-${symbol}-${Date.now()}`;
 
     try {
       if (['Divergence Analysis', 'Ghost Pattern', 'Options Strategy'].includes(featureType)) {
@@ -214,7 +214,7 @@ const App: React.FC = () => {
           const widget: AnalysisWidget = {
             id: widgetId,
             type: 'divergence',
-            title: \`Divergence: \${symbol}\`,
+            title: `Divergence: ${symbol}`,
             data: jsonData.divergenceData,
           };
           setWidgets(prev => [widget, ...prev]);
@@ -225,7 +225,7 @@ const App: React.FC = () => {
           const widget: AnalysisWidget = {
             id: widgetId,
             type: 'ghost',
-            title: \`Ghost Pattern: \${symbol}\`,
+            title: `Ghost Pattern: ${symbol}`,
             data: jsonData.ghostPatternData,
           };
           setWidgets(prev => [widget, ...prev]);
@@ -236,7 +236,7 @@ const App: React.FC = () => {
           const widget: AnalysisWidget = {
             id: widgetId,
             type: 'options',
-            title: \`Options Strategy: \${symbol}\`,
+            title: `Options Strategy: ${symbol}`,
             data: jsonData.optionsStrategy,
           };
           setWidgets(prev => [widget, ...prev]);
@@ -247,7 +247,7 @@ const App: React.FC = () => {
           const widget: AnalysisWidget = {
             id: widgetId,
             type: 'profile',
-            title: \`\${featureType}: \${symbol}\`,
+            title: `${featureType}: ${symbol}`,
             data: { text: jsonData.analysisSummary, sources: [] },
           };
           setWidgets(prev => [widget, ...prev]);
@@ -264,16 +264,16 @@ const App: React.FC = () => {
       const widget: AnalysisWidget = {
         id: widgetId,
         type: 'profile',
-        title: \`\${featureType}: \${symbol}\`,
+        title: `${featureType}: ${symbol}`,
         data: { text: text || 'No information available at the moment.', sources },
       };
       setWidgets(prev => [widget, ...prev]);
     } catch (error) {
-      console.error(\`Error during \${featureType} analysis:\`, error);
+      console.error(`Error during ${featureType} analysis:`, error);
       const fallbackWidget = {
-        id: \`\${widgetId}-error\`,
+        id: `${widgetId}-error`,
         type: 'error' as const,
-        title: \`Error: \${featureType} for \${symbol}\`,
+        title: `Error: ${featureType} for ${symbol}`,
         data: { text: 'Failed to generate analysis. Please try again.', sources: [] },
       };
       setWidgets(prev => [fallbackWidget, ...prev]);
@@ -288,12 +288,12 @@ const App: React.FC = () => {
     }
 
     const userMessage: ChatMessageType = {
-      id: \`user-\${Date.now()}\`,
+      id: `user-${Date.now()}`,
       role: 'user',
       content: message,
     };
 
-    const modelMessageId = \`model-\${Date.now() + 1}\`;
+    const modelMessageId = `model-${Date.now() + 1}`;
     const loadingMessage: ChatMessageType = {
       id: modelMessageId,
       role: 'model',
@@ -419,9 +419,9 @@ const App: React.FC = () => {
     try {
       const report = await generatePortfolioReport(tickers, goal);
       const widget: AnalysisWidget = {
-        id: \`portfolio-\${Date.now()}\`,
+        id: `portfolio-${Date.now()}`,
         type: 'portfolio',
-        title: \`Portfolio Report (\${tickers.join(', ')})\`,
+        title: `Portfolio Report (${tickers.join(', ')})`,
         data: report,
       };
       setWidgets(prev => [widget, ...prev]);
@@ -442,7 +442,7 @@ const App: React.FC = () => {
       <div className="flex-1 grid grid-cols-1 md:grid-cols-12 lg:grid-cols-[300px_minmax(0,_1fr)_420px] xl:grid-cols-[320px_minmax(0,_1fr)_480px] overflow-hidden">
 
         {/* Toolbox Sidebar */}
-        <aside className={\`border-r border-slate-800/50 backdrop-blur-sm bg-slate-900/30 overflow-y-auto md:col-span-3 lg:col-auto \${mobileView === 'toolbox' ? 'block' : 'hidden'} md:block \${isDashboardLoading ? 'opacity-70' : ''}\`}>
+        <aside className={`border-r border-slate-800/50 backdrop-blur-sm bg-slate-900/30 overflow-y-auto md:col-span-3 lg:col-auto ${mobileView === 'toolbox' ? 'block' : 'hidden'} md:block ${isDashboardLoading ? 'opacity-70' : ''}`}>
           <Toolbox
             symbols={symbols}
             activeSymbol={activeSymbol}
@@ -456,7 +456,7 @@ const App: React.FC = () => {
         </aside>
 
         {/* Dashboard Main Area */}
-        <main className={\`overflow-y-auto p-4 md:p-6 lg:p-8 space-y-6 relative md:col-span-6 lg:col-auto \${mobileView === 'dashboard' ? 'block' : 'hidden'} md:block\`}>
+        <main className={`overflow-y-auto p-4 md:p-6 lg:p-8 space-y-6 relative md:col-span-6 lg:col-auto ${mobileView === 'dashboard' ? 'block' : 'hidden'} md:block`}>
           {isDashboardLoading && (
             <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center z-20">
               <div className="flex flex-col items-center gap-4">
@@ -492,78 +492,78 @@ const App: React.FC = () => {
         </main>
 
         {/* Chat Sidebar */}
-        <aside className={\`flex flex-col bg-gradient-to-b from-slate-900/50 to-slate-950/50 backdrop-blur-sm border-l border-slate-800/50 max-h-full md:col-span-3 lg:col-auto \${mobileView === 'chat' ? 'flex' : 'hidden'} md:flex\`}>
+        <aside className={`flex flex-col bg-gradient-to-b from-slate-900/50 to-slate-950/50 backdrop-blur-sm border-l border-slate-800/50 max-h-full md:col-span-3 lg:col-auto ${mobileView === 'chat' ? 'flex' : 'hidden'} md:flex`}>
           <div className="border-b border-slate-800/50 px-4 py-4 bg-slate-900/30">
             <div className="flex flex-col gap-4">
-              
+
               {/* Command Center */}
               <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-lg">
                 <h2 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
                   StockCommand Agent
                 </h2>
-                
+
                 <div className="flex flex-col gap-3">
-                    <button 
-                      onClick={() => handleRunAgentScan('FULL')}
+                  <button
+                    onClick={() => handleRunAgentScan('FULL')}
+                    disabled={isAgentRunning}
+                    className="w-full px-3 py-2 bg-blue-600 hover:bg-blue-500 rounded text-sm font-medium transition-colors disabled:opacity-50"
+                  >
+                    {isAgentRunning ? 'Running...' : 'Run Full Scan'}
+                  </button>
+
+                  <div className="flex gap-2">
+                    <select id="sleeve-select" className="bg-slate-800 border border-slate-700 rounded px-2 py-1 text-xs w-full text-slate-300">
+                      <option value="">Select Sleeve...</option>
+                      <option value="Core Tech">Core Tech</option>
+                      <option value="Rotatable Tech">Rotatable Tech</option>
+                      <option value="Specialized: Energy">Energy</option>
+                      <option value="Specialized: AI Infra">AI Infra</option>
+                      <option value="Specialized: Defense">Defense</option>
+                      <option value="Physical Precious Metals">Metals</option>
+                    </select>
+                    <button
+                      onClick={() => {
+                        const sel = document.getElementById('sleeve-select') as unknown as HTMLSelectElement;
+                        if (sel.value) handleRunAgentScan('SLEEVE', sel.value);
+                      }}
                       disabled={isAgentRunning}
-                      className="w-full px-3 py-2 bg-blue-600 hover:bg-blue-500 rounded text-sm font-medium transition-colors disabled:opacity-50"
+                      className="px-3 py-1 bg-slate-700 hover:bg-slate-600 rounded text-xs"
                     >
-                      {isAgentRunning ? 'Running...' : 'Run Full Scan'}
+                      Analyze
                     </button>
-                    
-                    <div className="flex gap-2">
-                       <select id="sleeve-select" className="bg-slate-800 border border-slate-700 rounded px-2 py-1 text-xs w-full text-slate-300">
-                          <option value="">Select Sleeve...</option>
-                          <option value="Core Tech">Core Tech</option>
-                          <option value="Rotatable Tech">Rotatable Tech</option>
-                          <option value="Specialized: Energy">Energy</option>
-                          <option value="Specialized: AI Infra">AI Infra</option>
-                          <option value="Specialized: Defense">Defense</option>
-                          <option value="Physical Precious Metals">Metals</option>
-                       </select>
-                       <button 
-                         onClick={() => {
-                            const sel = document.getElementById('sleeve-select') as HTMLSelectElement;
-                            if(sel.value) handleRunAgentScan('SLEEVE', sel.value);
-                         }}
-                         disabled={isAgentRunning}
-                         className="px-3 py-1 bg-slate-700 hover:bg-slate-600 rounded text-xs"
-                       >
-                         Analyze
-                       </button>
-                    </div>
+                  </div>
 
-                    <div className="flex gap-2">
-                       <input id="ticker-input" type="text" placeholder="Ticker" className="bg-slate-800 border border-slate-700 rounded px-2 py-1 text-xs w-full text-slate-300" />
-                       <button 
-                         onClick={() => {
-                            const inp = document.getElementById('ticker-input') as HTMLInputElement;
-                            if(inp.value) handleRunAgentScan('TICKER', inp.value.toUpperCase());
-                         }}
-                         disabled={isAgentRunning}
-                         className="px-3 py-1 bg-slate-700 hover:bg-slate-600 rounded text-xs"
-                       >
-                         Docs
-                       </button>
-                    </div>
+                  <div className="flex gap-2">
+                    <input id="ticker-input" type="text" placeholder="Ticker" className="bg-slate-800 border border-slate-700 rounded px-2 py-1 text-xs w-full text-slate-300" />
+                    <button
+                      onClick={() => {
+                        const inp = document.getElementById('ticker-input') as unknown as HTMLInputElement;
+                        if (inp.value) handleRunAgentScan('TICKER', inp.value.toUpperCase());
+                      }}
+                      disabled={isAgentRunning}
+                      className="px-3 py-1 bg-slate-700 hover:bg-slate-600 rounded text-xs"
+                    >
+                      Docs
+                    </button>
+                  </div>
 
-                    {agentOutput && (
-                        <div className="mt-2 p-2 bg-black/40 rounded text-xs font-mono text-green-400 max-h-32 overflow-y-auto">
-                            {agentOutput}
-                        </div>
-                    )}
+                  {agentOutput && (
+                    <div className="mt-2 p-2 bg-black/40 rounded text-xs font-mono text-green-400 max-h-32 overflow-y-auto">
+                      {agentOutput}
+                    </div>
+                  )}
                 </div>
               </div>
 
               <div>
-                  <h2 className="text-sm font-semibold text-gray-300 tracking-wider flex items-center gap-2">
-                    <Icon icon="bot" className="w-4 h-4 text-cyan-400" />
-                    AI ASSISTANT
-                  </h2>
-                  <p className="text-xs text-gray-500">
-                    Powered by StockCommand Logic
-                  </p>
+                <h2 className="text-sm font-semibold text-gray-300 tracking-wider flex items-center gap-2">
+                  <Icon icon="bot" className="w-4 h-4 text-cyan-400" />
+                  AI ASSISTANT
+                </h2>
+                <p className="text-xs text-gray-500">
+                  Powered by StockCommand Logic
+                </p>
               </div>
             </div>
           </div>
