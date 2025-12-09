@@ -770,22 +770,23 @@ const App: React.FC = () => {
             </div>
           </div>
         </div>
-
-        <PortfolioReportModal
-          isOpen={isPortfolioModalOpen}
-          symbols={symbols}
-          activeSymbol={activeSymbol}
-          isGenerating={isPortfolioGenerating}
-          onClose={() => setIsPortfolioModalOpen(false)}
-          onSubmit={handleGeneratePortfolioReport}
-        />
-
-        <ProfileModal
-          isOpen={isProfileOpen}
-          onClose={() => setIsProfileOpen(false)}
-        />
       </div>
-      );
+
+      <PortfolioReportModal
+        isOpen={isPortfolioModalOpen}
+        symbols={symbols}
+        activeSymbol={activeSymbol}
+        isGenerating={isPortfolioGenerating}
+        onClose={() => setIsPortfolioModalOpen(false)}
+        onSubmit={handleGeneratePortfolioReport}
+      />
+
+      <ProfileModal
+        isOpen={isProfileOpen}
+        onClose={() => setIsProfileOpen(false)}
+      />
+    </div>
+  );
 };
 
-      export default App;
+export default App;
