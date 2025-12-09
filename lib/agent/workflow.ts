@@ -4,17 +4,13 @@ import { MarketData, PortfolioState } from './types';
 import { UNIVERSE } from './universe';
 import { MarketDataService } from './market-data';
 
-// Env variables should be passed in or loaded from process.env
-// For this scaffolding, we'll try to read from process.env
-const AV_KEY = process.env.ALPHA_VANTAGE_API_KEY || '';
-
-async function fetchMarketData(): Promise<Record<string, MarketData>> {
+// Env variables should be passed in from the worker
+async function fetchMarketData(avKey: string): Promise<Record<string, MarketData>> {
     console.log('Fetching market data with MarketDataService...');
-    const service = new MarketDataService(AV_KEY);
+    const service = new MarketDataService(avKey);
 
     // For testing, we might want to slice the UNIVERSE to avoid hammering APIs immediately
     // But for the full run, we use the whole thing.
-    // const targetSymbols = UNIVERSE.map(t => t.symbol).slice(0, 5); // Test 5
     const targetSymbols = UNIVERSE.map(t => t.symbol);
 
     return await service.fetchMarketData(targetSymbols);
@@ -32,23 +28,31 @@ async function fetchPortfolioState(): Promise<PortfolioState> {
     };
 }
 
-const GEMINI_KEY = process.env.GEMINI_API_KEY || ''; // Cloudflare secret
-
 export async function runAgentWorkflow(
+    env: any,
     scope: 'FULL' | 'SLEEVE' | 'TICKER' = 'FULL',
     target?: string
 ) {
     console.log(`Starting StockCommand Agent Workflow (Scope: ${scope})...`);
 
+    const AV_KEY = env.ALPHA_VANTAGE_API_KEY || '';
+    const GEMINI_KEY = env.GEMINI_API_KEY || '';
+
+    if (!AV_KEY) {
+        console.error("Missing ALPHA_VANTAGE_API_KEY");
+        return { analysis: "Error: Missing Alpha Vantage API Key", actions: [] };
+    }
+
+    if (!GEMINI_KEY) {
+        console.error("Missing GEMINI_API_KEY");
+        return { analysis: "Error: Missing Gemini API Key", actions: [] };
+    }
+
     // 1. Refresh Data
-    const marketData = await fetchMarketData();
+    const marketData = await fetchMarketData(AV_KEY);
     const portfolio = await fetchPortfolioState();
 
     // 2. Research & Analyze (Engine with LLM)
-    if (!GEMINI_KEY) {
-        console.error("Missing GEMINI_API_KEY");
-        return;
-    }
     const engine = new AgentEngine(GEMINI_KEY);
     const { analysis, actions } = await engine.evaluate(scope, marketData, portfolio, target);
 

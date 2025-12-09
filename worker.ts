@@ -28,7 +28,7 @@ export default {
                 // or we manually set it.
                 Object.assign(process.env, env);
 
-                const result = await runAgentWorkflow(body.scope, body.target);
+                const result = await runAgentWorkflow(env, body.scope, body.target);
                 return new Response(JSON.stringify(result), {
                     headers: { "Content-Type": "application/json" }
                 });
