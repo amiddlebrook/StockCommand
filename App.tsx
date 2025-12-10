@@ -9,6 +9,7 @@ import { OptionsStrategyCard } from './components/OptionsStrategyCard';
 import { Icon } from './components/Icon';
 import { LoadingSpinner } from './components/LoadingSpinner';
 import { MobileNav } from './components/MobileNav';
+import { CompetitionsView } from './components/CompetitionsView';
 import type { ChatMessage as ChatMessageType, Source } from './types';
 import {
   analyzeImage,
@@ -48,7 +49,7 @@ const AppContent: React.FC = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [widgets, setWidgets] = useState<AnalysisWidget[]>(() => StorageService.loadWidgets());
   const [mobileView, setMobileView] = useState<MobileView>('toolbox');
-  const [activeTab, setActiveTab] = useState<'command-center' | 'portfolio' | 'entity-detail'>('command-center');
+  const [activeTab, setActiveTab] = useState<'command-center' | 'portfolio' | 'entity-detail' | 'competitions'>('command-center');
 
   // Sidebar State
   const [isLeftSidebarOpen, setIsLeftSidebarOpen] = useState(true);
@@ -813,6 +814,15 @@ const AppContent: React.FC = () => {
               >
                 Portfolio
               </button>
+              <button
+                onClick={() => setActiveTab('competitions')}
+                className={`px-3 py-1 rounded text-xs font-medium transition-all ${activeTab === 'competitions'
+                  ? 'bg-slate-800 text-purple-400 shadow-sm'
+                  : 'text-gray-400 hover:text-gray-200 hover:bg-slate-800/50'
+                  }`}
+              >
+                🏆 Compete
+              </button>
             </div>
           </div>
 
@@ -1004,6 +1014,21 @@ const AppContent: React.FC = () => {
 
               <div ref={chatContainerRef} />
             </>
+          ) : activeTab === 'competitions' ? (
+            // <<< COMPETITIONS VIEW >>>
+            <CompetitionsView
+              onSubmitPortfolio={() => {
+                // Create submit portfolio message in chat
+                const submitMessage: ChatMessageType = {
+                  id: `submit-${Date.now()}`,
+                  role: 'model',
+                  content: `📤 **Submit Portfolio for Competition**\n\nTo enter a competition, you'll need to:\n1. Have at least 3 tickers in your portfolio\n2. Define your thesis strategy\n3. Set your competition entry\n\nYour current portfolio has ${symbols.length} ticker(s).\n\n${symbols.length >= 3 ? '✅ You meet the minimum requirements!' : '⚠️ Add more tickers to qualify.'}\n\n*Note: Competition features coming soon with full Cloudflare D1 integration.*`,
+                  isLoading: false
+                };
+                setMessages(prev => [...prev, submitMessage]);
+                setActiveTab('command-center');
+              }}
+            />
           ) : (
             // <<< PORTFOLIO VIEW >>>
             <PortfolioView
