@@ -501,13 +501,18 @@ const AppContent: React.FC = () => {
       setMarketClocks(prev => {
         const updated = [...prev];
         tickerClocks.forEach(nc => {
-          const idx = updated.findIndex(oc => oc.code === nc.code);
-          const freshClock = {
+          // Get AI-provided status or default to yellow
+          const aiClock = data.clocks ? (data.clocks as MarketClock[]).find((c: any) => c.code === nc.code) : null;
+          const freshClock = aiClock ? {
+            ...aiClock,
+            lastUpdated: timestamp
+          } : {
             ...nc,
             lastUpdated: timestamp,
-            status: 'green' as const, // Fresh analysis = green
-            reason: 'Fresh analysis completed'
+            status: 'yellow' as const, // Default to neutral if AI didn't analyze
+            reason: 'Analysis pending'
           };
+          const idx = updated.findIndex(oc => oc.code === nc.code);
           if (idx >= 0) {
             updated[idx] = freshClock;
           } else {
@@ -518,20 +523,21 @@ const AppContent: React.FC = () => {
         return updated;
       });
 
-      // Update selected entity if it matches - find it in the updated clocks
+      // Update selected entity if it matches
       if (selectedEntity) {
         const ticker = selectedEntity.code.split('_')[0];
         if (ticker === target) {
-          // Find any of the ticker's clocks that was just updated
-          const matchingClock = updatedClocks.find(c => c.code.startsWith(target));
-          if (matchingClock) {
-            setSelectedEntity({
-              ...selectedEntity,
-              lastUpdated: timestamp,
-              status: 'green',
-              reason: 'Fresh analysis completed'
-            });
-          }
+          // Get AI status for this specific entity
+          const aiStatus = data.clocks ?
+            (data.clocks as MarketClock[]).find((c: any) => c.code === selectedEntity.code)?.status || 'yellow' :
+            'yellow';
+          setSelectedEntity({
+            code: selectedEntity.code,
+            label: selectedEntity.label,
+            lastUpdated: timestamp,
+            status: aiStatus,
+            reason: 'Fresh analysis completed'
+          });
         }
       }
     } else if (scope === 'TOOL' && toolName) {
