@@ -935,8 +935,10 @@ const AppContent: React.FC = () => {
 
           <div className="flex-1 overflow-y-auto p-4 space-y-6 scrollbar-thin scrollbar-thumb-slate-700">
             <div className="space-y-3">
-              {marketClocks.map(clock => {
+              {/* Only show macro clocks in sidebar, not ticker clocks */}
+              {marketClocks.filter(clock => clock.code.startsWith('CLOCK_')).map(clock => {
                 const stale = isStale(clock.lastUpdated);
+                return (
                 return (
                   <div key={clock.code}
                     className={`bg-slate-800/50 p-3 rounded border transition-colors cursor-pointer relative ${stale ? 'border-amber-500/50 hover:bg-amber-900/10' : 'border-slate-700/50 hover:border-amber-500/50'}`}
