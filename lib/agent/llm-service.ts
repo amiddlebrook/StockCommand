@@ -113,8 +113,12 @@ export class LLMService {
       - "markdown_report": A string containing a concise markdown report formatted for a trader.
       - "recommended_actions": An array of objects matching this interface: { type: 'BUY'|'SELL'|'HOLD'|'TRIM'|'ALERT', ticker: string, sleeve: string, reason: string, confidence: number (0-1) }
       - "clocks": An array of objects matching: { label: string, status: 'green'|'yellow'|'red', code: string, reason: string }. 
-         Required Codes: CLOCK_LIQUIDITY_CYCLE, CLOCK_COMMODITY_CYCLE, CLOCK_VIX_REGIME, CLOCK_INFLATION_TREND, CLOCK_CREDIT_IMPULSE, CLOCK_DOLLAR_STRENGTH
-         (Only populate "clocks" if the scope is FULL or the tool relates to macro)
+         ${scope === 'FULL' ?
+                'Required Codes: CLOCK_LIQUIDITY_CYCLE, CLOCK_COMMODITY_CYCLE, CLOCK_VIX_REGIME, CLOCK_INFLATION_TREND, CLOCK_CREDIT_IMPULSE, CLOCK_DOLLAR_STRENGTH' :
+                scope === 'TICKER' && target ?
+                    `Required Codes for ${target}: ${target}_VOL (Volatility), ${target}_MOM (Momentum), ${target}_SENT (Sentiment), ${target}_VAL (Valuation). Analyze each aspect and assign status: green=Bullish, yellow=Hold/Neutral, red=Bearish` :
+                    '(Only populate "clocks" if the scope is FULL or TICKER)'
+            }
     `;
 
         // 3. Call OpenAI-compatible LLM via Fetch (OpenRouter)
