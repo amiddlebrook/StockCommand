@@ -18,7 +18,7 @@ export type SleeveName =
 
 export interface MarketClock {
   label: string;
-  status: 'green' | 'yellow' | 'red';
+  status: 'green' | 'yellow' | 'red' | 'gray';
   code: string;
   reason?: string;
   lastUpdated?: number;
