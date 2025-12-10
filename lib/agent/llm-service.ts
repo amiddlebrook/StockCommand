@@ -131,7 +131,7 @@ export class LLMService {
             return {
                 analysis: parsed.markdown_report,
                 actions: parsed.recommended_actions,
-                clocks: parsed.clocks
+                clocks: parsed.clocks?.map((c: any) => ({ ...c, lastUpdated: Date.now() }))
             };
 
         } catch (error: any) {

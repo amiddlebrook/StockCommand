@@ -21,6 +21,7 @@ export interface MarketClock {
   status: 'green' | 'yellow' | 'red';
   code: string;
   reason?: string;
+  lastUpdated?: number;
 }
 
 export interface Ticker {

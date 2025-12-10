@@ -158,6 +158,20 @@ const App: React.FC = () => {
       const data = await res.json();
       setAgentOutput(data.analysis || "Analysis complete. See console.");
 
+      if (data.clocks) {
+        setMarketClocks(prev => {
+          if (!prev) return data.clocks;
+          const newClocks = data.clocks as MarketClock[];
+          const updated = [...prev];
+          newClocks.forEach(nc => {
+            const idx = updated.findIndex(oc => oc.code === nc.code);
+            if (idx >= 0) updated[idx] = nc;
+            else updated.push(nc);
+          });
+          return updated;
+        });
+      }
+
       // Also add a widget for persistent view
       const widget: AnalysisWidget = {
         id: `agent-${Date.now()}`,
@@ -475,7 +489,18 @@ const App: React.FC = () => {
           if (data && data.analysis) {
             setAgentOutput(data.analysis);
             if (data.clocks) {
-              setMarketClocks(data.clocks);
+              setMarketClocks(prev => {
+                if (!prev) return data.clocks;
+                const newClocks = data.clocks as MarketClock[];
+                // Merge: Update existing clocks with new data, keep others
+                const updated = [...prev];
+                newClocks.forEach(nc => {
+                  const idx = updated.findIndex(oc => oc.code === nc.code);
+                  if (idx >= 0) updated[idx] = nc;
+                  else updated.push(nc);
+                });
+                return updated;
+              });
             }
             // Add a widget for it
             const widget: AnalysisWidget = {
@@ -735,22 +760,28 @@ const App: React.FC = () => {
               {/* Clocks */}
               <div className="space-y-3">
                 {marketClocks ? (
-                  marketClocks.map(clock => (
-                    <div
-                      key={clock.code}
-                      className="bg-slate-800/50 p-3 rounded border border-slate-700/50 flex justify-between items-center group hover:border-amber-500/30 transition-colors cursor-pointer hover:bg-slate-800"
-                      onClick={() => handleRunAgentScan('TOOL', clock.code)}
-                      title={clock.reason}
-                    >
-                      <span className="text-gray-400 text-xs font-medium group-hover:text-cyan-400 transition-colors">{clock.label}</span>
-                      <div className="flex items-center gap-2">
-                        <div className={`w-2 h-2 rounded-full ${clock.status === 'green' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' :
-                          clock.status === 'yellow' ? 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]' :
-                            'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]'
-                          }`} />
+                  marketClocks.map(clock => {
+                    const isStale = clock.lastUpdated ? (Date.now() - clock.lastUpdated > 24 * 60 * 60 * 1000) : false;
+                    return (
+                      <div
+                        key={clock.code}
+                        className={`bg-slate-800/50 p-3 rounded border flex justify-between items-center group transition-colors cursor-pointer hover:bg-slate-800 ${isStale ? 'border-amber-500/50' : 'border-slate-700/50 hover:border-amber-500/30'}`}
+                        onClick={() => handleRunAgentScan('TOOL', clock.code)}
+                        title={isStale ? "Data is stale (>24h). Click to update." : clock.reason}
+                      >
+                        <div className="flex flex-col">
+                          <span className="text-gray-400 text-xs font-medium group-hover:text-cyan-400 transition-colors">{clock.label}</span>
+                          {isStale && <span className="text-[10px] text-amber-500 font-bold uppercase tracking-wider mt-0.5">UPDATE NEEDED</span>}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className={`w-2 h-2 rounded-full ${clock.status === 'green' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' :
+                            clock.status === 'yellow' ? 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]' :
+                              'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]'
+                            }`} />
+                        </div>
                       </div>
-                    </div>
-                  ))
+                    )
+                  })
                 ) : (
                   // Skeleton / Default Placeholder State
                   [
