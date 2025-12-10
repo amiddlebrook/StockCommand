@@ -31,6 +31,8 @@ import { JobProvider, useJobContext } from './contexts/JobContext';
 import { getClocksForEntity, getGlobalClocks } from './lib/clockData';
 import { EntityDetailView } from './components/EntityDetailView';
 
+import { StorageService } from './lib/storage';
+
 type MobileView = 'toolbox' | 'dashboard' | 'chat';
 
 const DEFAULT_SYMBOLS = ['TSLA', 'NVDA', 'AAPL'];
@@ -44,7 +46,7 @@ const AppContent: React.FC = () => {
   const [isChatLoading, setIsChatLoading] = useState(false);
   const [isDashboardLoading, setIsDashboardLoading] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
-  const [widgets, setWidgets] = useState<AnalysisWidget[]>([]);
+  const [widgets, setWidgets] = useState<AnalysisWidget[]>(() => StorageService.loadWidgets());
   const [mobileView, setMobileView] = useState<MobileView>('toolbox');
   const [activeTab, setActiveTab] = useState<'command-center' | 'portfolio' | 'entity-detail'>('command-center');
 
@@ -56,10 +58,10 @@ const AppContent: React.FC = () => {
   const [selectedEntity, setSelectedEntity] = useState<MarketClock | null>(null);
 
   // Persistent Research Reports
-  const [researchReports, setResearchReports] = useState<Record<string, string>>({});
+  const [researchReports, setResearchReports] = useState<Record<string, string>>(() => StorageService.loadReports());
 
   // User Settings
-  const [dataFreshnessHours, setDataFreshnessHours] = useState<number>(24);
+  const [dataFreshnessHours, setDataFreshnessHours] = useState<number>(() => StorageService.loadSettings().freshnessHours);
 
   const analysisModelId = DEFAULT_CHAT_MODEL.id;
   const [symbols, setSymbols] = useState<string[]>(DEFAULT_SYMBOLS);
@@ -80,11 +82,20 @@ const AppContent: React.FC = () => {
 
   // Agent State
   const [agentOutput, setAgentOutput] = useState<string | null>(null);
-  const [marketClocks, setMarketClocks] = useState<MarketClock[]>(() => getGlobalClocks());
+  const [marketClocks, setMarketClocks] = useState<MarketClock[]>(() => {
+    const saved = StorageService.loadClocks();
+    return saved || getGlobalClocks();
+  });
 
   const [uncuratedTicker, setUncuratedTicker] = useState<string | null>(null);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [expandedSleeves, setExpandedSleeves] = useState<Record<string, boolean>>({ 'Core Tech': true });
+
+  // PERSISTENCE EFFECT HOOKS
+  useEffect(() => { StorageService.saveWidgets(widgets); }, [widgets]);
+  useEffect(() => { StorageService.saveReports(researchReports); }, [researchReports]);
+  useEffect(() => { StorageService.saveClocks(marketClocks); }, [marketClocks]);
+  useEffect(() => { StorageService.saveSettings({ freshnessHours: dataFreshnessHours }); }, [dataFreshnessHours]);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
