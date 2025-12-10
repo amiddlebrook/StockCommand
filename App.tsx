@@ -523,20 +523,24 @@ const AppContent: React.FC = () => {
         return updated;
       });
 
-      // Update selected entity if it matches
+      // Update selected entity if it matches this ticker
       if (selectedEntity) {
         const ticker = selectedEntity.code.split('_')[0];
-        if (ticker === target) {
-          // Get AI status for this specific entity
-          const aiStatus = data.clocks ?
-            (data.clocks as MarketClock[]).find((c: any) => c.code === selectedEntity.code)?.status || 'yellow' :
-            'yellow';
+        if (ticker === target || selectedEntity.code === target) {
+          // Get status from any of the ticker's clocks (e.g., AVGO_VOL, AVGO_MOM)
+          // The selectedEntity.code might be just "AVGO", so we look for AVGO_* clocks
+          const tickerClockCode = `${target}_VOL`; // Use VOL as primary indicator
+          const aiClock = data.clocks ?
+            (data.clocks as MarketClock[]).find((c: any) => c.code === tickerClockCode) :
+            null;
+          const aiStatus = aiClock?.status || 'yellow';
+
           setSelectedEntity({
             code: selectedEntity.code,
             label: selectedEntity.label,
             lastUpdated: timestamp,
             status: aiStatus,
-            reason: 'Fresh analysis completed'
+            reason: aiClock?.reason || 'Fresh analysis completed'
           });
         }
       }
