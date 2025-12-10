@@ -496,6 +496,8 @@ const AppContent: React.FC = () => {
     } else if (scope === 'TICKER' && target) {
       // TICKER scan - create/update ticker-specific clocks
       const tickerClocks = getClocksForEntity('TICKER', target);
+      let updatedClocks: MarketClock[] = [];
+
       setMarketClocks(prev => {
         const updated = [...prev];
         tickerClocks.forEach(nc => {
@@ -512,17 +514,25 @@ const AppContent: React.FC = () => {
             updated.push(freshClock);
           }
         });
+        updatedClocks = updated;
         return updated;
       });
 
-      // Update selected entity if it matches
-      if (selectedEntity && selectedEntity.code.startsWith(target)) {
-        setSelectedEntity(prev => prev ? {
-          ...prev,
-          lastUpdated: timestamp,
-          status: 'green',
-          reason: 'Fresh analysis completed'
-        } : null);
+      // Update selected entity if it matches - find it in the updated clocks
+      if (selectedEntity) {
+        const ticker = selectedEntity.code.split('_')[0];
+        if (ticker === target) {
+          // Find any of the ticker's clocks that was just updated
+          const matchingClock = updatedClocks.find(c => c.code.startsWith(target));
+          if (matchingClock) {
+            setSelectedEntity({
+              ...selectedEntity,
+              lastUpdated: timestamp,
+              status: 'green',
+              reason: 'Fresh analysis completed'
+            });
+          }
+        }
       }
     } else if (scope === 'TOOL' && toolName) {
       // TOOL scan fallback - update the specific tool clock if it exists
