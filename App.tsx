@@ -763,11 +763,13 @@ const App: React.FC = () => {
                   ].map(clock => (
                     <div
                       key={clock.label}
-                      className="bg-slate-800/50 p-3 rounded border border-slate-700/50 flex justify-between items-center opacity-50 cursor-not-allowed"
+                      className="bg-slate-800/50 p-3 rounded border border-slate-700/50 flex justify-between items-center group hover:border-amber-500/30 transition-colors cursor-pointer hover:bg-slate-800"
+                      onClick={() => handleRunAgentScan('TOOL', clock.code)}
+                      title="Click to analyze current regime"
                     >
-                      <span className="text-gray-500 text-xs font-medium">{clock.label}</span>
+                      <span className="text-gray-500 text-xs font-medium group-hover:text-cyan-400 transition-colors">{clock.label}</span>
                       <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-slate-600" />
+                        <div className="w-2 h-2 rounded-full bg-slate-600 shadow-none group-hover:bg-slate-500 transition-colors" />
                       </div>
                     </div>
                   ))
