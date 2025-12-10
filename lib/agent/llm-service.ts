@@ -117,8 +117,8 @@ export class LLMService {
                 'Required Codes: CLOCK_LIQUIDITY_CYCLE, CLOCK_COMMODITY_CYCLE, CLOCK_VIX_REGIME, CLOCK_INFLATION_TREND, CLOCK_CREDIT_IMPULSE, CLOCK_DOLLAR_STRENGTH' :
                 scope === 'TICKER' && target ?
                     `Required Codes for ${target}: ${target}_VOL (Volatility), ${target}_MOM (Momentum), ${target}_SENT (Sentiment), ${target}_VAL (Valuation). Analyze each aspect and assign status: green=Bullish, yellow=Hold/Neutral, red=Bearish` :
-                    scope === 'TOOL' && toolName ?
-                        `Required: Return the single clock for ${toolName}. Set status: green=Favorable conditions, yellow=Neutral, red=Unfavorable. Include reason explaining your assessment.` :
+                    scope === 'TOOL' && tool ?
+                        `Required: Return the single clock for ${tool}. Set status: green=Favorable conditions, yellow=Neutral, red=Unfavorable. Include reason explaining your assessment.` :
                         '(Populate clocks if applicable)'
             }
     `;
