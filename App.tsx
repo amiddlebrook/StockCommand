@@ -159,8 +159,11 @@ const AppContent: React.FC = () => {
         const updated = [...prev];
         newClocks.forEach(nc => {
           const idx = updated.findIndex(oc => oc.code === nc.code);
-          if (idx >= 0) updated[idx] = nc;
-          else updated.push(nc);
+          if (idx >= 0) {
+            updated[idx] = { ...nc, lastUpdated: Date.now() }; // REFRESH TIMESTAMP
+          } else {
+            updated.push({ ...nc, lastUpdated: Date.now() });
+          }
         });
         return updated;
       });
@@ -685,8 +688,14 @@ const AppContent: React.FC = () => {
             {marketClocks && marketClocks.length > 0 ? (
               marketClocks.map(clock => (
                 <div key={clock.code}
-                  className="bg-slate-800/50 p-3 rounded border border-slate-700/50 hover:border-amber-500/50 transition-colors cursor-pointer"
+                  className={`bg-slate-800/50 p-3 rounded border transition-colors cursor-pointer relative ${clock.lastUpdated && (Date.now() - clock.lastUpdated > 86400000) ? 'border-amber-500/50 hover:bg-amber-900/10' : 'border-slate-700/50 hover:border-amber-500/50'}`}
                   onClick={() => handleViewClockDetail(clock)}>
+
+                  {/* Action Needed Badge */}
+                  {clock.lastUpdated && (Date.now() - clock.lastUpdated > 86400000) && (
+                    <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-500 rounded-full animate-pulse border border-slate-900 z-10" title="Action Needed: Update Stale Data" />
+                  )}
+
                   <div className="flex justify-between items-center mb-1">
                     <span className="text-gray-400 text-xs font-medium">{clock.label}</span>
                     <div className={`w-2 h-2 rounded-full shadow-md ${clock.status === 'green' ? 'bg-emerald-500' : clock.status === 'yellow' ? 'bg-amber-500' : 'bg-red-500'}`} />

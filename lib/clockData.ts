@@ -25,20 +25,40 @@ export const getClocksForEntity = (type: 'TICKER' | 'SLEEVE' | 'MARKET', id: str
                 code: `${id}_SENT`,
                 label: 'Sentiment',
                 status: getStatus(2),
-                reason: 'Social & News Sentiment'
+                reason: 'Social & News Sentiment',
+                lastUpdated: Date.now()
             },
             {
                 code: `${id}_VAL`,
                 label: 'Valuation',
                 status: getStatus(3),
-                reason: 'P/E vs Sector'
+                reason: 'P/E vs Sector',
+                lastUpdated: Date.now()
             }
         ];
     } else if (type === 'SLEEVE') {
         return [
-            { code: `${id}_ROT`, label: 'Rotation', status: getStatus(0), reason: 'Sector Rotation Signal' },
-            { code: `${id}_FUND`, label: 'Fund Flows', status: getStatus(1), reason: 'ETF Inflows/Outflows' },
-            { code: `${id}_TECH`, label: 'Technicals', status: getStatus(2), reason: 'Sleeve Aggregate Trend' }
+            {
+                code: `${id}_ROT`,
+                label: 'Rotation',
+                status: getStatus(0),
+                reason: 'Sector Rotation Signal',
+                lastUpdated: Date.now() - (1000 * 60 * 60 * 25) // Stale (>24h)
+            },
+            {
+                code: `${id}_FUND`,
+                label: 'Fund Flows',
+                status: getStatus(1),
+                reason: 'ETF Inflows/Outflows',
+                lastUpdated: Date.now()
+            },
+            {
+                code: `${id}_TECH`,
+                label: 'Technicals',
+                status: getStatus(2),
+                reason: 'Sleeve Aggregate Trend',
+                lastUpdated: Date.now()
+            }
         ];
     }
 
