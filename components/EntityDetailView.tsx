@@ -11,9 +11,10 @@ interface EntityDetailViewProps {
     onRunAnalysis: (entity: MarketClock) => void;
     researchContent?: string | null;
     freshnessThreshold: number;
+    isScanning?: boolean;
 }
 
-export const EntityDetailView: React.FC<EntityDetailViewProps> = ({ entity, onBack, onRunAnalysis, researchContent, freshnessThreshold }) => {
+export const EntityDetailView: React.FC<EntityDetailViewProps> = ({ entity, onBack, onRunAnalysis, researchContent, freshnessThreshold, isScanning }) => {
     const { confirmAction } = useJobContext();
 
     if (!entity) return <div className="p-8 text-center text-gray-500">No entity selected</div>;
@@ -92,6 +93,14 @@ export const EntityDetailView: React.FC<EntityDetailViewProps> = ({ entity, onBa
                         <div className="prose prose-invert prose-sm max-w-none alpha-channel">
                             <pre className="whitespace-pre-wrap font-sans text-gray-300">{researchContent}</pre>
                         </div>
+                    </div>
+                ) : isScanning ? (
+                    <div className="bg-slate-900/50 rounded-lg p-12 border border-cyan-500/30 flex flex-col items-center justify-center gap-4 animate-pulse">
+                        <div className="flex items-center gap-3 bg-slate-900/90 px-6 py-3 rounded-full border border-cyan-500/50 shadow-[0_0_20px_rgba(6,182,212,0.3)]">
+                            <Icon icon="cpu" className="w-5 h-5 text-cyan-400 animate-spin" />
+                            <span className="text-sm font-mono text-cyan-300 tracking-wider font-bold uppercase">Agent Active</span>
+                        </div>
+                        <p className="text-xs text-gray-500 max-w-xs text-center">Gathering intelligence and analyzing market conditions...</p>
                     </div>
                 ) : (
                     <div className="bg-slate-800/20 rounded-lg p-8 border border-slate-800 border-dashed flex flex-col items-center justify-center text-gray-600 gap-3">

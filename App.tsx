@@ -710,14 +710,6 @@ const AppContent: React.FC = () => {
             </div>
           </div>
 
-          {/* CENTERED SCAN INDICATOR */}
-          {(isChatLoading || isScanning) && (
-            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-2 bg-slate-900/90 px-4 py-1.5 rounded-full border border-cyan-500/50 shadow-[0_0_15px_rgba(6,182,212,0.3)] animate-pulse z-50">
-              <Icon icon="cpu" className="w-3.5 h-3.5 text-cyan-400 animate-spin" />
-              <span className="text-xs font-mono text-cyan-300 tracking-wider font-bold">AGENT ACTIVE</span>
-            </div>
-          )}
-
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2 text-xs font-mono text-cyan-500/50 bg-slate-900/30 px-2 py-1 rounded border border-slate-800/30">
               <Icon icon="terminal" className="w-3 h-3" />
@@ -747,8 +739,13 @@ const AppContent: React.FC = () => {
               entity={selectedEntity}
               freshnessThreshold={dataFreshnessHours * 60 * 60 * 1000}
               onBack={() => setActiveTab('command-center')}
-              onRunAnalysis={(e) => executeAgentScan('TICKER', e.code)}
-              researchContent={selectedEntity ? researchReports[selectedEntity.code] : null}
+              onRunAnalysis={(e) => {
+                // Extract ticker symbol from entity code (e.g., "AMZN_VOL" -> "AMZN")
+                const ticker = e.code.split('_')[0];
+                executeAgentScan('TICKER', ticker);
+              }}
+              researchContent={selectedEntity ? researchReports[selectedEntity.code.split('_')[0]] : null}
+              isScanning={isScanning}
             />
           ) : activeTab === 'command-center' ? (
             // <<< COMMAND CENTER VIEW >>>
@@ -998,7 +995,7 @@ const AppContent: React.FC = () => {
         onClose={() => setIsProfileOpen(false)}
       />
 
-      <JobToasts />
+
     </div >
   );
 };
@@ -1011,24 +1008,6 @@ const App: React.FC = () => {
   );
 };
 
-const JobToasts: React.FC = () => {
-  const { jobs, clearCompletedJobs } = useJobContext();
-  const recentJobs = jobs.filter(j => j.status === 'running' || (j.status !== 'pending' && Date.now() - j.startTime < 10000)); // Show for 10s after
 
-  return (
-    <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2">
-      {recentJobs.map(job => (
-        <div key={job.id} className={`p-4 rounded-lg shadow-xl backdrop-blur-md border border-slate-700 flex items-center gap-3 animate-slideIn ${job.status === 'running' ? 'bg-slate-900/90 text-amber-400' : job.status === 'failed' ? 'bg-red-900/90 text-white' : 'bg-emerald-900/90 text-white'}`}>
-          {job.status === 'running' ? <LoadingSpinner /> : <Icon icon={job.status === 'failed' ? 'alert-triangle' : 'check'} className="w-5 h-5" />}
-          <div className="flex flex-col">
-            <span className="font-bold text-xs uppercase tracking-wider">{job.status}</span>
-            <span className="text-sm">{job.title}</span>
-            {job.error && <span className="text-xs text-red-200 mt-1">{job.error}</span>}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-};
 
 export default App;
