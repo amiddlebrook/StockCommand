@@ -123,18 +123,34 @@ const AppContent: React.FC = () => {
   const executeAgentScan = async (scope: 'FULL' | 'SLEEVE' | 'TICKER' | 'TOOL', target?: string, toolName?: string) => {
     setAgentOutput(`Initializing ${scope} scan...`);
 
+    let searchContext = "";
+    try {
+      if ((scope === 'TICKER' || scope === 'SLEEVE') && target) {
+        setAgentOutput(`Gathering live intelligence for ${target}...`);
+        const searchRes = await searchWithGrounding(`Latest financial news and analysis for ${target} market`);
+        if (searchRes && searchRes.response) {
+          searchContext = `\n\n### 🌐 Live Market Context\n${searchRes.response}\n\n`;
+        }
+      }
+    } catch (e) {
+      console.warn("Live search failed, falling back to cached agent logic", e);
+    }
+
     const res = await (window.fetch as any)('/api/agent/scan', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         scope,
         target: scope === 'TOOL' ? target : target,
-        tool: toolName || (scope === 'TOOL' ? target : undefined)
+        tool: toolName || (scope === 'TOOL' ? target : undefined),
+        context: searchContext
       })
     });
     const data = await res.json();
 
-    setAgentOutput(data.analysis || "Analysis complete. See console.");
+    const finalAnalysis = searchContext ? `${data.analysis}\n${searchContext}` : (data.analysis || "Analysis complete.");
+
+    setAgentOutput(finalAnalysis);
 
     if (data.clocks) {
       setMarketClocks(prev => {
@@ -154,7 +170,7 @@ const AppContent: React.FC = () => {
       id: `agent-${Date.now()}`,
       type: 'profile',
       title: `Agent Report (${scope === 'TOOL' ? toolName || target : scope})`,
-      data: { text: data.analysis, sources: [] }
+      data: { text: finalAnalysis, sources: [] }
     };
     setWidgets(prev => [widget, ...prev]);
     setMobileView('dashboard');
@@ -673,7 +689,7 @@ const AppContent: React.FC = () => {
                   onClick={() => handleViewClockDetail(clock)}>
                   <div className="flex justify-between items-center mb-1">
                     <span className="text-gray-400 text-xs font-medium">{clock.label}</span>
-                    <div className={`w-2 h-2 rounded-full bg-${clock.status === 'green' ? 'emerald' : clock.status === 'yellow' ? 'amber' : 'red'}-500 shadow-md`} />
+                    <div className={`w-2 h-2 rounded-full shadow-md ${clock.status === 'green' ? 'bg-emerald-500' : clock.status === 'yellow' ? 'bg-amber-500' : 'bg-red-500'}`} />
                   </div>
                 </div>
               ))
