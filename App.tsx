@@ -646,7 +646,7 @@ const AppContent: React.FC = () => {
       <div className="flex-1 flex flex-col min-w-0 bg-slate-950 relative border-r border-slate-800 transition-all duration-300">
 
         {/* TOP BAR: Navigation & Status */}
-        <div className="h-[60px] px-4 flex items-center justify-between border-b border-slate-800 bg-slate-950/50 backdrop-blur-sm z-50">
+        <div className="h-[60px] px-4 flex items-center justify-between border-b border-slate-800 bg-slate-950/50 backdrop-blur-sm z-50 relative">
           <div className="flex items-center gap-3">
             {!isLeftSidebarOpen && (
               <button onClick={() => setIsLeftSidebarOpen(true)} className="px-3 py-1 bg-cyan-900/50 hover:bg-cyan-800/80 border border-cyan-500/50 text-cyan-300 rounded text-xs font-bold tracking-wider shadow-[0_0_10px_rgba(34,211,238,0.2)] transition-all z-50 flex gap-2 items-center whitespace-nowrap">
@@ -668,7 +668,7 @@ const AppContent: React.FC = () => {
               <button
                 onClick={() => setActiveTab('portfolio')}
                 className={`px-3 py-1 rounded text-xs font-medium transition-all ${activeTab === 'portfolio'
-                  ? 'bg-slate-800 text-purple-400 shadow-sm'
+                  ? 'bg-slate-800 text-cyan-400 shadow-sm'
                   : 'text-gray-400 hover:text-gray-200 hover:bg-slate-800/50'
                   }`}
               >
@@ -677,18 +677,19 @@ const AppContent: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
-            <div className="font-semibold text-xs text-emerald-400 tracking-wider flex items-center gap-2">
-              {activeJobsCount > 0 && (
-                <span className="flex items-center gap-2 text-amber-400 animate-pulse">
-                  <LoadingSpinner />
-                  PROCESSING ({activeJobsCount})
-                </span>
-              )}
-              <Icon icon="bot" className="w-4 h-4" />
-              AGENT COMMAND
+          {/* CENTERED SCAN INDICATOR */}
+          {(isChatLoading || isScanning) && (
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-2 bg-slate-900/90 px-4 py-1.5 rounded-full border border-cyan-500/50 shadow-[0_0_15px_rgba(6,182,212,0.3)] animate-pulse z-50">
+              <Icon icon="cpu" className="w-3.5 h-3.5 text-cyan-400 animate-spin" />
+              <span className="text-xs font-mono text-cyan-300 tracking-wider font-bold">AGENT ACTIVE</span>
             </div>
+          )}
 
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 text-xs font-mono text-cyan-500/50 bg-slate-900/30 px-2 py-1 rounded border border-slate-800/30">
+              <Icon icon="terminal" className="w-3 h-3" />
+              <span>AGENT COMMAND</span>
+            </div>
             {!isRightSidebarOpen && (
               <button onClick={() => setIsRightSidebarOpen(true)} className="px-3 py-1 bg-amber-900/50 hover:bg-amber-800/80 border border-amber-500/50 text-amber-300 rounded text-xs font-bold tracking-wider shadow-[0_0_10px_rgba(245,158,11,0.2)] transition-all z-50 flex gap-2 items-center whitespace-nowrap">
                 <Icon icon="chevron-down" className="w-3 h-3 rotate-90" />
