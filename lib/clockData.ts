@@ -62,6 +62,24 @@ export const getClocksForEntity = (type: 'TICKER' | 'SLEEVE' | 'MARKET', id: str
         ];
     }
 
-    // Market Clocks (Default fallback)
     return [];
+};
+
+export const getGlobalClocks = (): MarketClock[] => {
+    // Generate default global macro clocks
+    const clocks: MarketClock[] = [
+        { code: 'LIQ_CYC', label: 'Liquidity Cycle', status: 'green', reason: 'Global Central Bank Net Injections Positive', lastUpdated: Date.now() },
+        { code: 'COM_CYC', label: 'Commodity Cycle', status: 'yellow', reason: 'Energy Soft / Metals Hardening', lastUpdated: Date.now() },
+        {
+            code: 'VIX_REG',
+            label: 'VIX Regime',
+            status: 'red',
+            reason: 'Volatility Compression Extreme',
+            lastUpdated: Date.now() - (1000 * 60 * 60 * 26) // EXPLICITLY STALE FOR DEMO
+        },
+        { code: 'INF_TRD', label: 'Inflation Trend', status: 'green', reason: 'Disinflationary Trend Intact', lastUpdated: Date.now() },
+        { code: 'CRD_IMP', label: 'Credit Impulse', status: 'green', reason: 'Bank Lending Standards Easing', lastUpdated: Date.now() },
+        { code: 'DXY_STR', label: 'Dollar Strength', status: 'yellow', reason: 'Rangebound / Neutral', lastUpdated: Date.now() }
+    ];
+    return clocks;
 };

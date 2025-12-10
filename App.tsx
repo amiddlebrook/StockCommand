@@ -28,45 +28,21 @@ import { ProfileModal } from './components/ProfileModal';
 import { MarketClock } from './lib/agent/types';
 import { GlassButton } from './components/ui/GlassButton';
 import { JobProvider, useJobContext } from './contexts/JobContext';
-import { getClocksForEntity } from './lib/clockData';
+import { getClocksForEntity, getGlobalClocks } from './lib/clockData';
 import { ClockDetailView } from './components/ClockDetailView';
 
-type MobileView = 'toolbox' | 'dashboard' | 'chat';
-
-const WELCOME_MESSAGE =
-  "Welcome! I've preloaded some analysis in the dashboard. Use the toolbox for more or ask me a question.";
-
-const DEFAULT_SYMBOLS = ['TSLA', 'NVDA', 'AAPL'];
+// ... (existing types)
 
 const AppContent: React.FC = () => {
   const { startJob, confirmAction, activeJobsCount } = useJobContext();
 
   const [messages, setMessages] = useState<ChatMessageType[]>(() => [
-    { id: 'welcome', role: 'model', content: WELCOME_MESSAGE },
+    { id: 'welcome', role: 'model', content: "Commander, dashboard active. Systems are monitoring. Awaiting your orders." },
   ]);
-  const [isChatLoading, setIsChatLoading] = useState(false);
-  const [isDashboardLoading, setIsDashboardLoading] = useState(false);
-  const [isRecording, setIsRecording] = useState(false);
-  const [widgets, setWidgets] = useState<AnalysisWidget[]>([]);
-  const [mobileView, setMobileView] = useState<MobileView>('toolbox');
-  const [activeTab, setActiveTab] = useState<'command-center' | 'portfolio' | 'clock-detail'>('command-center');
-
-  // Sidebar State
-  const [isLeftSidebarOpen, setIsLeftSidebarOpen] = useState(true);
-  const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(true);
-
-  // Selected Clock State
-  const [selectedClock, setSelectedClock] = useState<MarketClock | null>(null);
-
-  const analysisModelId = DEFAULT_CHAT_MODEL.id;
-  const [symbols, setSymbols] = useState<string[]>(DEFAULT_SYMBOLS);
-  const [activeSymbol, setActiveSymbol] = useState<string | null>(DEFAULT_SYMBOLS[0]);
-  const [isPortfolioModalOpen, setIsPortfolioModalOpen] = useState(false);
-  const [isPortfolioGenerating, setIsPortfolioGenerating] = useState(false);
-
+  // ...
   // Agent State
   const [agentOutput, setAgentOutput] = useState<string | null>(null);
-  const [marketClocks, setMarketClocks] = useState<MarketClock[] | null>(null);
+  const [marketClocks, setMarketClocks] = useState<MarketClock[]>(() => getGlobalClocks());
 
   const [uncuratedTicker, setUncuratedTicker] = useState<string | null>(null);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -452,7 +428,7 @@ const AppContent: React.FC = () => {
               </h1>
             </div>
           </div>
-          <button onClick={() => setIsLeftSidebarOpen(false)} className="p-1 hover:bg-slate-800 rounded text-gray-500 hover:text-white transition-colors">
+          <button onClick={() => setIsLeftSidebarOpen(false)} title="Collapse Sidebar" className="p-1 hover:bg-slate-800 rounded text-gray-500 hover:text-white transition-colors">
             <Icon icon="chevron-down" className="w-4 h-4 rotate-90" />
           </button>
         </div>
@@ -664,7 +640,7 @@ const AppContent: React.FC = () => {
       <div className={`${isRightSidebarOpen ? 'w-[300px] xl:w-[350px]' : 'w-0 opacity-0'} flex flex-col bg-slate-900/40 border-l border-slate-800 transition-all duration-300 overflow-hidden relative`}>
         <div className="h-[60px] px-4 flex items-center justify-between border-b border-slate-800 bg-slate-950/50 backdrop-blur-sm min-w-[300px]">
           <div className="flex items-center gap-2">
-            <button onClick={() => setIsRightSidebarOpen(false)} className="p-1 hover:bg-slate-800 rounded text-gray-500 hover:text-white transition-colors">
+            <button onClick={() => setIsRightSidebarOpen(false)} title="Collapse Clocks" className="p-1 hover:bg-slate-800 rounded text-gray-500 hover:text-white transition-colors">
               <Icon icon="chevron-down" className="w-4 h-4 -rotate-90" />
             </button>
             <div className="flex items-center gap-2">
@@ -680,44 +656,24 @@ const AppContent: React.FC = () => {
           </button>
         </div>
 
-        <div className="p-3 bg-slate-900 border-b border-slate-800 font-semibold text-xs text-amber-400 tracking-wider min-w-[300px]">
-          MARKET CLOCKS
-        </div>
         <div className="flex-1 overflow-y-auto p-4 space-y-6 scrollbar-thin scrollbar-thumb-slate-700 min-w-[300px]">
           <div className="space-y-3">
-            {marketClocks && marketClocks.length > 0 ? (
-              marketClocks.map(clock => (
-                <div key={clock.code}
-                  className={`bg-slate-800/50 p-3 rounded border transition-colors cursor-pointer relative ${clock.lastUpdated && (Date.now() - clock.lastUpdated > 86400000) ? 'border-amber-500/50 hover:bg-amber-900/10' : 'border-slate-700/50 hover:border-amber-500/50'}`}
-                  onClick={() => handleViewClockDetail(clock)}>
+            {marketClocks.map(clock => (
+              <div key={clock.code}
+                className={`bg-slate-800/50 p-3 rounded border transition-colors cursor-pointer relative ${clock.lastUpdated && (Date.now() - clock.lastUpdated > 86400000) ? 'border-amber-500/50 hover:bg-amber-900/10' : 'border-slate-700/50 hover:border-amber-500/50'}`}
+                onClick={() => handleViewClockDetail(clock)}>
 
-                  {/* Action Needed Badge */}
-                  {clock.lastUpdated && (Date.now() - clock.lastUpdated > 86400000) && (
-                    <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-500 rounded-full animate-pulse border border-slate-900 z-10" title="Action Needed: Update Stale Data" />
-                  )}
+                {/* Action Needed Badge */}
+                {clock.lastUpdated && (Date.now() - clock.lastUpdated > 86400000) && (
+                  <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-500 rounded-full animate-pulse border border-slate-900 z-10" title="Action Needed: Update Stale Data" />
+                )}
 
-                  <div className="flex justify-between items-center mb-1">
-                    <span className="text-gray-400 text-xs font-medium">{clock.label}</span>
-                    <div className={`w-2 h-2 rounded-full shadow-md ${clock.status === 'green' ? 'bg-emerald-500' : clock.status === 'yellow' ? 'bg-amber-500' : 'bg-red-500'}`} />
-                  </div>
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-gray-400 text-xs font-medium">{clock.label}</span>
+                  <div className={`w-2 h-2 rounded-full shadow-md ${clock.status === 'green' ? 'bg-emerald-500' : clock.status === 'yellow' ? 'bg-amber-500' : 'bg-red-500'}`} />
                 </div>
-              ))
-            ) : (
-              // Standard Clocks
-              ['Liquidity Cycle', 'Commodity Cycle', 'VIX Regime', 'Inflation Trend', 'Credit Impulse', 'Dollar Strength'].map((label, i) => (
-                <div key={i}
-                  className="bg-slate-800/50 p-3 rounded border border-slate-700/50 flex justify-between items-center group hover:border-amber-500/30 transition-colors cursor-pointer hover:bg-slate-800"
-                  onClick={() => handleViewClockDetail({
-                    code: label.toUpperCase().replace(' ', '_'),
-                    label: label,
-                    status: 'yellow',
-                    reason: 'Detailed analysis required.'
-                  })}>
-                  <span className="text-gray-500 text-xs font-medium group-hover:text-cyan-400 transition-colors">{label}</span>
-                  <Icon icon="clock" className="w-3 h-3 text-gray-600 group-hover:text-amber-400" />
-                </div>
-              ))
-            )}
+              </div>
+            ))}
           </div>
 
           <div>
