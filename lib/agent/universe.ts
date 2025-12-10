@@ -111,7 +111,11 @@ export const UNIVERSE: Ticker[] = [
     // Macro Proxies (For Clocks)
     { symbol: 'SPY', sleeve: 'Macro', role: 'S&P 500 Proxy' },
     { symbol: 'HYG', sleeve: 'Macro', role: 'High Yield Credit' },
+    { symbol: 'LQD', sleeve: 'Macro', role: 'Investment Grade Credit' },
     { symbol: 'DBC', sleeve: 'Macro', role: 'Commodities Index' },
+    { symbol: 'USO', sleeve: 'Macro', role: 'Oil Fund' },
+    { symbol: 'DBB', sleeve: 'Macro', role: 'Base Metals Fund' },
+    { symbol: 'GLD', sleeve: 'Macro', role: 'Gold' },
     { symbol: 'TIP', sleeve: 'Macro', role: 'TIPS Inflation' },
     { symbol: 'IEF', sleeve: 'Macro', role: '10Y Treasury' },
     { symbol: 'UUP', sleeve: 'Macro', role: 'USD Index' },

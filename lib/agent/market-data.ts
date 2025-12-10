@@ -81,6 +81,7 @@ export class MarketDataService {
         let ySymbol = symbol;
         if (symbol === 'BTC') ySymbol = 'BTC-USD';
         if (symbol === 'ETH') ySymbol = 'ETH-USD';
+        if (symbol === 'VIX') ySymbol = '^VIX';
 
         // https://query1.finance.yahoo.com/v8/finance/chart/AAPL?interval=1d&range=1d
         const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ySymbol}?interval=1d&range=1d`;

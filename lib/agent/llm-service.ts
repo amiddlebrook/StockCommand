@@ -23,6 +23,16 @@ const TOOL_PROMPTS: Record<string, string> = {
     'CLOCK_DOLLAR_STRENGTH': 'Format output as two distinct sections: \n\n### 1. CONCEPT OVERVIEW\nExplain the USD Wrecking Ball theory. How does a strong Dollar tighten global financial conditions?\n\n### 2. CURRENT REGIME ANALYSIS\nAnalyze the *current* DXY/UUP trend. Is the Dollar trend Bullish or Bearish, and which asset classes are most at risk?'
 };
 
+// Macro Tool Proxy Mapping
+const TOOL_PROXIES: Record<string, string[]> = {
+    'CLOCK_LIQUIDITY_CYCLE': ['BTC', 'HYG', 'SPY'],
+    'CLOCK_COMMODITY_CYCLE': ['DBC', 'USO', 'DBB'],
+    'CLOCK_VIX_REGIME': ['VIX', 'SPY'],
+    'CLOCK_INFLATION_TREND': ['TIP', 'IEF', 'USO'],
+    'CLOCK_CREDIT_IMPULSE': ['HYG', 'LQD'],
+    'CLOCK_DOLLAR_STRENGTH': ['UUP', 'GLD', 'SPY']
+};
+
 export class LLMService {
     private apiKey: string;
     private modelName: string = "deepseek/deepseek-chat";
@@ -44,8 +54,17 @@ export class LLMService {
             relevantTickers = UNIVERSE;
         } else if (scope === 'SLEEVE') {
             relevantTickers = UNIVERSE.filter(t => t.sleeve === target);
-        } else if (scope === 'TICKER' || scope === 'TOOL') {
+        } else if (scope === 'TICKER') {
             relevantTickers = UNIVERSE.filter(t => t.symbol === target);
+        } else if (scope === 'TOOL') {
+            // Check if it's a Macro Tool with Proxies
+            if (target && TOOL_PROXIES[target]) {
+                const proxies = TOOL_PROXIES[target];
+                relevantTickers = UNIVERSE.filter(t => proxies.includes(t.symbol));
+            } else {
+                // Standard Tool (e.g. "Company Profile" on "NVDA")
+                relevantTickers = UNIVERSE.filter(t => t.symbol === target);
+            }
         }
 
         if (relevantTickers.length === 0) {

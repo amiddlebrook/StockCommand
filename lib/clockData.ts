@@ -31,11 +31,11 @@ export const getClocksForEntity = (type: 'TICKER' | 'SLEEVE' | 'MARKET', id: str
 export const getGlobalClocks = (): MarketClock[] => {
     // Generate default global macro clocks with NO pre-filled data
     return [
-        createBlankClock('LIQ_CYC', 'Liquidity Cycle'),
-        createBlankClock('COM_CYC', 'Commodity Cycle'),
-        createBlankClock('VIX_REG', 'VIX Regime'),
-        createBlankClock('INF_TRD', 'Inflation Trend'),
-        createBlankClock('CRD_IMP', 'Credit Impulse'),
-        createBlankClock('DXY_STR', 'Dollar Strength')
+        createBlankClock('CLOCK_LIQUIDITY_CYCLE', 'Liquidity Cycle'),
+        createBlankClock('CLOCK_COMMODITY_CYCLE', 'Commodity Cycle'),
+        createBlankClock('CLOCK_VIX_REGIME', 'VIX Regime'),
+        createBlankClock('CLOCK_INFLATION_TREND', 'Inflation Trend'),
+        createBlankClock('CLOCK_CREDIT_IMPULSE', 'Credit Impulse'),
+        createBlankClock('CLOCK_DOLLAR_STRENGTH', 'Dollar Strength')
     ];
 };

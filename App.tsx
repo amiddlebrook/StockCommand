@@ -641,14 +641,21 @@ const AppContent: React.FC = () => {
 
                 <div className="h-6 w-px bg-slate-700 mx-1" />
 
-                {['Liquidity Cycle', 'Commodity Cycle', 'VIX Regime', 'Inflation Trend', 'Credit Impulse', 'Dollar Strength'].map((label, i) => (
+                {[
+                  { label: 'Liquidity Cycle', code: 'CLOCK_LIQUIDITY_CYCLE' },
+                  { label: 'Commodity Cycle', code: 'CLOCK_COMMODITY_CYCLE' },
+                  { label: 'VIX Regime', code: 'CLOCK_VIX_REGIME' },
+                  { label: 'Inflation Trend', code: 'CLOCK_INFLATION_TREND' },
+                  { label: 'Credit Impulse', code: 'CLOCK_CREDIT_IMPULSE' },
+                  { label: 'Dollar Strength', code: 'CLOCK_DOLLAR_STRENGTH' }
+                ].map((tool, i) => (
                   <GlassButton
                     key={i}
                     variant="glass"
                     size="sm"
-                    onClick={() => handleRunAgentScan('TOOL', label.toUpperCase().replace(' ', '_'))}
+                    onClick={() => handleRunAgentScan('TOOL', tool.code, tool.code)}
                   >
-                    {label}
+                    {tool.label}
                   </GlassButton>
                 ))}
 
