@@ -431,16 +431,18 @@ const AppContent: React.FC = () => {
   const handleGeneratePortfolioReport = async (tickers: string[], goal: string) => {
     setIsPortfolioGenerating(true);
     try {
-      const report = await generatePortfolioReport(tickers, goal);
-      const widget: AnalysisWidget = {
-        id: `portfolio-${Date.now()}`,
-        type: 'portfolio',
-        title: `Portfolio Report (${tickers.join(', ')})`,
-        data: report,
-      };
-      setWidgets(prev => [widget, ...prev]);
-      setIsPortfolioModalOpen(false);
-      setMobileView('dashboard');
+      await startJob("Generating Portfolio Report", async () => {
+        const report = await generatePortfolioReport(tickers, goal);
+        const widget: AnalysisWidget = {
+          id: `portfolio-${Date.now()}`,
+          type: 'portfolio',
+          title: `Portfolio Report (${tickers.join(', ')})`,
+          data: report,
+        };
+        setWidgets(prev => [widget, ...prev]);
+        setIsPortfolioModalOpen(false);
+        setMobileView('dashboard');
+      }, 'REPORT');
     } catch (error) {
       console.error('Failed to generate portfolio report:', error);
     } finally {
@@ -482,7 +484,7 @@ const AppContent: React.FC = () => {
     <div className="h-screen w-screen bg-slate-950 text-gray-100 flex overflow-hidden font-sans">
 
       {/* LEFT COLUMN: Portfolio & Actions */}
-      <div className={`${isLeftSidebarOpen ? 'w-[300px] xl:w-[350px]' : 'w-0 opacity-0'} flex flex-col border-r border-slate-800 bg-slate-900/40 transition-all duration-300 overflow-hidden relative`}>
+      <div className={`${isLeftSidebarOpen ? 'w-[300px] xl:w-[350px] border-r' : 'w-0 border-none'} flex flex-col border-slate-800 bg-slate-900/40 transition-all duration-300 overflow-hidden relative`}>
         <div className="h-[60px] px-4 flex items-center justify-between border-b border-slate-800 bg-slate-950/50 backdrop-blur-sm min-w-[300px]">
           <div className="flex items-center gap-3">
             <div className="p-1.5 bg-gradient-to-br from-cyan-600 to-purple-700 rounded-lg shadow-lg">
@@ -745,7 +747,7 @@ const AppContent: React.FC = () => {
       </div>
 
       {/* RIGHT COLUMN: Market Data & Clocks */}
-      <div className={`${isRightSidebarOpen ? 'w-[300px] xl:w-[350px]' : 'w-0 opacity-0'} flex flex-col bg-slate-900/40 border-l border-slate-800 transition-all duration-300 overflow-hidden relative`}>
+      <div className={`${isRightSidebarOpen ? 'w-[300px] xl:w-[350px] border-l' : 'w-0 border-none'} flex flex-col bg-slate-900/40 border-slate-800 transition-all duration-300 overflow-hidden relative`}>
         <div className="h-[60px] px-4 flex items-center justify-between border-b border-slate-800 bg-slate-950/50 backdrop-blur-sm min-w-[300px]">
           <div className="flex items-center gap-2">
             <button onClick={() => setIsRightSidebarOpen(false)} title="Collapse Clocks" className="p-1 hover:bg-slate-800 rounded text-gray-500 hover:text-white transition-colors">
@@ -845,6 +847,8 @@ const AppContent: React.FC = () => {
         isOpen={isProfileOpen}
         onClose={() => setIsProfileOpen(false)}
       />
+
+      <JobToasts />
     </div>
   );
 };
@@ -854,6 +858,26 @@ const App: React.FC = () => {
     <JobProvider>
       <AppContent />
     </JobProvider>
+  );
+};
+
+const JobToasts: React.FC = () => {
+  const { jobs, clearCompletedJobs } = useJobContext();
+  const recentJobs = jobs.filter(j => j.status === 'running' || (j.status !== 'pending' && Date.now() - j.startTime < 10000)); // Show for 10s after
+
+  return (
+    <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2">
+      {recentJobs.map(job => (
+        <div key={job.id} className={`p-4 rounded-lg shadow-xl backdrop-blur-md border border-slate-700 flex items-center gap-3 animate-slideIn ${job.status === 'running' ? 'bg-slate-900/90 text-amber-400' : job.status === 'failed' ? 'bg-red-900/90 text-white' : 'bg-emerald-900/90 text-white'}`}>
+          {job.status === 'running' ? <LoadingSpinner /> : <Icon icon={job.status === 'failed' ? 'alert-triangle' : 'check'} className="w-5 h-5" />}
+          <div className="flex flex-col">
+            <span className="font-bold text-xs uppercase tracking-wider">{job.status}</span>
+            <span className="text-sm">{job.title}</span>
+            {job.error && <span className="text-xs text-red-200 mt-1">{job.error}</span>}
+          </div>
+        </div>
+      ))}
+    </div>
   );
 };
 

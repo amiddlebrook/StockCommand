@@ -115,7 +115,7 @@ export class LLMService {
                         { role: "user", content: userPrompt }
                     ],
                     temperature: 0.2, // Low temperature for analytical precision
-                    response_format: { type: "json_object" } // Force JSON
+                    // response_format: { type: "json_object" } // REMOVED: DeepSeek/OpenRouter strict JSON mode can be flaky
                 })
             });
 
@@ -125,9 +125,24 @@ export class LLMService {
             }
 
             const data = await response.json() as any;
-            const content = data.choices[0].message.content;
+            let content = data.choices[0].message.content;
 
-            const parsed = JSON.parse(content);
+            // ROBUST PARSING: Strip markdown code blocks if present
+            if (content.includes('```json')) {
+                content = content.replace(/```json/g, '').replace(/```/g, '');
+            } else if (content.includes('```')) {
+                content = content.replace(/```/g, '');
+            }
+            content = content.trim();
+
+            let parsed;
+            try {
+                parsed = JSON.parse(content);
+            } catch (jsonErr) {
+                console.error("Failed to parse LLM JSON:", content);
+                throw new Error("Invalid JSON response from Agent");
+            }
+
             return {
                 analysis: parsed.markdown_report,
                 actions: parsed.recommended_actions,

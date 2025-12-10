@@ -40,6 +40,9 @@ export class MarketDataService {
                         results[symbol] = data;
                     } catch (yahooError: any) {
                         console.error(`[MarketData] Yahoo Finance also failed for ${symbol}: ${yahooError.message}`);
+                        // Don't result in empty. Return mock/neutral if crucial? 
+                        // For now, logging effectively allows us to debug "Fake" data claims.
+                        results[symbol] = { price: 0, changePercent: 0, volume: 0, error: "Data Fetch Failed" } as any;
                     }
                 }
             }
