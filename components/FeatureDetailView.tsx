@@ -12,7 +12,7 @@ interface FeatureDetailViewProps {
 }
 
 // Feature-specific configurations
-const FEATURE_CONFIG: Record<string, {
+export const FEATURE_CONFIG: Record<string, {
     icon: string;
     gradient: string;
     description: string;

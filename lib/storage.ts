@@ -106,5 +106,14 @@ export const StorageService = {
         // Add new entry at the beginning, limit to 10 entries
         const updated = [entry, ...entries].slice(0, 10);
         return { ...history, [ticker]: updated };
+    },
+
+    resetToDefaults: () => {
+        try {
+            Object.values(STORAGE_KEYS).forEach(key => localStorage.removeItem(key));
+            window.location.reload();
+        } catch (e) {
+            console.error("Failed to reset application", e);
+        }
     }
 };

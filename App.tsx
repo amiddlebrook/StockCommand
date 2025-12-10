@@ -10,7 +10,7 @@ import { Icon } from './components/Icon';
 import { LoadingSpinner } from './components/LoadingSpinner';
 import { MobileNav } from './components/MobileNav';
 import { CompetitionsView } from './components/CompetitionsView';
-import { FeatureDetailView } from './components/FeatureDetailView';
+import { FeatureDetailView, FEATURE_CONFIG } from './components/FeatureDetailView';
 import type { ChatMessage as ChatMessageType, Source } from './types';
 import {
   analyzeImage,
@@ -50,7 +50,7 @@ const AppContent: React.FC = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [widgets, setWidgets] = useState<AnalysisWidget[]>(() => StorageService.loadWidgets());
   const [mobileView, setMobileView] = useState<MobileView>('toolbox');
-  const [activeTab, setActiveTab] = useState<'command-center' | 'portfolio' | 'entity-detail' | 'competitions' | 'feature-detail'>('command-center');
+  const [activeTab, setActiveTab] = useState<'command-center' | 'portfolio' | 'entity-detail' | 'competitions' | 'feature-detail' | 'features'>('command-center');
   const [activeFeature, setActiveFeature] = useState<{ name: string; symbols: string[]; content: string | null } | null>(null);
 
   // Sidebar State
@@ -440,7 +440,7 @@ const AppContent: React.FC = () => {
     handlePopState();
 
     return () => window.removeEventListener('popstate', handlePopState);
-  }, [marketClocks]); // Depend on marketClocks to ensure we find the entity if loaded
+  }, []); // Empty dependency array to only run on mount and popstate events. Do NOT depend on marketClocks to avoid resetting tab on scan updates.
 
   const handleGeneratePortfolioReport = async (tickers: string[], goal: string) => {
     setIsPortfolioGenerating(true);
@@ -832,6 +832,15 @@ const AppContent: React.FC = () => {
               >
                 🏆 Compete
               </button>
+              <button
+                onClick={() => setActiveTab('features')}
+                className={`px-3 py-1 rounded text-xs font-medium transition-all ${activeTab === 'features'
+                  ? 'bg-slate-800 text-cyan-400 shadow-sm'
+                  : 'text-gray-400 hover:text-gray-200 hover:bg-slate-800/50'
+                  }`}
+              >
+                ✨ Features
+              </button>
             </div>
           </div>
 
@@ -915,13 +924,15 @@ const AppContent: React.FC = () => {
                     {[24, 168, 720].map(hours => (
                       <button
                         key={hours}
-                        onClick={() => setDataFreshnessHours(hours)}
-                        className={`px-3 py-1 text-xs font-mono rounded transition-colors ${dataFreshnessHours === hours ? 'bg-slate-700 text-white shadow' : 'text-gray-500 hover:text-gray-300'}`}
-                      >
-                        {hours === 24 ? '24H' : hours === 168 ? '7D' : '30D'}
-                      </button>
                     ))}
                   </div>
+                  <GlassButton size="sm" variant="danger" onClick={() => {
+                    if (confirm('Are you sure you want to revert to the initial application state? This will clear all data and local storage.')) {
+                      StorageService.resetToDefaults();
+                    }
+                  }}>
+                    Reset System
+                  </GlassButton>
                 </div>
               </div>
 
@@ -1038,6 +1049,35 @@ const AppContent: React.FC = () => {
 
               <div ref={chatContainerRef} />
             </>
+          ) : activeTab === 'features' ? (
+            // <<< FEATURES LIBRARY VIEW >>>
+            <div className="flex-1 overflow-y-auto p-8">
+              <div className="mb-8">
+                <h1 className="text-3xl font-bold text-white mb-2">Analysis Features</h1>
+                <p className="text-gray-400">Advanced specialized tools for market analysis.</p>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {Object.entries(FEATURE_CONFIG).map(([name, config]) => (
+                  <div key={name} className="bg-slate-800/50 rounded-xl p-6 border border-slate-700/50 hover:border-cyan-500/50 transition-all cursor-pointer group hover:bg-slate-800/80 hover:shadow-lg hover:shadow-cyan-900/10"
+                    onClick={() => {
+                      setActiveFeature({ name, symbols: selectedSymbols.length > 0 ? selectedSymbols : ['SPY'], content: null });
+                      setActiveTab('feature-detail');
+                    }}
+                  >
+                    <div className={`w-12 h-12 rounded-lg bg-gradient-to-br ${config.gradient} mb-4 flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-lg`}>
+                      <Icon icon={config.icon as any} className="w-6 h-6 text-white" />
+                    </div>
+                    <h3 className="text-xl font-bold text-white mb-2 group-hover:text-cyan-400 transition-colors">{name}</h3>
+                    <p className="text-gray-400 text-sm mb-4 leading-relaxed">{config.description}</p>
+                    <div className="flex flex-wrap gap-2 mt-auto">
+                      {config.sections.slice(0, 3).map(s => (
+                        <span key={s} className="text-[10px] uppercase tracking-wider px-2 py-1 rounded bg-slate-950/50 text-gray-500 font-bold border border-slate-800">{s}</span>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           ) : activeTab === 'competitions' ? (
             // <<< COMPETITIONS VIEW >>>
             <CompetitionsView
@@ -1062,9 +1102,10 @@ const AppContent: React.FC = () => {
             />
           )}
         </div>
+
+
       </div>
 
-      {/* RIGHT COLUMN: Market Data & Clocks */}
       {/* RIGHT COLUMN: Market Data & Clocks */}
       <div className={`${isRightSidebarOpen ? 'w-[300px] xl:w-[350px] border-l min-w-[300px]' : 'w-0 border-none min-w-0'} flex-shrink-0 flex flex-col bg-slate-900/40 border-slate-800 transition-all duration-300 overflow-hidden relative`}>
         <div className="min-w-[300px] w-[300px] h-full flex flex-col">
