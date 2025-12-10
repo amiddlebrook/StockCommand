@@ -77,7 +77,7 @@ export const Toolbox: React.FC<ToolboxProps> = ({
 
             <div className="mb-6">
                 <label htmlFor="stock-symbol" className="text-xs font-semibold text-gray-400 block mb-2 uppercase tracking-wide">
-                    Stock Symbol
+                    Stock Symbol (max 3)
                 </label>
                 <div className="flex gap-2">
                     <input
@@ -87,16 +87,49 @@ export const Toolbox: React.FC<ToolboxProps> = ({
                         onChange={(e) => setSymbolInput(e.target.value)}
                         onKeyPress={(e) => e.key === 'Enter' && handleAddSymbol()}
                         placeholder="e.g., TSLA"
-                        disabled={isLoading}
+                        disabled={isLoading || symbols.length >= 3}
                         className="w-full bg-slate-900/50 border border-slate-700/50 rounded-lg px-3 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500/50 disabled:opacity-50 transition-all text-sm backdrop-blur-sm"
                     />
                     <button
                         onClick={handleAddSymbol}
-                        disabled={isLoading || !symbolInput.trim()}
+                        disabled={isLoading || !symbolInput.trim() || symbols.length >= 3}
                         className="bg-gradient-to-r from-cyan-600 to-cyan-500 hover:from-cyan-500 hover:to-cyan-400 text-white font-semibold px-4 py-2.5 rounded-lg whitespace-nowrap disabled:from-slate-700 disabled:to-slate-700 disabled:cursor-not-allowed transition-all shadow-lg shadow-cyan-500/20 disabled:shadow-none text-sm"
                     >
                         Add
                     </button>
+                </div>
+            </div>
+
+            {/* Active Tickers - select which to analyze */}
+            <div className="mb-6">
+                <h3 className="text-xs font-semibold text-gray-400 block mb-3 uppercase tracking-wide">
+                    Active Tickers {symbols.length > 0 && `(${symbols.length}/3)`}
+                </h3>
+                <div className="flex flex-wrap gap-2 min-h-[32px]">
+                    {symbols.length === 0 ? (
+                        <p className="text-xs text-gray-600 italic px-2 py-1.5">Add a ticker above to get started</p>
+                    ) : (
+                        symbols.map(symbol => (
+                            <div
+                                key={symbol}
+                                className={`group flex items-center gap-2 pl-3 pr-2 py-1.5 text-sm rounded-lg border cursor-pointer transition-all ${activeSymbol === symbol
+                                    ? 'bg-gradient-to-r from-cyan-600/20 to-purple-600/20 border-cyan-500/50 text-white shadow-lg shadow-cyan-500/10'
+                                    : 'bg-slate-800/30 border-slate-700/50 text-gray-300 hover:bg-slate-700/40 hover:border-slate-600/50'
+                                    }`}
+                                onClick={() => onSelectSymbol(symbol)}
+                            >
+                                <span className="font-mono font-bold">{symbol}</span>
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); handleRemoveSymbol(symbol); }}
+                                    className="text-gray-500 hover:text-red-400 rounded-full p-0.5 transition-colors"
+                                    aria-label={`Remove ${symbol}`}
+                                    disabled={isLoading}
+                                >
+                                    <Icon icon="close" className="w-3.5 h-3.5" />
+                                </button>
+                            </div>
+                        ))
+                    )}
                 </div>
             </div>
 
@@ -105,13 +138,8 @@ export const Toolbox: React.FC<ToolboxProps> = ({
                 {features.map((feature) => (
                     <button
                         key={feature.name}
-                        onClick={() => {
-                            const ticker = prompt(`Enter ticker symbol for ${feature.name}:`);
-                            if (ticker && ticker.trim()) {
-                                onAnalysisRequested(feature.name, ticker.trim().toUpperCase());
-                            }
-                        }}
-                        disabled={isLoading}
+                        onClick={() => handleFeatureClick(feature.name)}
+                        disabled={isLoading || !activeSymbol}
                         className="group w-full flex items-center gap-3 px-3 py-2.5 text-left text-gray-300 bg-slate-800/20 hover:bg-slate-700/30 border border-slate-700/30 hover:border-cyan-500/30 rounded-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:shadow-lg hover:shadow-cyan-500/5"
                     >
                         <Icon icon={feature.icon as any} className="w-4 h-4 text-cyan-400 group-hover:text-cyan-300 transition-colors" />

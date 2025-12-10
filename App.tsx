@@ -35,7 +35,7 @@ import { StorageService } from './lib/storage';
 
 type MobileView = 'toolbox' | 'dashboard' | 'chat';
 
-const DEFAULT_SYMBOLS = ['TSLA', 'NVDA', 'AAPL'];
+const DEFAULT_SYMBOLS: string[] = []; // Start empty, user adds tickers
 
 const AppContent: React.FC = () => {
   const { startJob, confirmAction, activeJobsCount } = useJobContext();
@@ -76,7 +76,7 @@ const AppContent: React.FC = () => {
   // ...
 
 
-  const [activeSymbol, setActiveSymbol] = useState<string | null>(DEFAULT_SYMBOLS[0]);
+  const [activeSymbol, setActiveSymbol] = useState<string | null>(null); // No default selected
   const [isPortfolioModalOpen, setIsPortfolioModalOpen] = useState(false);
   const [isPortfolioGenerating, setIsPortfolioGenerating] = useState(false);
   const [scanningTarget, setScanningTarget] = useState<string | null>(null);
