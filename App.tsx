@@ -29,7 +29,7 @@ import { MarketClock } from './lib/agent/types';
 import { GlassButton } from './components/ui/GlassButton';
 import { JobProvider, useJobContext } from './contexts/JobContext';
 import { getClocksForEntity, getGlobalClocks } from './lib/clockData';
-import { ClockDetailView } from './components/ClockDetailView';
+import { EntityDetailView } from './components/EntityDetailView';
 
 type MobileView = 'toolbox' | 'dashboard' | 'chat';
 
@@ -46,17 +46,34 @@ const AppContent: React.FC = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [widgets, setWidgets] = useState<AnalysisWidget[]>([]);
   const [mobileView, setMobileView] = useState<MobileView>('toolbox');
-  const [activeTab, setActiveTab] = useState<'command-center' | 'portfolio' | 'clock-detail'>('command-center');
+  const [activeTab, setActiveTab] = useState<'command-center' | 'portfolio' | 'entity-detail'>('command-center');
 
   // Sidebar State
   const [isLeftSidebarOpen, setIsLeftSidebarOpen] = useState(true);
   const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(true);
 
-  // Selected Clock State
-  const [selectedClock, setSelectedClock] = useState<MarketClock | null>(null);
+  // Selected Entity State
+  const [selectedEntity, setSelectedEntity] = useState<MarketClock | null>(null);
+
+  // Persistent Research Reports
+  const [researchReports, setResearchReports] = useState<Record<string, string>>({});
+
+  // User Settings
+  const [dataFreshnessHours, setDataFreshnessHours] = useState<number>(24);
 
   const analysisModelId = DEFAULT_CHAT_MODEL.id;
   const [symbols, setSymbols] = useState<string[]>(DEFAULT_SYMBOLS);
+
+  // ... (rest of the file)
+
+  const isStale = (timestamp?: number) => {
+    if (!timestamp) return true;
+    return (Date.now() - timestamp) > (dataFreshnessHours * 60 * 60 * 1000);
+  };
+
+  // ...
+
+
   const [activeSymbol, setActiveSymbol] = useState<string | null>(DEFAULT_SYMBOLS[0]);
   const [isPortfolioModalOpen, setIsPortfolioModalOpen] = useState(false);
   const [isPortfolioGenerating, setIsPortfolioGenerating] = useState(false);
@@ -149,6 +166,18 @@ const AppContent: React.FC = () => {
 
     setAgentOutput(finalAnalysis);
 
+    // <<< PERSISTENCE LOGIC >>>
+
+    // 1. Save the report to the persistent store
+    if (finalAnalysis) {
+      setResearchReports(prev => ({
+        ...prev,
+        [scope === 'TOOL' ? (toolName || target || 'unknown') : (target || scope)]: finalAnalysis
+      }));
+    }
+
+    // 2. Refresh Clocks (Timestamps)
+    const timestamp = Date.now();
     if (data.clocks) {
       setMarketClocks(prev => {
         if (!prev) return data.clocks;
@@ -157,13 +186,29 @@ const AppContent: React.FC = () => {
         newClocks.forEach(nc => {
           const idx = updated.findIndex(oc => oc.code === nc.code);
           if (idx >= 0) {
-            updated[idx] = { ...nc, lastUpdated: Date.now() }; // REFRESH TIMESTAMP
+            updated[idx] = { ...nc, lastUpdated: timestamp };
           } else {
-            updated.push({ ...nc, lastUpdated: Date.now() });
+            updated.push({ ...nc, lastUpdated: timestamp });
           }
         });
         return updated;
       });
+    } else {
+      // Fallback: If no specific clocks returned, but we scanned a target, update any existing clock for that target.
+      // This covers the "Run Analysis" button on an existing entity.
+      const entityKey = scope === 'TOOL' ? toolName : target;
+      if (entityKey) {
+        setMarketClocks(prev => prev.map(c =>
+          c.code === entityKey || c.code.includes(entityKey)
+            ? { ...c, lastUpdated: timestamp, status: 'green', reason: 'Fresh analysis: Stable' } // Optimistic update
+            : c
+        ));
+
+        // Also update the selected entity live
+        if (selectedEntity && (selectedEntity.code === entityKey || selectedEntity.code.includes(entityKey))) {
+          setSelectedEntity(prev => prev ? ({ ...prev, lastUpdated: timestamp, status: 'green', reason: 'Fresh analysis: Stable' }) : null);
+        }
+      }
     }
 
     const widget: AnalysisWidget = {
@@ -192,9 +237,9 @@ const AppContent: React.FC = () => {
     );
   };
 
-  const handleViewClockDetail = (clock: MarketClock) => {
-    setSelectedClock(clock);
-    setActiveTab('clock-detail');
+  const handleViewEntityDetail = (entity: MarketClock) => {
+    setSelectedEntity(entity);
+    setActiveTab('entity-detail');
   };
 
   // Auto-scroll chat
@@ -548,15 +593,40 @@ const AppContent: React.FC = () => {
 
         {/* MAIN CONTENT AREA */}
         <div className="flex-1 flex flex-col overflow-hidden relative">
-          {activeTab === 'clock-detail' ? (
-            // <<< CLOCK DETAIL VIEW >>>
-            <ClockDetailView
-              clock={selectedClock}
+          {activeTab === 'entity-detail' ? (
+            // <<< ENTITY DETAIL VIEW >>>
+            <EntityDetailView
+              entity={selectedEntity}
+              freshnessThreshold={dataFreshnessHours * 60 * 60 * 1000}
               onBack={() => setActiveTab('command-center')}
+              onRunAnalysis={(e) => executeAgentScan('TOOL', e.code)}
+              researchContent={selectedEntity ? researchReports[selectedEntity.code] : null}
             />
           ) : activeTab === 'command-center' ? (
             // <<< COMMAND CENTER VIEW >>>
             <>
+              {/* Header with Freshness Settings */}
+              <div className="flex justify-between items-end p-8 border-b border-slate-800/50">
+                <div>
+                  <h1 className="text-3xl font-bold text-white mb-2">Command Center</h1>
+                  <p className="text-gray-400">System Status & tactical overview.</p>
+                </div>
+                <div className="flex items-center gap-4">
+                  <span className="text-xs text-gray-500 uppercase tracking-wider">Data Validity:</span>
+                  <div className="flex bg-slate-900 rounded p-1 border border-slate-800">
+                    {[24, 168, 720].map(hours => (
+                      <button
+                        key={hours}
+                        onClick={() => setDataFreshnessHours(hours)}
+                        className={`px-3 py-1 text-xs font-mono rounded transition-colors ${dataFreshnessHours === hours ? 'bg-slate-700 text-white shadow' : 'text-gray-500 hover:text-gray-300'}`}
+                      >
+                        {hours === 24 ? '24H' : hours === 168 ? '7D' : '30D'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
               {/* Agent Controls Overlay */}
               <div className="p-4 border-b border-slate-800/50 flex gap-2 overflow-x-auto bg-slate-900/20">
                 <GlassButton
@@ -566,6 +636,19 @@ const AppContent: React.FC = () => {
                 >
                   RUN FULL SCAN
                 </GlassButton>
+
+                <div className="h-6 w-px bg-slate-700 mx-1" />
+
+                {['Liquidity Cycle', 'Commodity Cycle', 'VIX Regime', 'Inflation Trend', 'Credit Impulse', 'Dollar Strength'].map((label, i) => (
+                  <GlassButton
+                    key={i}
+                    variant="glass"
+                    size="sm"
+                    onClick={() => handleRunAgentScan('TOOL', label.toUpperCase().replace(' ', '_'))}
+                  >
+                    {label}
+                  </GlassButton>
+                ))}
 
                 <div className="h-6 w-px bg-slate-700 mx-1" />
 
@@ -654,7 +737,8 @@ const AppContent: React.FC = () => {
             // <<< PORTFOLIO VIEW >>>
             <PortfolioView
               sleevesWithStats={sleevesWithStats}
-              onClockClick={handleViewClockDetail}
+              onClockClick={handleViewEntityDetail}
+              freshnessThreshold={dataFreshnessHours * 60 * 60 * 1000}
             />
           )}
         </div>
@@ -682,22 +766,25 @@ const AppContent: React.FC = () => {
 
         <div className="flex-1 overflow-y-auto p-4 space-y-6 scrollbar-thin scrollbar-thumb-slate-700 min-w-[300px]">
           <div className="space-y-3">
-            {marketClocks.map(clock => (
-              <div key={clock.code}
-                className={`bg-slate-800/50 p-3 rounded border transition-colors cursor-pointer relative ${clock.lastUpdated && (Date.now() - clock.lastUpdated > 86400000) ? 'border-amber-500/50 hover:bg-amber-900/10' : 'border-slate-700/50 hover:border-amber-500/50'}`}
-                onClick={() => handleViewClockDetail(clock)}>
+            {marketClocks.map(clock => {
+              const stale = isStale(clock.lastUpdated);
+              return (
+                <div key={clock.code}
+                  className={`bg-slate-800/50 p-3 rounded border transition-colors cursor-pointer relative ${stale ? 'border-amber-500/50 hover:bg-amber-900/10' : 'border-slate-700/50 hover:border-amber-500/50'}`}
+                  onClick={() => handleViewEntityDetail(clock)}>
 
-                {/* Action Needed Badge */}
-                {clock.lastUpdated && (Date.now() - clock.lastUpdated > 86400000) && (
-                  <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-500 rounded-full animate-pulse border border-slate-900 z-10" title="Action Needed: Update Stale Data" />
-                )}
+                  {/* Action Needed Badge */}
+                  {stale && (
+                    <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-500 rounded-full animate-pulse border border-slate-900 z-10" title="Action Needed: Update Stale Data" />
+                  )}
 
-                <div className="flex justify-between items-center mb-1">
-                  <span className="text-gray-400 text-xs font-medium">{clock.label}</span>
-                  <div className={`w-2 h-2 rounded-full shadow-md ${clock.status === 'green' ? 'bg-emerald-500' : clock.status === 'yellow' ? 'bg-amber-500' : 'bg-red-500'}`} />
+                  <div className="flex justify-between items-center mb-1">
+                    <span className={`text-xs font-medium ${stale ? 'text-gray-500' : 'text-gray-400'}`}>{clock.label}</span>
+                    <div className={`w-2 h-2 rounded-full shadow-md ${stale ? 'bg-slate-700' : (clock.status === 'green' ? 'bg-emerald-500' : clock.status === 'yellow' ? 'bg-amber-500' : 'bg-red-500')}`} />
+                  </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
 
           <div>
@@ -727,9 +814,9 @@ const AppContent: React.FC = () => {
                                   title={`${c.label}: ${c.reason}`}
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    handleViewClockDetail(c);
+                                    handleViewEntityDetail(c);
                                   }}
-                                  className={`w-1.5 h-1.5 rounded-full hover:scale-150 transition-transform ${c.status === 'green' ? 'bg-emerald-500' : c.status === 'yellow' ? 'bg-amber-500' : 'bg-red-500'}`}
+                                  className={`w-1.5 h-1.5 rounded-full hover:scale-150 transition-transform ${isStale(c.lastUpdated) ? 'bg-slate-700' : (c.status === 'green' ? 'bg-emerald-500' : c.status === 'yellow' ? 'bg-amber-500' : 'bg-red-500')}`}
                                 />
                               ))}
                             </div>

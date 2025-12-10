@@ -11,14 +11,20 @@ interface PortfolioViewProps {
     }[];
     totalLiquidity?: number;
     onClockClick?: (clock: MarketClock) => void;
+    freshnessThreshold: number;
 }
 
-export const PortfolioView: React.FC<PortfolioViewProps> = ({ sleevesWithStats, totalLiquidity = 1240500, onClockClick }) => {
+export const PortfolioView: React.FC<PortfolioViewProps> = ({ sleevesWithStats, totalLiquidity = 1240500, onClockClick, freshnessThreshold }) => {
     // Use a Record to track open state for each sleeve
     const [openSleeves, setOpenSleeves] = useState<Record<string, boolean>>(() => {
         // Default all closed for the grid view initally
         return {};
     });
+
+    const isStale = (timestamp?: number) => {
+        if (!timestamp) return true;
+        return (Date.now() - timestamp) > freshnessThreshold;
+    };
 
     const toggleSleeve = (sleeveName: string) => {
         setOpenSleeves(prev => ({
@@ -194,26 +200,27 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({ sleevesWithStats, 
 
                                                                             {/* Clocks Row */}
                                                                             <div className="flex items-center gap-1.5 opacity-80 group-hover:opacity-100 transition-opacity">
-                                                                                {clocks.map(c => (
-                                                                                    <div
-                                                                                        key={c.code}
-                                                                                        onClick={(e) => {
-                                                                                            e.stopPropagation(); // Prevent row click
-                                                                                            onClockClick?.(c);
-                                                                                        }}
-                                                                                        className={`
+                                                                                {clocks.map(c => {
+                                                                                    const stale = isStale(c.lastUpdated);
+                                                                                    const dotColor = stale ? 'bg-slate-700' : (c.status === 'green' ? 'bg-emerald-500' : c.status === 'yellow' ? 'bg-amber-500' : 'bg-red-500');
+                                                                                    const ringClass = stale && (Date.now() - (c.lastUpdated || 0) > freshnessThreshold) ? 'ring-0' : ''; // Remove ring if stale, logic handled by grayness now
+
+                                                                                    return (
+                                                                                        <div
+                                                                                            key={c.code}
+                                                                                            onClick={(e) => {
+                                                                                                e.stopPropagation(); // Prevent row click
+                                                                                                onClockClick?.(c);
+                                                                                            }}
+                                                                                            className={`
                                                                                             relative w-2 h-2 rounded-full cursor-pointer hover:scale-125 transition-transform
-                                                                                            ${c.status === 'green' ? 'bg-emerald-500' : c.status === 'yellow' ? 'bg-amber-500' : 'bg-red-500'}
-                                                                                            ${c.lastUpdated && (Date.now() - c.lastUpdated > 86400000) ? 'ring-2 ring-amber-500 ring-offset-1 ring-offset-slate-900' : ''}
+                                                                                            ${dotColor}
                                                                                         `}
-                                                                                        title={`${c.label}: ${c.reason}${c.lastUpdated && (Date.now() - c.lastUpdated > 86400000) ? ' (Action Needed)' : ''}`}
-                                                                                    >
-                                                                                        {/* Tiny badge for Action Needed */}
-                                                                                        {c.lastUpdated && (Date.now() - c.lastUpdated > 86400000) && (
-                                                                                            <div className="absolute -top-0.5 -right-0.5 w-1 h-1 bg-amber-200 rounded-full animate-pulse" />
-                                                                                        )}
-                                                                                    </div>
-                                                                                ))}
+                                                                                            title={`${c.label}: ${stale ? 'Needs Update' : c.reason}`}
+                                                                                        >
+                                                                                        </div>
+                                                                                    )
+                                                                                })}
                                                                             </div>
                                                                         </div>
                                                                     </td>
