@@ -80,9 +80,9 @@ export const EntityDetailView: React.FC<EntityDetailViewProps> = ({ entity, onBa
                     </div>
                 </div>
 
-                {/* Research Content */}
-                {researchContent && (
-                    <div className="bg-slate-800/40 rounded-lg p-5 border border-slate-700/50">
+                {/* Research Content or Placeholder */}
+                {researchContent ? (
+                    <div className="bg-slate-800/40 rounded-lg p-5 border border-slate-700/50 animate-fadeIn">
                         <div className="flex items-center gap-2 mb-4">
                             <div className="p-1.5 bg-indigo-500/20 rounded">
                                 <Icon icon="bot" className="w-4 h-4 text-indigo-400" />
@@ -92,6 +92,12 @@ export const EntityDetailView: React.FC<EntityDetailViewProps> = ({ entity, onBa
                         <div className="prose prose-invert prose-sm max-w-none alpha-channel">
                             <pre className="whitespace-pre-wrap font-sans text-gray-300">{researchContent}</pre>
                         </div>
+                    </div>
+                ) : (
+                    <div className="bg-slate-800/20 rounded-lg p-8 border border-slate-800 border-dashed flex flex-col items-center justify-center text-gray-600 gap-3">
+                        <Icon icon="bot" className="w-8 h-8 opacity-20" />
+                        <span className="text-sm font-medium uppercase tracking-wider">Awaiting Intelligence Probe...</span>
+                        <p className="text-xs max-w-xs text-center">Click 'RUN DEEP ANALYSIS' to dispatch a specialized agent to this target.</p>
                     </div>
                 )}
             </div>

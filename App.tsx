@@ -540,7 +540,7 @@ const AppContent: React.FC = () => {
             </div>
           </div>
 
-          <button onClick={() => setIsLeftSidebarOpen(false)} title="Collapse Sidebar" className="px-2 py-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded text-xs text-cyan-400 font-bold tracking-wider transition-colors z-50">
+          <button onClick={() => setIsLeftSidebarOpen(false)} title="Collapse Sidebar" className="px-2 py-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded text-xs text-cyan-400 font-bold tracking-wider transition-colors z-50 whitespace-nowrap">
             CLOSE &lt;
           </button>
         </div>
@@ -583,7 +583,7 @@ const AppContent: React.FC = () => {
         <div className="h-[60px] px-4 flex items-center justify-between border-b border-slate-800 bg-slate-950/50 backdrop-blur-sm z-50">
           <div className="flex items-center gap-3">
             {!isLeftSidebarOpen && (
-              <button onClick={() => setIsLeftSidebarOpen(true)} className="px-3 py-1 bg-cyan-900/50 hover:bg-cyan-800/80 border border-cyan-500/50 text-cyan-300 rounded text-xs font-bold tracking-wider shadow-[0_0_10px_rgba(34,211,238,0.2)] transition-all z-50 flex gap-2 items-center">
+              <button onClick={() => setIsLeftSidebarOpen(true)} className="px-3 py-1 bg-cyan-900/50 hover:bg-cyan-800/80 border border-cyan-500/50 text-cyan-300 rounded text-xs font-bold tracking-wider shadow-[0_0_10px_rgba(34,211,238,0.2)] transition-all z-50 flex gap-2 items-center whitespace-nowrap">
                 <span>OPEN TOOLBOX</span>
                 <Icon icon="chevron-down" className="w-3 h-3 -rotate-90" />
               </button>
@@ -624,7 +624,7 @@ const AppContent: React.FC = () => {
             </div>
 
             {!isRightSidebarOpen && (
-              <button onClick={() => setIsRightSidebarOpen(true)} className="px-3 py-1 bg-amber-900/50 hover:bg-amber-800/80 border border-amber-500/50 text-amber-300 rounded text-xs font-bold tracking-wider shadow-[0_0_10px_rgba(245,158,11,0.2)] transition-all z-50 flex gap-2 items-center">
+              <button onClick={() => setIsRightSidebarOpen(true)} className="px-3 py-1 bg-amber-900/50 hover:bg-amber-800/80 border border-amber-500/50 text-amber-300 rounded text-xs font-bold tracking-wider shadow-[0_0_10px_rgba(245,158,11,0.2)] transition-all z-50 flex gap-2 items-center whitespace-nowrap">
                 <Icon icon="chevron-down" className="w-3 h-3 rotate-90" />
                 <span>OPEN CLOCKS</span>
               </button>
@@ -804,7 +804,7 @@ const AppContent: React.FC = () => {
         <div className="h-[60px] px-4 flex items-center justify-between border-b border-slate-800 bg-slate-950/50 backdrop-blur-sm min-w-[300px] z-50">
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-2">
-              <button onClick={() => setIsRightSidebarOpen(false)} title="Collapse Clocks" className="px-2 py-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded text-xs text-amber-500 font-bold tracking-wider transition-colors z-50">
+              <button onClick={() => setIsRightSidebarOpen(false)} title="Collapse Clocks" className="px-2 py-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded text-xs text-amber-500 font-bold tracking-wider transition-colors z-50 whitespace-nowrap">
                 &gt; CLOSE
               </button>
               <div className="flex items-center gap-2">
