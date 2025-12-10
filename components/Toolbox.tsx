@@ -3,11 +3,11 @@ import { Icon } from './Icon';
 
 interface ToolboxProps {
     symbols: string[];
-    activeSymbol: string | null;
+    selectedSymbols: string[]; // Changed from activeSymbol to support multi-select
     onAddSymbol: (symbol: string) => void;
     onRemoveSymbol: (symbol: string) => void;
-    onSelectSymbol: (symbol: string) => void;
-    onAnalysisRequested: (featureType: string, symbol: string) => void;
+    onToggleSymbol: (symbol: string) => void; // Toggle selection on/off
+    onAnalysisRequested: (featureType: string, symbols: string[]) => void; // Now takes array
     onPortfolioReport: () => void;
     isLoading: boolean;
 }
@@ -27,10 +27,10 @@ const features = [
 
 export const Toolbox: React.FC<ToolboxProps> = ({
     symbols,
-    activeSymbol,
+    selectedSymbols,
     onAddSymbol,
     onRemoveSymbol,
-    onSelectSymbol,
+    onToggleSymbol,
     onAnalysisRequested,
     onPortfolioReport,
     isLoading,
@@ -51,15 +51,9 @@ export const Toolbox: React.FC<ToolboxProps> = ({
         onRemoveSymbol(symbolToRemove);
     };
 
-    const handleSetActiveSymbol = (symbol: string) => {
-        if (isLoading || symbol === activeSymbol) return;
-        onSelectSymbol(symbol);
-        onAnalysisRequested('Company Profile', symbol);
-    };
-
     const handleFeatureClick = (featureName: string) => {
-        if (activeSymbol) {
-            onAnalysisRequested(featureName, activeSymbol);
+        if (selectedSymbols.length > 0) {
+            onAnalysisRequested(featureName, selectedSymbols);
         }
     };
 
@@ -100,10 +94,11 @@ export const Toolbox: React.FC<ToolboxProps> = ({
                 </div>
             </div>
 
-            {/* Active Tickers - select which to analyze */}
+            {/* Active Tickers - select any combo to analyze */}
             <div className="mb-6">
                 <h3 className="text-xs font-semibold text-gray-400 block mb-3 uppercase tracking-wide">
                     Active Tickers {symbols.length > 0 && `(${symbols.length}/3)`}
+                    {selectedSymbols.length > 0 && <span className="text-cyan-400 ml-2">• {selectedSymbols.length} selected</span>}
                 </h3>
                 <div className="flex flex-wrap gap-2 min-h-[32px]">
                     {symbols.length === 0 ? (
@@ -112,12 +107,13 @@ export const Toolbox: React.FC<ToolboxProps> = ({
                         symbols.map(symbol => (
                             <div
                                 key={symbol}
-                                className={`group flex items-center gap-2 pl-3 pr-2 py-1.5 text-sm rounded-lg border cursor-pointer transition-all ${activeSymbol === symbol
+                                className={`group flex items-center gap-2 pl-3 pr-2 py-1.5 text-sm rounded-lg border cursor-pointer transition-all ${selectedSymbols.includes(symbol)
                                     ? 'bg-gradient-to-r from-cyan-600/20 to-purple-600/20 border-cyan-500/50 text-white shadow-lg shadow-cyan-500/10'
                                     : 'bg-slate-800/30 border-slate-700/50 text-gray-300 hover:bg-slate-700/40 hover:border-slate-600/50'
                                     }`}
-                                onClick={() => onSelectSymbol(symbol)}
+                                onClick={() => onToggleSymbol(symbol)}
                             >
+                                {selectedSymbols.includes(symbol) && <Icon icon="check" className="w-3 h-3 text-cyan-400" />}
                                 <span className="font-mono font-bold">{symbol}</span>
                                 <button
                                     onClick={(e) => { e.stopPropagation(); handleRemoveSymbol(symbol); }}
@@ -139,7 +135,7 @@ export const Toolbox: React.FC<ToolboxProps> = ({
                     <button
                         key={feature.name}
                         onClick={() => handleFeatureClick(feature.name)}
-                        disabled={isLoading || !activeSymbol}
+                        disabled={isLoading || selectedSymbols.length === 0}
                         className="group w-full flex items-center gap-3 px-3 py-2.5 text-left text-gray-300 bg-slate-800/20 hover:bg-slate-700/30 border border-slate-700/30 hover:border-cyan-500/30 rounded-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:shadow-lg hover:shadow-cyan-500/5"
                     >
                         <Icon icon={feature.icon as any} className="w-4 h-4 text-cyan-400 group-hover:text-cyan-300 transition-colors" />

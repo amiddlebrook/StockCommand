@@ -76,7 +76,7 @@ const AppContent: React.FC = () => {
   // ...
 
 
-  const [activeSymbol, setActiveSymbol] = useState<string | null>(null); // No default selected
+  const [selectedSymbols, setSelectedSymbols] = useState<string[]>([]); // Multi-select support
   const [isPortfolioModalOpen, setIsPortfolioModalOpen] = useState(false);
   const [isPortfolioGenerating, setIsPortfolioGenerating] = useState(false);
   const [scanningTarget, setScanningTarget] = useState<string | null>(null);
@@ -204,16 +204,24 @@ const AppContent: React.FC = () => {
     }
   };
 
-  const handleAnalysisRequest = async (featureType: string, rawSymbol: string) => {
-    const symbol = rawSymbol.trim().toUpperCase();
-    if (!symbol) return;
-    checkCurated(symbol);
+  // Handle analysis request for selected symbols (multi-select support)
+  const handleAnalysisRequest = async (featureType: string, symbols: string[]) => {
+    if (symbols.length === 0) return;
 
-    // Navigate to entity detail page to view results
-    handleSelectSymbol(symbol);
+    // Run analysis on each selected symbol
+    for (const rawSymbol of symbols) {
+      const symbol = rawSymbol.trim().toUpperCase();
+      if (!symbol) continue;
+      checkCurated(symbol);
 
-    // Run the agent scan
-    handleRunAgentScan('TOOL', symbol, featureType);
+      // Navigate to entity detail page for first symbol
+      if (symbol === symbols[0]) {
+        handleSelectSymbol(symbol);
+      }
+
+      // Run the agent scan
+      handleRunAgentScan('TOOL', symbol, featureType);
+    }
   };
 
   const handleSendMessage = async (message: string, image?: File) => {
@@ -324,25 +332,29 @@ const AppContent: React.FC = () => {
   const handleAddSymbol = (symbol: string) => {
     const upper = symbol.toUpperCase();
     setSymbols(prev => (prev.includes(upper) ? prev : [...prev, upper]));
-    setActiveSymbol(upper);
+    // Auto-select newly added symbol
+    setSelectedSymbols(prev => prev.includes(upper) ? prev : [...prev, upper]);
     ensureSnapshotForSymbol(upper);
-    handleAnalysisRequest('Company Profile', upper);
   };
 
   const handleRemoveSymbol = (symbol: string) => {
     const upper = symbol.toUpperCase();
     setSymbols(prev => prev.filter(s => s !== upper));
+    setSelectedSymbols(prev => prev.filter(s => s !== upper));
     setWidgets(prev => prev.filter(widget => !widget.title?.includes(upper)));
-    if (activeSymbol === upper) {
-      const remaining = symbols.filter(s => s !== upper);
-      setActiveSymbol(remaining[0] ?? null);
-    }
   };
 
-  // HANDLER: Symbol Selection (with Routing)
-  const handleSelectSymbol = (symbol: string) => {
-    setActiveSymbol(symbol);
+  // HANDLER: Toggle Symbol Selection (multi-select)
+  const handleToggleSymbol = (symbol: string) => {
+    setSelectedSymbols(prev =>
+      prev.includes(symbol)
+        ? prev.filter(s => s !== symbol)  // Deselect
+        : [...prev, symbol]               // Select
+    );
+  };
 
+  // HANDLER: Symbol Selection (with Routing) - navigates to entity page
+  const handleSelectSymbol = (symbol: string) => {
     // UPDATE URL (Native Routing)
     const url = new URL(window.location.href);
     url.searchParams.set('symbol', symbol);
@@ -379,7 +391,7 @@ const AppContent: React.FC = () => {
 
       if (symbol) {
         // Restore symbol state, preferring persisted data from ticker clocks
-        setActiveSymbol(symbol);
+        // (selectedSymbols is not restored from URL, only selectedEntity for viewing)
 
         // Look for the ticker's VOL clock to get persisted timestamp/status
         const tickerVolClock = marketClocks.find(c => c.code === `${symbol}_VOL`);
@@ -746,10 +758,10 @@ const AppContent: React.FC = () => {
 
             <Toolbox
               symbols={symbols}
-              activeSymbol={activeSymbol}
+              selectedSymbols={selectedSymbols}
               onAddSymbol={handleAddSymbol}
               onRemoveSymbol={handleRemoveSymbol}
-              onSelectSymbol={handleSelectSymbol}
+              onToggleSymbol={handleToggleSymbol}
               onAnalysisRequested={handleAnalysisRequest}
               onPortfolioReport={() => setIsPortfolioModalOpen(true)}
               isLoading={isDashboardLoading}
@@ -1084,7 +1096,7 @@ const AppContent: React.FC = () => {
       <PortfolioReportModal
         isOpen={isPortfolioModalOpen}
         symbols={symbols}
-        activeSymbol={activeSymbol}
+        activeSymbol={selectedSymbols[0] || null}
         isGenerating={isPortfolioGenerating}
         onClose={() => setIsPortfolioModalOpen(false)}
         onSubmit={handleGeneratePortfolioReport}
