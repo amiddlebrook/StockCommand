@@ -975,19 +975,22 @@ const AppContent: React.FC = () => {
                               <div className="flex justify-between items-center">
                                 <span className="text-xs text-gray-400 font-mono text-cyan-400">{ticker.symbol}</span>
                               </div>
-                              {/* Ticker Clocks Row */}
+                              {/* Ticker Clocks Row - visual indicators only */}
                               <div className="flex gap-1">
-                                {tickerClocks.map(c => (
-                                  <div
-                                    key={c.code}
-                                    title={`${c.label}: ${c.reason}`}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleViewEntityDetail(c);
-                                    }}
-                                    className={`w-1.5 h-1.5 rounded-full hover:scale-150 transition-transform ${isStale(c.lastUpdated) ? 'bg-slate-700' : (c.status === 'green' ? 'bg-emerald-500' : c.status === 'yellow' ? 'bg-amber-500' : 'bg-red-500')}`}
-                                  />
-                                ))}
+                                {tickerClocks.map(c => {
+                                  // Look up clock in marketClocks for current status
+                                  const storedClock = marketClocks.find(mc => mc.code === c.code);
+                                  const clockStatus = storedClock?.status || c.status;
+                                  const clockReason = storedClock?.reason || c.reason;
+                                  const clockTimestamp = storedClock?.lastUpdated || c.lastUpdated;
+                                  return (
+                                    <div
+                                      key={c.code}
+                                      title={`${c.label}: ${clockReason}`}
+                                      className={`w-1.5 h-1.5 rounded-full ${isStale(clockTimestamp) ? 'bg-slate-700' : (clockStatus === 'green' ? 'bg-emerald-500' : clockStatus === 'yellow' ? 'bg-amber-500' : 'bg-red-500')}`}
+                                    />
+                                  );
+                                })}
                               </div>
                             </div>
                           );
