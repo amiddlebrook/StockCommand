@@ -100,43 +100,18 @@ export const Toolbox: React.FC<ToolboxProps> = ({
                 </div>
             </div>
 
-            <div className="mb-6">
-                <h3 className="text-xs font-semibold text-gray-400 block mb-3 uppercase tracking-wide">Active Tickers</h3>
-                <div className="flex flex-wrap gap-2 min-h-[32px]">
-                    {symbols.length === 0 ? (
-                        <p className="text-xs text-gray-600 italic px-2 py-1.5">No tickers yet</p>
-                    ) : (
-                        symbols.map(symbol => (
-                            <div
-                                key={symbol}
-                                className={`group flex items-center gap-2 pl-3 pr-2 py-1.5 text-sm rounded-lg border cursor-pointer transition-all ${activeSymbol === symbol
-                                        ? 'bg-gradient-to-r from-cyan-600/20 to-purple-600/20 border-cyan-500/50 text-white shadow-lg shadow-cyan-500/10'
-                                        : 'bg-slate-800/30 border-slate-700/50 text-gray-300 hover:bg-slate-700/40 hover:border-slate-600/50'
-                                    }`}
-                                onClick={() => handleSetActiveSymbol(symbol)}
-                            >
-                                <span className="font-mono font-bold">{symbol}</span>
-                                <button
-                                    onClick={(e) => { e.stopPropagation(); handleRemoveSymbol(symbol); }}
-                                    className="text-gray-500 hover:text-red-400 rounded-full p-0.5 transition-colors"
-                                    aria-label={`Remove ${symbol}`}
-                                    disabled={isLoading}
-                                >
-                                    <Icon icon="close" className="w-3.5 h-3.5" />
-                                </button>
-                            </div>
-                        ))
-                    )}
-                </div>
-            </div>
-
             <div className="space-y-1.5">
                 <h3 className="text-xs font-semibold text-gray-400 block mb-3 uppercase tracking-wide">Features</h3>
                 {features.map((feature) => (
                     <button
                         key={feature.name}
-                        onClick={() => handleFeatureClick(feature.name)}
-                        disabled={isLoading || !activeSymbol}
+                        onClick={() => {
+                            const ticker = prompt(`Enter ticker symbol for ${feature.name}:`);
+                            if (ticker && ticker.trim()) {
+                                onAnalysisRequested(feature.name, ticker.trim().toUpperCase());
+                            }
+                        }}
+                        disabled={isLoading}
                         className="group w-full flex items-center gap-3 px-3 py-2.5 text-left text-gray-300 bg-slate-800/20 hover:bg-slate-700/30 border border-slate-700/30 hover:border-cyan-500/30 rounded-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:shadow-lg hover:shadow-cyan-500/5"
                     >
                         <Icon icon={feature.icon as any} className="w-4 h-4 text-cyan-400 group-hover:text-cyan-300 transition-colors" />

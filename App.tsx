@@ -208,6 +208,11 @@ const AppContent: React.FC = () => {
     const symbol = rawSymbol.trim().toUpperCase();
     if (!symbol) return;
     checkCurated(symbol);
+
+    // Navigate to entity detail page to view results
+    handleSelectSymbol(symbol);
+
+    // Run the agent scan
     handleRunAgentScan('TOOL', symbol, featureType);
   };
 
