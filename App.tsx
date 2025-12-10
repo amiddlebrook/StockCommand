@@ -611,20 +611,47 @@ const AppContent: React.FC = () => {
     setScanningTarget(null);
   };
 
-  const handleRunAgentScan = (scope: 'FULL' | 'SLEEVE' | 'TICKER' | 'TOOL', target?: string, toolName?: string) => {
+  const handleRunAgentScan = async (scope: 'FULL' | 'SLEEVE' | 'TICKER' | 'TOOL', target?: string, toolName?: string) => {
     if (scope === 'TICKER' && target) {
       checkCurated(target);
     } else {
       setUncuratedTicker(null);
     }
 
-    const title = scope === 'TOOL' ? `Tool: ${toolName || target}` : `${scope} Scan`;
+    const scanLabel = scope === 'TOOL' ? (toolName || target) : (target || scope);
+    const loadingMsgId = `scan-${Date.now()}`;
 
-    confirmAction(
-      `Start ${title}?`,
-      "DeepSeek Agent will analyze live market data and recent news (via Google). This may take up to 60 seconds.",
-      async () => await executeAgentScan(scope, target, toolName)
-    );
+    // Add loading message to chat
+    const loadingMessage: ChatMessageType = {
+      id: loadingMsgId,
+      role: 'model',
+      content: `🤖 Analyzing ${scanLabel}... This may take up to 60 seconds. Gathering live market data and news.`,
+      timestamp: Date.now()
+    };
+    setMessages(prev => [...prev, loadingMessage]);
+
+    // Run the scan
+    try {
+      await executeAgentScan(scope, target, toolName);
+
+      // Update chat with completion message
+      const completionMessage: ChatMessageType = {
+        id: loadingMsgId,
+        role: 'model',
+        content: `✅ Analysis of **${scanLabel}** complete! Check the research panel and market clocks for updated data.`,
+        timestamp: Date.now()
+      };
+      setMessages(prev => prev.map(msg => msg.id === loadingMsgId ? completionMessage : msg));
+    } catch (error) {
+      // Update chat with error message
+      const errorMessage: ChatMessageType = {
+        id: loadingMsgId,
+        role: 'model',
+        content: `❌ Analysis of ${scanLabel} failed. Please try again later.`,
+        timestamp: Date.now()
+      };
+      setMessages(prev => prev.map(msg => msg.id === loadingMsgId ? errorMessage : msg));
+    }
   };
 
   const handleViewEntityDetail = (entity: MarketClock) => {
