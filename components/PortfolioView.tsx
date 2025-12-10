@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Icon } from './Icon';
 import { getClocksForEntity } from '../lib/clockData';
+import { MarketClock } from '../lib/agent/types';
 
 interface PortfolioViewProps {
     sleevesWithStats: {
@@ -9,9 +10,10 @@ interface PortfolioViewProps {
         stats: { green: number; yellow: number; red: number };
     }[];
     totalLiquidity?: number;
+    onClockClick?: (clock: MarketClock) => void;
 }
 
-export const PortfolioView: React.FC<PortfolioViewProps> = ({ sleevesWithStats, totalLiquidity = 1240500 }) => {
+export const PortfolioView: React.FC<PortfolioViewProps> = ({ sleevesWithStats, totalLiquidity = 1240500, onClockClick }) => {
     // Use a Record to track open state for each sleeve
     const [openSleeves, setOpenSleeves] = useState<Record<string, boolean>>(() => {
         // Default all closed for the grid view initally
@@ -191,13 +193,26 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({ sleevesWithStats, 
                                                                             </div>
 
                                                                             {/* Clocks Row */}
-                                                                            <div className="flex items-center gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
+                                                                            <div className="flex items-center gap-1.5 opacity-80 group-hover:opacity-100 transition-opacity">
                                                                                 {clocks.map(c => (
                                                                                     <div
                                                                                         key={c.code}
-                                                                                        className={`w-1.5 h-1.5 rounded-full ${c.status === 'green' ? 'bg-emerald-500' : c.status === 'yellow' ? 'bg-amber-500' : 'bg-red-500'}`}
-                                                                                        title={`${c.label}: ${c.reason}`}
-                                                                                    />
+                                                                                        onClick={(e) => {
+                                                                                            e.stopPropagation(); // Prevent row click
+                                                                                            onClockClick?.(c);
+                                                                                        }}
+                                                                                        className={`
+                                                                                            relative w-2 h-2 rounded-full cursor-pointer hover:scale-125 transition-transform
+                                                                                            ${c.status === 'green' ? 'bg-emerald-500' : c.status === 'yellow' ? 'bg-amber-500' : 'bg-red-500'}
+                                                                                            ${c.lastUpdated && (Date.now() - c.lastUpdated > 86400000) ? 'ring-2 ring-amber-500 ring-offset-1 ring-offset-slate-900' : ''}
+                                                                                        `}
+                                                                                        title={`${c.label}: ${c.reason}${c.lastUpdated && (Date.now() - c.lastUpdated > 86400000) ? ' (Action Needed)' : ''}`}
+                                                                                    >
+                                                                                        {/* Tiny badge for Action Needed */}
+                                                                                        {c.lastUpdated && (Date.now() - c.lastUpdated > 86400000) && (
+                                                                                            <div className="absolute -top-0.5 -right-0.5 w-1 h-1 bg-amber-200 rounded-full animate-pulse" />
+                                                                                        )}
+                                                                                    </div>
                                                                                 ))}
                                                                             </div>
                                                                         </div>

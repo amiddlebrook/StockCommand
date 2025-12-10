@@ -631,7 +631,10 @@ const AppContent: React.FC = () => {
             </>
           ) : (
             // <<< PORTFOLIO VIEW >>>
-            <PortfolioView sleevesWithStats={sleevesWithStats} />
+            <PortfolioView
+              sleevesWithStats={sleevesWithStats}
+              onClockClick={handleViewClockDetail}
+            />
           )}
         </div>
       </div>
