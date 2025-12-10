@@ -939,7 +939,6 @@ const AppContent: React.FC = () => {
               {marketClocks.filter(clock => clock.code.startsWith('CLOCK_')).map(clock => {
                 const stale = isStale(clock.lastUpdated);
                 return (
-                return (
                   <div key={clock.code}
                     className={`bg-slate-800/50 p-3 rounded border transition-colors cursor-pointer relative ${stale ? 'border-amber-500/50 hover:bg-amber-900/10' : 'border-slate-700/50 hover:border-amber-500/50'}`}
                     onClick={() => handleViewEntityDetail(clock)}>
