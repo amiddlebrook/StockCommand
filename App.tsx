@@ -910,7 +910,7 @@ const AppContent: React.FC = () => {
                             const tickerClocks = getClocksForEntity('TICKER', ticker.symbol);
                             return (
                               <div key={ticker.symbol} className="px-3 py-2 flex flex-col gap-2 hover:bg-slate-800/30 border-l-2 border-transparent hover:border-blue-500 transition-all cursor-pointer"
-                                onClick={() => handleAnalysisRequest('Company Profile', ticker.symbol)}>
+                                onClick={() => handleSelectSymbol(ticker.symbol)}>
                                 <div className="flex justify-between items-center">
                                   <span className="text-xs text-gray-400 font-mono text-cyan-400">{ticker.symbol}</span>
                                 </div>
