@@ -478,6 +478,7 @@ const AppContent: React.FC = () => {
     // 2. Refresh Clocks (Timestamps)
     const timestamp = Date.now();
     if (data.clocks) {
+      // FULL scan or macro tool - update macro clocks
       setMarketClocks(prev => {
         if (!prev) return data.clocks;
         const newClocks = data.clocks as MarketClock[];
@@ -492,27 +493,53 @@ const AppContent: React.FC = () => {
         });
         return updated;
       });
-    } else {
-      // Fallback: This logic handles single-entity updates
-      const entityKey = scope === 'TOOL' ? toolName : target;
-      if (entityKey) {
-        setMarketClocks(prev => prev.map(c =>
-          c.code === entityKey || c.code.includes(entityKey)
-            ? { ...c, lastUpdated: timestamp, status: 'green', reason: 'Fresh analysis: Stable' }
-            : c
-        ));
-
-        // Also update the selected entity live
-        if (selectedEntity && (selectedEntity.code === entityKey || selectedEntity.code.includes(entityKey))) {
-          // FORCE UPDATE: Create fresh object to trigger re-render
-          const newStatus = 'green';
-          setSelectedEntity({
-            ...selectedEntity,
+    } else if (scope === 'TICKER' && target) {
+      // TICKER scan - create/update ticker-specific clocks
+      const tickerClocks = getClocksForEntity('TICKER', target);
+      setMarketClocks(prev => {
+        const updated = [...prev];
+        tickerClocks.forEach(nc => {
+          const idx = updated.findIndex(oc => oc.code === nc.code);
+          const freshClock = {
+            ...nc,
             lastUpdated: timestamp,
-            status: newStatus,
-            reason: 'Fresh analysis: Stable'
-          });
-        }
+            status: 'green' as const, // Fresh analysis = green
+            reason: 'Fresh analysis completed'
+          };
+          if (idx >= 0) {
+            updated[idx] = freshClock;
+          } else {
+            updated.push(freshClock);
+          }
+        });
+        return updated;
+      });
+
+      // Update selected entity if it matches
+      if (selectedEntity && selectedEntity.code.startsWith(target)) {
+        setSelectedEntity(prev => prev ? {
+          ...prev,
+          lastUpdated: timestamp,
+          status: 'green',
+          reason: 'Fresh analysis completed'
+        } : null);
+      }
+    } else if (scope === 'TOOL' && toolName) {
+      // TOOL scan fallback - update the specific tool clock if it exists
+      setMarketClocks(prev => prev.map(c =>
+        c.code === toolName
+          ? { ...c, lastUpdated: timestamp, status: 'green', reason: 'Fresh analysis: Stable' }
+          : c
+      ));
+
+      // Also update the selected entity live
+      if (selectedEntity && selectedEntity.code === toolName) {
+        setSelectedEntity({
+          ...selectedEntity,
+          lastUpdated: timestamp,
+          status: 'green',
+          reason: 'Fresh analysis: Stable'
+        });
       }
     }
 
