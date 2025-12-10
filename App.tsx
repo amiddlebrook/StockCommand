@@ -528,7 +528,7 @@ const AppContent: React.FC = () => {
 
       {/* LEFT COLUMN: Portfolio & Actions */}
       <div className={`${isLeftSidebarOpen ? 'w-[300px] xl:w-[350px] border-r' : 'w-0 border-none'} flex flex-col border-slate-800 bg-slate-900/40 transition-all duration-300 overflow-hidden relative`}>
-        <div className="h-[60px] px-4 flex items-center justify-between border-b border-slate-800 bg-slate-950/50 backdrop-blur-sm min-w-[300px]">
+        <div className="h-[60px] px-4 flex items-center justify-between border-b border-slate-800 bg-slate-950/50 backdrop-blur-sm min-w-[300px] z-50">
           <div className="flex items-center gap-3">
             <div className="p-1.5 bg-gradient-to-br from-cyan-600 to-purple-700 rounded-lg shadow-lg">
               <Icon icon="bot" className="w-5 h-5 text-white" />
@@ -798,7 +798,7 @@ const AppContent: React.FC = () => {
 
       {/* RIGHT COLUMN: Market Data & Clocks */}
       <div className={`${isRightSidebarOpen ? 'w-[300px] xl:w-[350px] border-l' : 'w-0 border-none'} flex flex-col bg-slate-900/40 border-slate-800 transition-all duration-300 overflow-hidden relative`}>
-        <div className="h-[60px] px-4 flex items-center justify-between border-b border-slate-800 bg-slate-950/50 backdrop-blur-sm min-w-[300px]">
+        <div className="h-[60px] px-4 flex items-center justify-between border-b border-slate-800 bg-slate-950/50 backdrop-blur-sm min-w-[300px] z-50">
           <div className="flex items-center gap-2">
             <button onClick={() => setIsRightSidebarOpen(false)} title="Collapse Clocks" className="p-1 hover:bg-slate-800 rounded text-gray-500 hover:text-white transition-colors">
               <Icon icon="chevron-down" className="w-4 h-4 -rotate-90" />

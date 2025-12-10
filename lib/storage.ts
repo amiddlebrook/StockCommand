@@ -2,10 +2,10 @@ import { AnalysisWidget } from '../services/geminiService';
 import { MarketClock } from './agent/types';
 
 const STORAGE_KEYS = {
-    WIDGETS: 'stockcommand_widgets',
-    REPORTS: 'stockcommand_reports',
-    CLOCKS: 'stockcommand_clocks',
-    SETTINGS: 'stockcommand_settings'
+    WIDGETS: 'stockcommand_widgets_v2',
+    REPORTS: 'stockcommand_reports_v2',
+    CLOCKS: 'stockcommand_clocks_v2',
+    SETTINGS: 'stockcommand_settings_v2'
 };
 
 export const StorageService = {
