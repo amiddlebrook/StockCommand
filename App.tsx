@@ -145,113 +145,7 @@ const AppContent: React.FC = () => {
     }
   };
 
-  const executeAgentScan = async (scope: 'FULL' | 'SLEEVE' | 'TICKER' | 'TOOL', target?: string, toolName?: string) => {
-    setAgentOutput(`Initializing ${scope} scan...`);
 
-    let searchContext = "";
-    try {
-      if ((scope === 'TICKER' || scope === 'SLEEVE') && target) {
-        setAgentOutput(`Gathering live intelligence for ${target}...`);
-        const searchRes = await searchWithGrounding(`Latest financial news and analysis for ${target} market`);
-        if (searchRes && searchRes.response) {
-          searchContext = `\n\n### 🌐 Live Market Context\n${searchRes.response}\n\n`;
-        }
-      }
-    } catch (e) {
-      console.warn("Live search failed, falling back to cached agent logic", e);
-    }
-
-    const res = await (window.fetch as any)('/api/agent/scan', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        scope,
-        target: scope === 'TOOL' ? target : target,
-        tool: toolName || (scope === 'TOOL' ? target : undefined),
-        context: searchContext
-      })
-    });
-    const data = await res.json();
-
-    const finalAnalysis = searchContext ? `${data.analysis}\n${searchContext}` : (data.analysis || "Analysis complete.");
-
-    setAgentOutput(finalAnalysis);
-
-    // <<< PERSISTENCE LOGIC >>>
-
-    // 1. Save the report to the persistent store
-    if (finalAnalysis) {
-      setResearchReports(prev => ({
-        ...prev,
-        [scope === 'TOOL' ? (toolName || target || 'unknown') : (target || scope)]: finalAnalysis
-      }));
-    }
-
-    // 2. Refresh Clocks (Timestamps)
-    const timestamp = Date.now();
-    if (data.clocks) {
-      setMarketClocks(prev => {
-        if (!prev) return data.clocks;
-        const newClocks = data.clocks as MarketClock[];
-        const updated = [...prev];
-        newClocks.forEach(nc => {
-          const idx = updated.findIndex(oc => oc.code === nc.code);
-          if (idx >= 0) {
-            updated[idx] = { ...nc, lastUpdated: timestamp };
-          } else {
-            updated.push({ ...nc, lastUpdated: timestamp });
-          }
-        });
-        return updated;
-      });
-    } else {
-      // Fallback: If no specific clocks returned, but we scanned a target, update any existing clock for that target.
-      // This covers the "Run Analysis" button on an existing entity.
-      const entityKey = scope === 'TOOL' ? toolName : target;
-      if (entityKey) {
-        setMarketClocks(prev => prev.map(c =>
-          c.code === entityKey || c.code.includes(entityKey)
-            ? { ...c, lastUpdated: timestamp, status: 'green', reason: 'Fresh analysis: Stable' } // Optimistic update
-            : c
-        ));
-
-        // Also update the selected entity live
-        if (selectedEntity && (selectedEntity.code === entityKey || selectedEntity.code.includes(entityKey))) {
-          setSelectedEntity(prev => prev ? ({ ...prev, lastUpdated: timestamp, status: 'green', reason: 'Fresh analysis: Stable' }) : null);
-        }
-      }
-    }
-
-    const widget: AnalysisWidget = {
-      id: `agent-${Date.now()}`,
-      type: 'profile',
-      title: `Agent Report (${scope === 'TOOL' ? toolName || target : scope})`,
-      data: { text: finalAnalysis, sources: [] }
-    };
-    setWidgets(prev => [widget, ...prev]);
-    setMobileView('dashboard');
-  };
-
-  const handleRunAgentScan = (scope: 'FULL' | 'SLEEVE' | 'TICKER' | 'TOOL', target?: string, toolName?: string) => {
-    if (scope === 'TICKER' && target) {
-      checkCurated(target);
-    } else {
-      setUncuratedTicker(null);
-    }
-
-    const title = scope === 'TOOL' ? `Tool: ${toolName || target}` : `${scope} Scan`;
-
-    confirmAction(
-      `Start ${title}?`,
-      "This process involves complex agentic reasoning and may take up to 2 minutes. You can continue using the dashboard while it runs.",
-      async () => await executeAgentScan(scope, target, toolName)
-    );
-  };
-
-  const handleViewEntityDetail = (entity: MarketClock) => {
-    setSelectedEntity(entity);
-    setActiveTab('entity-detail');
-  };
 
   // Auto-scroll chat
   useEffect(() => {
@@ -437,6 +331,16 @@ const AppContent: React.FC = () => {
 
   const handleSelectSymbol = (symbol: string) => {
     setActiveSymbol(symbol);
+    // FIX: Automatically navigate to Detail View when a symbol is selected from Toolbox
+    const mockEntity: MarketClock = {
+      code: symbol,
+      label: symbol,
+      status: 'gray', // Assume gray/stale until loaded
+      lastUpdated: 0,
+      reason: 'Manually selected'
+    };
+    setSelectedEntity(mockEntity);
+    setActiveTab('entity-detail');
   };
 
   const handleGeneratePortfolioReport = async (tickers: string[], goal: string) => {
@@ -460,6 +364,134 @@ const AppContent: React.FC = () => {
       setIsPortfolioGenerating(false);
     }
   };
+
+  const executeAgentScan = async (scope: 'FULL' | 'SLEEVE' | 'TICKER' | 'TOOL', target?: string, toolName?: string) => {
+    setAgentOutput(`Initializing ${scope} scan...`);
+
+    let searchContext = "";
+    try {
+      // FIX: Enable Grounding Search for TOOLS (Macro) as well as TICKERS
+      if (target) {
+        setAgentOutput(`Gathering live intelligence for ${target}...`);
+
+        let query = `Latest financial news and analysis for ${target} market`;
+        if (scope === 'TOOL') {
+          // Enhanced Query for Macro Tools
+          if (target.includes('LIQUIDITY')) query = "Global Liquidity Cycle current status 2024 2025 BTC HYG analysis";
+          else if (target.includes('COMMODITY')) query = "Commodity Supercycle analysis 2025 Oil Copper structural deficit";
+          else if (target.includes('VIX')) query = "VIX volatility regime analysis current market conditions";
+          else if (target.includes('INFLATION')) query = "US Inflation Trend Breakeven Rates TIPS analysis current";
+          else if (target.includes('CREDIT')) query = "Credit Impulse Global Liquidity High Yield Spreads analysis";
+          else if (target.includes('DOLLAR')) query = "US Dollar DXY Index Strength analysis 2024 2025 forecast";
+          else query = `${toolName || target} detailed analysis current market data`;
+        }
+
+        const searchRes = await searchWithGrounding(query);
+        if (searchRes && searchRes.response) {
+          searchContext = `\n\n### 🌐 Live Market Context (Google Grounding)\n${searchRes.response}\n\n`;
+        }
+      }
+    } catch (e) {
+      console.warn("Live search failed, falling back to cached agent logic", e);
+    }
+
+    const res = await (window.fetch as any)('/api/agent/scan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        scope,
+        target: scope === 'TOOL' ? target : target,
+        tool: toolName || (scope === 'TOOL' ? target : undefined),
+        context: searchContext
+      })
+    });
+    const data = await res.json();
+
+    // ... rest of function
+    const finalAnalysis = searchContext ? `${data.analysis}\n${searchContext}` : (data.analysis || "Analysis complete.");
+
+    setAgentOutput(finalAnalysis);
+
+    // <<< PERSISTENCE LOGIC >>>
+
+    // 1. Save the report to the persistent store
+    if (finalAnalysis) {
+      setResearchReports(prev => ({
+        ...prev,
+        [scope === 'TOOL' ? (toolName || target || 'unknown') : (target || scope)]: finalAnalysis
+      }));
+    }
+
+    // 2. Refresh Clocks (Timestamps)
+    const timestamp = Date.now();
+    if (data.clocks) {
+      setMarketClocks(prev => {
+        if (!prev) return data.clocks;
+        const newClocks = data.clocks as MarketClock[];
+        const updated = [...prev];
+        newClocks.forEach(nc => {
+          const idx = updated.findIndex(oc => oc.code === nc.code);
+          if (idx >= 0) {
+            updated[idx] = { ...nc, lastUpdated: timestamp };
+          } else {
+            updated.push({ ...nc, lastUpdated: timestamp });
+          }
+        });
+        return updated;
+      });
+    } else {
+      // Fallback: This logic handles single-entity updates
+      const entityKey = scope === 'TOOL' ? toolName : target;
+      if (entityKey) {
+        setMarketClocks(prev => prev.map(c =>
+          c.code === entityKey || c.code.includes(entityKey)
+            ? { ...c, lastUpdated: timestamp, status: 'green', reason: 'Fresh analysis: Stable' }
+            : c
+        ));
+
+        // Also update the selected entity live
+        if (selectedEntity && (selectedEntity.code === entityKey || selectedEntity.code.includes(entityKey))) {
+          setSelectedEntity(prev => prev ? ({ ...prev, lastUpdated: timestamp, status: 'green', reason: 'Fresh analysis: Stable' }) : null);
+        }
+      }
+    }
+
+    const widget: AnalysisWidget = {
+      id: `agent-${Date.now()}`,
+      type: 'profile',
+      title: `Agent Report (${scope === 'TOOL' ? toolName || target : scope})`,
+      data: { text: finalAnalysis, sources: [] }
+    };
+    setWidgets(prev => [widget, ...prev]);
+    setMobileView('dashboard');
+  };
+
+  const handleRunAgentScan = (scope: 'FULL' | 'SLEEVE' | 'TICKER' | 'TOOL', target?: string, toolName?: string) => {
+    if (scope === 'TICKER' && target) {
+      checkCurated(target);
+    } else {
+      setUncuratedTicker(null);
+    }
+
+    const title = scope === 'TOOL' ? `Tool: ${toolName || target}` : `${scope} Scan`;
+
+    confirmAction(
+      `Start ${title}?`,
+      "DeepSeek Agent will analyze live market data and recent news (via Google). This may take up to 60 seconds.",
+      async () => await executeAgentScan(scope, target, toolName)
+    );
+  };
+
+  const handleViewEntityDetail = (entity: MarketClock) => {
+    setSelectedEntity(entity);
+    setActiveTab('entity-detail');
+  };
+
+  // ... 
+
+  // FIX: Ensure Sidebar Toggle is Clickable (z-index)
+  // Inside the main return block...
+
 
   useEffect(() => {
     const loadPersistedRun = async () => {
@@ -547,7 +579,7 @@ const AppContent: React.FC = () => {
       <div className="flex-1 flex flex-col min-w-0 bg-slate-950 relative border-r border-slate-800 transition-all duration-300">
 
         {/* TOP BAR: Navigation & Status */}
-        <div className="h-[60px] px-4 flex items-center justify-between border-b border-slate-800 bg-slate-950/50 backdrop-blur-sm z-20">
+        <div className="h-[60px] px-4 flex items-center justify-between border-b border-slate-800 bg-slate-950/50 backdrop-blur-sm z-50">
           <div className="flex items-center gap-3">
             {!isLeftSidebarOpen && (
               <button onClick={() => setIsLeftSidebarOpen(true)} className="p-2 hover:bg-slate-800 rounded-lg text-gray-400 hover:text-cyan-400 border border-transparent hover:border-slate-700 transition-all">
