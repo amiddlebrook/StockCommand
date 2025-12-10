@@ -505,8 +505,8 @@ const AppContent: React.FC = () => {
 
     // 2. Refresh Clocks (Timestamps)
     const timestamp = Date.now();
-    if (data.clocks) {
-      // FULL scan or macro tool - update macro clocks
+    if (data.clocks && (data.clocks as MarketClock[]).length > 0) {
+      // FULL scan or macro tool - update macro clocks from API response
       setMarketClocks(prev => {
         if (!prev) return data.clocks;
         const newClocks = data.clocks as MarketClock[];
