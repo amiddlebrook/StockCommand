@@ -329,9 +329,17 @@ const AppContent: React.FC = () => {
     }
   };
 
+  // HANDLER: Symbol Selection (with Routing)
   const handleSelectSymbol = (symbol: string) => {
     setActiveSymbol(symbol);
-    // FIX: Automatically navigate to Detail View when a symbol is selected from Toolbox
+
+    // UPDATE URL (Native Routing)
+    const url = new URL(window.location.href);
+    url.searchParams.set('symbol', symbol);
+    url.searchParams.set('tab', 'entity-detail');
+    window.history.pushState({}, '', url.toString());
+
+    // Navigation Logic
     const mockEntity: MarketClock = {
       code: symbol,
       label: symbol,
@@ -341,7 +349,48 @@ const AppContent: React.FC = () => {
     };
     setSelectedEntity(mockEntity);
     setActiveTab('entity-detail');
+
+    // Visual Feedback
+    startJob(`Navigating to ${symbol}...`, async () => {
+      // simulate minimal delay for "page load" feel
+      await new Promise(r => setTimeout(r, 300));
+    });
   };
+
+  // EFFECT: Handle Browser Navigation (PopState) & Initial Load
+  useEffect(() => {
+    const handlePopState = () => {
+      const params = new URLSearchParams(window.location.search);
+      const symbol = params.get('symbol');
+      const tab = params.get('tab') as any;
+
+      if (symbol) {
+        // Restore symbol state
+        setActiveSymbol(symbol);
+        setSelectedEntity({
+          code: symbol,
+          label: symbol,
+          status: 'gray',
+          lastUpdated: 0,
+          reason: 'Restored from URL'
+        });
+        setActiveTab('entity-detail');
+      } else if (tab) {
+        setActiveTab(tab);
+      } else {
+        // Default to dashboard if no params
+        setActiveTab('command-center');
+      }
+    };
+
+    // Listen for back/forward buttons
+    window.addEventListener('popstate', handlePopState);
+
+    // Run once on mount
+    handlePopState();
+
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   const handleGeneratePortfolioReport = async (tickers: string[], goal: string) => {
     setIsPortfolioGenerating(true);
