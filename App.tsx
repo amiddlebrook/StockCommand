@@ -500,8 +500,23 @@ const AppContent: React.FC = () => {
 
         // Also update the selected entity live
         if (selectedEntity && (selectedEntity.code === entityKey || selectedEntity.code.includes(entityKey))) {
-          setSelectedEntity(prev => prev ? ({ ...prev, lastUpdated: timestamp, status: 'green', reason: 'Fresh analysis: Stable' }) : null);
+          // FORCE UPDATE: Create fresh object to trigger re-render
+          const newStatus = 'green';
+          setSelectedEntity({
+            ...selectedEntity,
+            lastUpdated: timestamp,
+            status: newStatus,
+            reason: 'Fresh analysis: Stable'
+          });
         }
+      }
+    }
+
+    // FINAL SYNC: Ensure selected entity matches one of the updated clocks if possible
+    if (data.clocks && selectedEntity) {
+      const updatedClock = (data.clocks as MarketClock[]).find(c => c.code === selectedEntity.code);
+      if (updatedClock) {
+        setSelectedEntity({ ...updatedClock, lastUpdated: timestamp });
       }
     }
 
@@ -576,7 +591,8 @@ const AppContent: React.FC = () => {
     <div className="h-screen w-screen bg-slate-950 text-gray-100 flex overflow-hidden font-sans">
 
       {/* LEFT COLUMN: Portfolio & Actions */}
-      <div className={`${isLeftSidebarOpen ? 'w-[300px] xl:w-[350px] border-r' : 'w-0 border-none'} flex flex-col border-slate-800 bg-slate-900/40 transition-all duration-300 overflow-hidden relative`}>
+      {/* LEFT COLUMN: Portfolio & Actions */}
+      <div className={`${isLeftSidebarOpen ? 'w-[300px] xl:w-[350px] border-r min-w-[300px]' : 'w-0 border-none min-w-0'} flex flex-col border-slate-800 bg-slate-900/40 transition-all duration-300 overflow-hidden relative`}>
         <div className="min-w-[300px] w-[300px] h-full flex flex-col">
           <div className="h-[60px] px-4 flex items-center justify-between border-b border-slate-800 bg-slate-950/50 backdrop-blur-sm z-50">
             <div className="flex items-center gap-3">
@@ -851,7 +867,8 @@ const AppContent: React.FC = () => {
       </div>
 
       {/* RIGHT COLUMN: Market Data & Clocks */}
-      <div className={`${isRightSidebarOpen ? 'w-[300px] xl:w-[350px] border-l' : 'w-0 border-none'} flex flex-col bg-slate-900/40 border-slate-800 transition-all duration-300 overflow-hidden relative`}>
+      {/* RIGHT COLUMN: Market Data & Clocks */}
+      <div className={`${isRightSidebarOpen ? 'w-[300px] xl:w-[350px] border-l min-w-[300px]' : 'w-0 border-none min-w-0'} flex flex-col bg-slate-900/40 border-slate-800 transition-all duration-300 overflow-hidden relative`}>
         <div className="min-w-[300px] w-[300px] h-full flex flex-col">
           <div className="h-[60px] px-4 flex items-center justify-between border-b border-slate-800 bg-slate-950/50 backdrop-blur-sm z-50">
             <div className="flex items-center gap-2">
