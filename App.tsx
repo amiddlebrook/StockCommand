@@ -621,12 +621,12 @@ const AppContent: React.FC = () => {
     const scanLabel = scope === 'TOOL' ? (toolName || target) : (target || scope);
     const loadingMsgId = `scan-${Date.now()}`;
 
-    // Add loading message to chat
+    // Add loading message to chat (Command Center)
     const loadingMessage: ChatMessageType = {
       id: loadingMsgId,
       role: 'model',
-      content: `🤖 Analyzing ${scanLabel}... This may take up to 60 seconds. Gathering live market data and news.`,
-      timestamp: Date.now()
+      content: `🤖 **Analyzing ${scanLabel}...**\n\nGathering live market data and news. This may take up to 60 seconds.`,
+      isLoading: true
     };
     setMessages(prev => [...prev, loadingMessage]);
 
@@ -634,12 +634,16 @@ const AppContent: React.FC = () => {
     try {
       await executeAgentScan(scope, target, toolName);
 
-      // Update chat with completion message
+      // Get the research content that was just saved
+      const reportKey = scope === 'TOOL' ? (toolName || target || 'unknown') : (target || scope);
+      const researchContent = researchReports[reportKey] || 'Analysis complete. Check the research panel for details.';
+
+      // Update chat with actual research content
       const completionMessage: ChatMessageType = {
         id: loadingMsgId,
         role: 'model',
-        content: `✅ Analysis of **${scanLabel}** complete! Check the research panel and market clocks for updated data.`,
-        timestamp: Date.now()
+        content: `✅ **${scanLabel} Analysis Complete**\n\n${researchContent}`,
+        isLoading: false
       };
       setMessages(prev => prev.map(msg => msg.id === loadingMsgId ? completionMessage : msg));
     } catch (error) {
@@ -647,8 +651,8 @@ const AppContent: React.FC = () => {
       const errorMessage: ChatMessageType = {
         id: loadingMsgId,
         role: 'model',
-        content: `❌ Analysis of ${scanLabel} failed. Please try again later.`,
-        timestamp: Date.now()
+        content: `❌ **Analysis of ${scanLabel} failed.**\n\nPlease try again later.`,
+        isLoading: false
       };
       setMessages(prev => prev.map(msg => msg.id === loadingMsgId ? errorMessage : msg));
     }
