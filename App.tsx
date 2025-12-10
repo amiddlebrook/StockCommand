@@ -609,6 +609,8 @@ const AppContent: React.FC = () => {
     setWidgets(prev => [widget, ...prev]);
     setMobileView('dashboard');
     setScanningTarget(null);
+
+    return finalAnalysis; // Return analysis for use in chat
   };
 
   const handleRunAgentScan = async (scope: 'FULL' | 'SLEEVE' | 'TICKER' | 'TOOL', target?: string, toolName?: string) => {
@@ -632,17 +634,13 @@ const AppContent: React.FC = () => {
 
     // Run the scan
     try {
-      await executeAgentScan(scope, target, toolName);
-
-      // Get the research content that was just saved
-      const reportKey = scope === 'TOOL' ? (toolName || target || 'unknown') : (target || scope);
-      const researchContent = researchReports[reportKey] || 'Analysis complete. Check the research panel for details.';
+      const analysisContent = await executeAgentScan(scope, target, toolName);
 
       // Update chat with actual research content
       const completionMessage: ChatMessageType = {
         id: loadingMsgId,
         role: 'model',
-        content: `✅ **${scanLabel} Analysis Complete**\n\n${researchContent}`,
+        content: `✅ **${scanLabel} Analysis Complete**\n\n${analysisContent || 'Analysis complete. Check the research panel for details.'}`,
         isLoading: false
       };
       setMessages(prev => prev.map(msg => msg.id === loadingMsgId ? completionMessage : msg));
