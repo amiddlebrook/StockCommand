@@ -10,6 +10,7 @@ import { Icon } from './components/Icon';
 import { LoadingSpinner } from './components/LoadingSpinner';
 import { MobileNav } from './components/MobileNav';
 import { CompetitionsView } from './components/CompetitionsView';
+import { FeatureDetailView } from './components/FeatureDetailView';
 import type { ChatMessage as ChatMessageType, Source } from './types';
 import {
   analyzeImage,
@@ -49,7 +50,8 @@ const AppContent: React.FC = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [widgets, setWidgets] = useState<AnalysisWidget[]>(() => StorageService.loadWidgets());
   const [mobileView, setMobileView] = useState<MobileView>('toolbox');
-  const [activeTab, setActiveTab] = useState<'command-center' | 'portfolio' | 'entity-detail' | 'competitions'>('command-center');
+  const [activeTab, setActiveTab] = useState<'command-center' | 'portfolio' | 'entity-detail' | 'competitions' | 'feature-detail'>('command-center');
+  const [activeFeature, setActiveFeature] = useState<{ name: string; symbols: string[]; content: string | null } | null>(null);
 
   // Sidebar State
   const [isLeftSidebarOpen, setIsLeftSidebarOpen] = useState(true);
@@ -206,22 +208,29 @@ const AppContent: React.FC = () => {
   };
 
   // Handle analysis request for selected symbols (multi-select support)
-  const handleAnalysisRequest = async (featureType: string, symbols: string[]) => {
-    if (symbols.length === 0) return;
+  const handleAnalysisRequest = async (featureType: string, symbolsToAnalyze: string[]) => {
+    if (symbolsToAnalyze.length === 0) return;
 
-    // Run analysis on each selected symbol
-    for (const rawSymbol of symbols) {
-      const symbol = rawSymbol.trim().toUpperCase();
-      if (!symbol) continue;
-      checkCurated(symbol);
+    // Set up feature view
+    setActiveFeature({
+      name: featureType,
+      symbols: symbolsToAnalyze,
+      content: null
+    });
+    setActiveTab('feature-detail');
 
-      // Navigate to entity detail page for first symbol
-      if (symbol === symbols[0]) {
-        handleSelectSymbol(symbol);
-      }
+    // Run analysis on first symbol (or all - depends on feature)
+    const symbol = symbolsToAnalyze[0].trim().toUpperCase();
+    checkCurated(symbol);
 
-      // Run the agent scan
-      handleRunAgentScan('TOOL', symbol, featureType);
+    // Run the agent scan and wait for result
+    try {
+      const analysisContent = await executeAgentScan('TOOL', symbol, featureType);
+
+      // Update feature view with content
+      setActiveFeature(prev => prev ? { ...prev, content: analysisContent || 'Analysis complete.' } : null);
+    } catch {
+      setActiveFeature(prev => prev ? { ...prev, content: 'Analysis failed. Please try again.' } : null);
     }
   };
 
@@ -849,7 +858,22 @@ const AppContent: React.FC = () => {
 
         {/* MAIN CONTENT AREA */}
         <div className="flex-1 flex flex-col overflow-hidden relative">
-          {activeTab === 'entity-detail' ? (
+          {activeTab === 'feature-detail' && activeFeature ? (
+            // <<< FEATURE DETAIL VIEW >>>
+            <FeatureDetailView
+              featureName={activeFeature.name}
+              symbols={activeFeature.symbols}
+              content={activeFeature.content}
+              isLoading={scanningTarget !== null}
+              onBack={() => setActiveTab('command-center')}
+              onRerun={() => {
+                const symbol = activeFeature.symbols[0];
+                executeAgentScan('TOOL', symbol, activeFeature.name).then(content => {
+                  setActiveFeature(prev => prev ? { ...prev, content: content || 'Analysis complete.' } : null);
+                });
+              }}
+            />
+          ) : activeTab === 'entity-detail' ? (
             // <<< ENTITY DETAIL VIEW >>>
             <EntityDetailView
               entity={selectedEntity}
