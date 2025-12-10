@@ -362,15 +362,21 @@ const AppContent: React.FC = () => {
       const tab = params.get('tab') as any;
 
       if (symbol) {
-        // Restore symbol state
+        // Restore symbol state, preferring persisted data
         setActiveSymbol(symbol);
-        setSelectedEntity({
-          code: symbol,
-          label: symbol,
-          status: 'gray',
-          lastUpdated: 0,
-          reason: 'Restored from URL'
-        });
+
+        const existing = marketClocks.find(c => c.code === symbol);
+        if (existing) {
+          setSelectedEntity(existing);
+        } else {
+          setSelectedEntity({
+            code: symbol,
+            label: symbol,
+            status: 'gray',
+            lastUpdated: 0,
+            reason: 'Restored from URL'
+          });
+        }
         setActiveTab('entity-detail');
       } else if (tab) {
         setActiveTab(tab);
@@ -387,7 +393,7 @@ const AppContent: React.FC = () => {
     handlePopState();
 
     return () => window.removeEventListener('popstate', handlePopState);
-  }, []);
+  }, [marketClocks]); // Depend on marketClocks to ensure we find the entity if loaded
 
   const handleGeneratePortfolioReport = async (tickers: string[], goal: string) => {
     setIsPortfolioGenerating(true);
@@ -714,7 +720,7 @@ const AppContent: React.FC = () => {
               entity={selectedEntity}
               freshnessThreshold={dataFreshnessHours * 60 * 60 * 1000}
               onBack={() => setActiveTab('command-center')}
-              onRunAnalysis={(e) => executeAgentScan('TOOL', e.code)}
+              onRunAnalysis={(e) => executeAgentScan('TICKER', e.code)}
               researchContent={selectedEntity ? researchReports[selectedEntity.code] : null}
             />
           ) : activeTab === 'command-center' ? (
