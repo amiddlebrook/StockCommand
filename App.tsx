@@ -554,7 +554,8 @@ const AppContent: React.FC = () => {
     }
 
     // FINAL SYNC: Ensure selected entity matches one of the updated clocks if possible
-    if (data.clocks && selectedEntity) {
+    // Only for FULL scans - ticker scans already updated selectedEntity above
+    if (scope === 'FULL' && data.clocks && selectedEntity) {
       const updatedClock = (data.clocks as MarketClock[]).find(c => c.code === selectedEntity.code);
       if (updatedClock) {
         setSelectedEntity({ ...updatedClock, lastUpdated: timestamp });
