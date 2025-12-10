@@ -31,7 +31,9 @@ import { JobProvider, useJobContext } from './contexts/JobContext';
 import { getClocksForEntity, getGlobalClocks } from './lib/clockData';
 import { ClockDetailView } from './components/ClockDetailView';
 
-// ... (existing types)
+type MobileView = 'toolbox' | 'dashboard' | 'chat';
+
+const DEFAULT_SYMBOLS = ['TSLA', 'NVDA', 'AAPL'];
 
 const AppContent: React.FC = () => {
   const { startJob, confirmAction, activeJobsCount } = useJobContext();
@@ -39,7 +41,26 @@ const AppContent: React.FC = () => {
   const [messages, setMessages] = useState<ChatMessageType[]>(() => [
     { id: 'welcome', role: 'model', content: "Commander, dashboard active. Systems are monitoring. Awaiting your orders." },
   ]);
-  // ...
+  const [isChatLoading, setIsChatLoading] = useState(false);
+  const [isDashboardLoading, setIsDashboardLoading] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [widgets, setWidgets] = useState<AnalysisWidget[]>([]);
+  const [mobileView, setMobileView] = useState<MobileView>('toolbox');
+  const [activeTab, setActiveTab] = useState<'command-center' | 'portfolio' | 'clock-detail'>('command-center');
+
+  // Sidebar State
+  const [isLeftSidebarOpen, setIsLeftSidebarOpen] = useState(true);
+  const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(true);
+
+  // Selected Clock State
+  const [selectedClock, setSelectedClock] = useState<MarketClock | null>(null);
+
+  const analysisModelId = DEFAULT_CHAT_MODEL.id;
+  const [symbols, setSymbols] = useState<string[]>(DEFAULT_SYMBOLS);
+  const [activeSymbol, setActiveSymbol] = useState<string | null>(DEFAULT_SYMBOLS[0]);
+  const [isPortfolioModalOpen, setIsPortfolioModalOpen] = useState(false);
+  const [isPortfolioGenerating, setIsPortfolioGenerating] = useState(false);
+
   // Agent State
   const [agentOutput, setAgentOutput] = useState<string | null>(null);
   const [marketClocks, setMarketClocks] = useState<MarketClock[]>(() => getGlobalClocks());
