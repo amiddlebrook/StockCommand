@@ -878,25 +878,17 @@ const AppContent: React.FC = () => {
         <div className="min-w-[300px] w-[300px] h-full flex flex-col">
           <div className="h-[60px] px-4 flex items-center justify-between border-b border-slate-800 bg-slate-950/50 backdrop-blur-sm z-50">
             <div className="flex items-center gap-2">
+              <button onClick={() => setIsRightSidebarOpen(false)} title="Collapse Clocks" className="px-2 py-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded text-xs text-amber-500 font-bold tracking-wider transition-colors z-50 whitespace-nowrap">
+                &gt; CLOSE
+              </button>
               <div className="flex items-center gap-2">
-                <button onClick={() => setIsRightSidebarOpen(false)} title="Collapse Clocks" className="px-2 py-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded text-xs text-amber-500 font-bold tracking-wider transition-colors z-50 whitespace-nowrap">
-                  &gt; CLOSE
-                </button>
-                <div className="flex items-center gap-2">
-                  <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse shadow-lg shadow-emerald-500/50" />
-                  <span className="text-xs text-gray-400 font-medium">LIVE</span>
-                </div>
+                <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse shadow-lg shadow-emerald-500/50" />
+                <span className="text-xs text-gray-400 font-medium">LIVE</span>
               </div>
-              {/* SCANNING INDICATOR */}
-              {(isChatLoading || isScanning) && (
-                <div className="flex items-center gap-2 bg-slate-900/80 px-3 py-1.5 rounded border border-cyan-900/50 animate-pulse">
-                  <Icon icon="cpu" className="w-3.5 h-3.5 text-cyan-400 animate-spin" />
-                  <span className="text-xs font-mono text-cyan-300 tracking-wider">AGENT ACTIVE</span>
-                </div>
-              )}
             </div>
+          </div>
 
-            <div className="flex-1 overflow-y-auto p-4 space-y-6 scrollbar-thin scrollbar-thumb-slate-700">
+          <div className="flex-1 overflow-y-auto p-4 space-y-6 scrollbar-thin scrollbar-thumb-slate-700">
               <div className="space-y-3">
                 {marketClocks.map(clock => {
                   const stale = isStale(clock.lastUpdated);
