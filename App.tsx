@@ -340,15 +340,22 @@ const AppContent: React.FC = () => {
     url.searchParams.set('tab', 'entity-detail');
     window.history.pushState({}, '', url.toString());
 
-    // Navigation Logic
-    const mockEntity: MarketClock = {
+    // Look for persisted data from ticker's VOL clock
+    const tickerVolClock = marketClocks.find(c => c.code === `${symbol}_VOL`);
+    const entity: MarketClock = tickerVolClock ? {
       code: symbol,
       label: symbol,
-      status: 'gray', // Assume gray/stale until loaded
+      status: tickerVolClock.status,
+      lastUpdated: tickerVolClock.lastUpdated,
+      reason: tickerVolClock.reason
+    } : {
+      code: symbol,
+      label: symbol,
+      status: 'gray', // No persisted data - stale
       lastUpdated: 0,
       reason: 'Manually selected'
     };
-    setSelectedEntity(mockEntity);
+    setSelectedEntity(entity);
     setActiveTab('entity-detail');
 
     // removed toast to reduce annoyance as per user request
@@ -362,13 +369,22 @@ const AppContent: React.FC = () => {
       const tab = params.get('tab') as any;
 
       if (symbol) {
-        // Restore symbol state, preferring persisted data
+        // Restore symbol state, preferring persisted data from ticker clocks
         setActiveSymbol(symbol);
 
-        const existing = marketClocks.find(c => c.code === symbol);
-        if (existing) {
-          setSelectedEntity(existing);
+        // Look for the ticker's VOL clock to get persisted timestamp/status
+        const tickerVolClock = marketClocks.find(c => c.code === `${symbol}_VOL`);
+        if (tickerVolClock) {
+          // Use persisted data from the VOL clock
+          setSelectedEntity({
+            code: symbol,
+            label: symbol,
+            status: tickerVolClock.status,
+            lastUpdated: tickerVolClock.lastUpdated,
+            reason: tickerVolClock.reason
+          });
         } else {
+          // No persisted data - create fresh entity
           setSelectedEntity({
             code: symbol,
             label: symbol,
