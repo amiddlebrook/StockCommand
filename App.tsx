@@ -79,6 +79,7 @@ const AppContent: React.FC = () => {
   const [activeSymbol, setActiveSymbol] = useState<string | null>(DEFAULT_SYMBOLS[0]);
   const [isPortfolioModalOpen, setIsPortfolioModalOpen] = useState(false);
   const [isPortfolioGenerating, setIsPortfolioGenerating] = useState(false);
+  const [isScanning, setIsScanning] = useState(false);
 
   // Agent State
   const [agentOutput, setAgentOutput] = useState<string | null>(null);
@@ -350,11 +351,7 @@ const AppContent: React.FC = () => {
     setSelectedEntity(mockEntity);
     setActiveTab('entity-detail');
 
-    // Visual Feedback
-    startJob(`Navigating to ${symbol}...`, async () => {
-      // simulate minimal delay for "page load" feel
-      await new Promise(r => setTimeout(r, 300));
-    });
+    // removed toast to reduce annoyance as per user request
   };
 
   // EFFECT: Handle Browser Navigation (PopState) & Initial Load
@@ -415,6 +412,7 @@ const AppContent: React.FC = () => {
   };
 
   const executeAgentScan = async (scope: 'FULL' | 'SLEEVE' | 'TICKER' | 'TOOL', target?: string, toolName?: string) => {
+    setIsScanning(true);
     setAgentOutput(`Initializing ${scope} scan...`);
 
     let searchContext = "";
@@ -528,6 +526,7 @@ const AppContent: React.FC = () => {
     };
     setWidgets(prev => [widget, ...prev]);
     setMobileView('dashboard');
+    setIsScanning(false);
   };
 
   const handleRunAgentScan = (scope: 'FULL' | 'SLEEVE' | 'TICKER' | 'TOOL', target?: string, toolName?: string) => {
@@ -592,7 +591,7 @@ const AppContent: React.FC = () => {
 
       {/* LEFT COLUMN: Portfolio & Actions */}
       {/* LEFT COLUMN: Portfolio & Actions */}
-      <div className={`${isLeftSidebarOpen ? 'w-[300px] xl:w-[350px] border-r min-w-[300px]' : 'w-0 border-none min-w-0'} flex flex-col border-slate-800 bg-slate-900/40 transition-all duration-300 overflow-hidden relative`}>
+      <div className={`${isLeftSidebarOpen ? 'w-[300px] xl:w-[350px] border-r min-w-[300px]' : 'w-0 border-none min-w-0'} flex-shrink-0 flex flex-col border-slate-800 bg-slate-900/40 transition-all duration-300 overflow-hidden relative`}>
         <div className="min-w-[300px] w-[300px] h-full flex flex-col">
           <div className="h-[60px] px-4 flex items-center justify-between border-b border-slate-800 bg-slate-950/50 backdrop-blur-sm z-50">
             <div className="flex items-center gap-3">
@@ -868,7 +867,7 @@ const AppContent: React.FC = () => {
 
       {/* RIGHT COLUMN: Market Data & Clocks */}
       {/* RIGHT COLUMN: Market Data & Clocks */}
-      <div className={`${isRightSidebarOpen ? 'w-[300px] xl:w-[350px] border-l min-w-[300px]' : 'w-0 border-none min-w-0'} flex flex-col bg-slate-900/40 border-slate-800 transition-all duration-300 overflow-hidden relative`}>
+      <div className={`${isRightSidebarOpen ? 'w-[300px] xl:w-[350px] border-l min-w-[300px]' : 'w-0 border-none min-w-0'} flex-shrink-0 flex flex-col bg-slate-900/40 border-slate-800 transition-all duration-300 overflow-hidden relative`}>
         <div className="min-w-[300px] w-[300px] h-full flex flex-col">
           <div className="h-[60px] px-4 flex items-center justify-between border-b border-slate-800 bg-slate-950/50 backdrop-blur-sm z-50">
             <div className="flex items-center gap-2">
@@ -881,12 +880,13 @@ const AppContent: React.FC = () => {
                   <span className="text-xs text-gray-400 font-medium">LIVE</span>
                 </div>
               </div>
-              <button
-                onClick={() => setIsProfileOpen(true)}
-                className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-white font-bold text-xs shadow-lg hover:shadow-cyan-500/20 transition-all transform hover:scale-105"
-              >
-                AM
-              </button>
+              {/* SCANNING INDICATOR */}
+              {(isChatLoading || isScanning) && (
+                <div className="flex items-center gap-2 bg-slate-900/80 px-3 py-1.5 rounded border border-cyan-900/50 animate-pulse">
+                  <Icon icon="cpu" className="w-3.5 h-3.5 text-cyan-400 animate-spin" />
+                  <span className="text-xs font-mono text-cyan-300 tracking-wider">AGENT ACTIVE</span>
+                </div>
+              )}
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 space-y-6 scrollbar-thin scrollbar-thumb-slate-700">
