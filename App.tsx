@@ -79,7 +79,7 @@ const AppContent: React.FC = () => {
   const [activeSymbol, setActiveSymbol] = useState<string | null>(DEFAULT_SYMBOLS[0]);
   const [isPortfolioModalOpen, setIsPortfolioModalOpen] = useState(false);
   const [isPortfolioGenerating, setIsPortfolioGenerating] = useState(false);
-  const [isScanning, setIsScanning] = useState(false);
+  const [scanningTarget, setScanningTarget] = useState<string | null>(null);
 
   // Agent State
   const [agentOutput, setAgentOutput] = useState<string | null>(null);
@@ -418,7 +418,7 @@ const AppContent: React.FC = () => {
   };
 
   const executeAgentScan = async (scope: 'FULL' | 'SLEEVE' | 'TICKER' | 'TOOL', target?: string, toolName?: string) => {
-    setIsScanning(true);
+    setScanningTarget(target || scope); // Track which ticker is being scanned
     setAgentOutput(`Initializing ${scope} scan...`);
 
     let searchContext = "";
@@ -580,7 +580,7 @@ const AppContent: React.FC = () => {
     };
     setWidgets(prev => [widget, ...prev]);
     setMobileView('dashboard');
-    setIsScanning(false);
+    setScanningTarget(null);
   };
 
   const handleRunAgentScan = (scope: 'FULL' | 'SLEEVE' | 'TICKER' | 'TOOL', target?: string, toolName?: string) => {
@@ -766,7 +766,7 @@ const AppContent: React.FC = () => {
                 executeAgentScan('TICKER', ticker);
               }}
               researchContent={selectedEntity ? researchReports[selectedEntity.code.split('_')[0]] : null}
-              isScanning={isScanning}
+              isScanning={scanningTarget !== null && selectedEntity !== null && (scanningTarget === selectedEntity.code || scanningTarget === selectedEntity.code.split('_')[0])}
             />
           ) : activeTab === 'command-center' ? (
             // <<< COMMAND CENTER VIEW >>>
