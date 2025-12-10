@@ -88,6 +88,9 @@ const AppContent: React.FC = () => {
     return saved || getGlobalClocks();
   });
 
+  // Research History for tracking changes over time
+  const [researchHistory, setResearchHistory] = useState<Record<string, { content: string; timestamp: number; status?: string }[]>>(() => StorageService.loadResearchHistory());
+
   const [uncuratedTicker, setUncuratedTicker] = useState<string | null>(null);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [expandedSleeves, setExpandedSleeves] = useState<Record<string, boolean>>({ 'Core Tech': true });
@@ -97,6 +100,7 @@ const AppContent: React.FC = () => {
   useEffect(() => { StorageService.saveReports(researchReports); }, [researchReports]);
   useEffect(() => { StorageService.saveClocks(marketClocks); }, [marketClocks]);
   useEffect(() => { StorageService.saveSettings({ freshnessHours: dataFreshnessHours }); }, [dataFreshnessHours]);
+  useEffect(() => { StorageService.saveResearchHistory(researchHistory); }, [researchHistory]);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -485,10 +489,18 @@ const AppContent: React.FC = () => {
 
     // 1. Save the report to the persistent store
     if (finalAnalysis) {
+      const reportKey = scope === 'TOOL' ? (toolName || target || 'unknown') : (target || scope);
       setResearchReports(prev => ({
         ...prev,
-        [scope === 'TOOL' ? (toolName || target || 'unknown') : (target || scope)]: finalAnalysis
+        [reportKey]: finalAnalysis
       }));
+
+      // Also save to research history for tracking changes over time
+      setResearchHistory(prev => {
+        const entries = prev[reportKey] || [];
+        const newEntry = { content: finalAnalysis, timestamp: Date.now() };
+        return { ...prev, [reportKey]: [newEntry, ...entries].slice(0, 10) };
+      });
     }
 
     // 2. Refresh Clocks (Timestamps)
@@ -783,6 +795,19 @@ const AppContent: React.FC = () => {
               }}
               researchContent={selectedEntity ? researchReports[selectedEntity.code.split('_')[0]] : null}
               isScanning={scanningTarget !== null && selectedEntity !== null && (scanningTarget === selectedEntity.code || scanningTarget === selectedEntity.code.split('_')[0])}
+              researchHistory={selectedEntity ? researchHistory[selectedEntity.code.split('_')[0]] : undefined}
+              onViewHistory={() => {
+                if (selectedEntity) {
+                  const ticker = selectedEntity.code.split('_')[0];
+                  const history = researchHistory[ticker];
+                  if (history && history.length > 0) {
+                    const historyText = history.map((h, i) =>
+                      `--- Entry ${i + 1} (${new Date(h.timestamp).toLocaleString()}) ---\n${h.content.substring(0, 500)}...`
+                    ).join('\n\n');
+                    alert(`Research History for ${ticker}:\n\n${historyText}`);
+                  }
+                }
+              }}
             />
           ) : activeTab === 'command-center' ? (
             // <<< COMMAND CENTER VIEW >>>

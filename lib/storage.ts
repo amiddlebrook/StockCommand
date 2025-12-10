@@ -5,8 +5,15 @@ const STORAGE_KEYS = {
     WIDGETS: 'stockcommand_widgets_v2',
     REPORTS: 'stockcommand_reports_v2',
     CLOCKS: 'stockcommand_clocks_v2',
-    SETTINGS: 'stockcommand_settings_v2'
+    SETTINGS: 'stockcommand_settings_v2',
+    RESEARCH_HISTORY: 'stockcommand_research_history_v1'
 };
+
+export interface ResearchEntry {
+    content: string;
+    timestamp: number;
+    status?: 'green' | 'yellow' | 'red';
+}
 
 export const StorageService = {
     saveWidgets: (widgets: AnalysisWidget[]) => {
@@ -75,5 +82,29 @@ export const StorageService = {
         } catch (e) {
             return { freshnessHours: 24 };
         }
+    },
+
+    saveResearchHistory: (history: Record<string, ResearchEntry[]>) => {
+        try {
+            localStorage.setItem(STORAGE_KEYS.RESEARCH_HISTORY, JSON.stringify(history));
+        } catch (e) {
+            console.error("Failed to save research history", e);
+        }
+    },
+
+    loadResearchHistory: (): Record<string, ResearchEntry[]> => {
+        try {
+            const saved = localStorage.getItem(STORAGE_KEYS.RESEARCH_HISTORY);
+            return saved ? JSON.parse(saved) : {};
+        } catch (e) {
+            return {};
+        }
+    },
+
+    addResearchEntry: (ticker: string, entry: ResearchEntry, history: Record<string, ResearchEntry[]>): Record<string, ResearchEntry[]> => {
+        const entries = history[ticker] || [];
+        // Add new entry at the beginning, limit to 10 entries
+        const updated = [entry, ...entries].slice(0, 10);
+        return { ...history, [ticker]: updated };
     }
 };

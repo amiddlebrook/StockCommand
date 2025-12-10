@@ -5,6 +5,12 @@ import { GlassButton } from './ui/GlassButton';
 import { Icon } from './Icon';
 import { useJobContext } from '../contexts/JobContext';
 
+interface ResearchHistoryEntry {
+    content: string;
+    timestamp: number;
+    status?: string;
+}
+
 interface EntityDetailViewProps {
     entity: MarketClock | null; // Reusing MarketClock as the base entity type for now
     onBack: () => void;
@@ -12,9 +18,11 @@ interface EntityDetailViewProps {
     researchContent?: string | null;
     freshnessThreshold: number;
     isScanning?: boolean;
+    researchHistory?: ResearchHistoryEntry[];
+    onViewHistory?: () => void;
 }
 
-export const EntityDetailView: React.FC<EntityDetailViewProps> = ({ entity, onBack, onRunAnalysis, researchContent, freshnessThreshold, isScanning }) => {
+export const EntityDetailView: React.FC<EntityDetailViewProps> = ({ entity, onBack, onRunAnalysis, researchContent, freshnessThreshold, isScanning, researchHistory, onViewHistory }) => {
     const { confirmAction } = useJobContext();
 
     if (!entity) return <div className="p-8 text-center text-gray-500">No entity selected</div>;
@@ -61,8 +69,11 @@ export const EntityDetailView: React.FC<EntityDetailViewProps> = ({ entity, onBa
                             RUN DEEP ANALYSIS
                         </div>
                     </GlassButton>
-                    <GlassButton size="sm" variant="glass" onClick={() => { }}>
-                        VIEW HISTORICAL TREND
+                    <GlassButton size="sm" variant="glass" onClick={onViewHistory} disabled={!researchHistory || researchHistory.length === 0}>
+                        <div className="flex items-center gap-2">
+                            <Icon icon="file-text" className="w-4 h-4" />
+                            VIEW HISTORY {researchHistory && researchHistory.length > 0 && `(${researchHistory.length})`}
+                        </div>
                     </GlassButton>
                 </div>
             </div>
@@ -81,6 +92,17 @@ export const EntityDetailView: React.FC<EntityDetailViewProps> = ({ entity, onBa
                     </div>
                 </div>
 
+                {/* Agent Active indicator - shows whenever scanning this ticker */}
+                {isScanning && (
+                    <div className="bg-slate-900/50 rounded-lg p-12 border border-cyan-500/30 flex flex-col items-center justify-center gap-4 animate-pulse mb-4">
+                        <div className="flex items-center gap-3 bg-slate-900/90 px-6 py-3 rounded-full border border-cyan-500/50 shadow-[0_0_20px_rgba(6,182,212,0.3)]">
+                            <Icon icon="cpu" className="w-5 h-5 text-cyan-400 animate-spin" />
+                            <span className="text-sm font-mono text-cyan-300 tracking-wider font-bold uppercase">Agent Active</span>
+                        </div>
+                        <p className="text-xs text-gray-500 max-w-xs text-center">Gathering intelligence and analyzing market conditions...</p>
+                    </div>
+                )}
+
                 {/* Research Content or Placeholder */}
                 {researchContent ? (
                     <div className="bg-slate-800/40 rounded-lg p-5 border border-slate-700/50 animate-fadeIn">
@@ -94,15 +116,7 @@ export const EntityDetailView: React.FC<EntityDetailViewProps> = ({ entity, onBa
                             <pre className="whitespace-pre-wrap font-sans text-gray-300">{researchContent}</pre>
                         </div>
                     </div>
-                ) : isScanning ? (
-                    <div className="bg-slate-900/50 rounded-lg p-12 border border-cyan-500/30 flex flex-col items-center justify-center gap-4 animate-pulse">
-                        <div className="flex items-center gap-3 bg-slate-900/90 px-6 py-3 rounded-full border border-cyan-500/50 shadow-[0_0_20px_rgba(6,182,212,0.3)]">
-                            <Icon icon="cpu" className="w-5 h-5 text-cyan-400 animate-spin" />
-                            <span className="text-sm font-mono text-cyan-300 tracking-wider font-bold uppercase">Agent Active</span>
-                        </div>
-                        <p className="text-xs text-gray-500 max-w-xs text-center">Gathering intelligence and analyzing market conditions...</p>
-                    </div>
-                ) : (
+                ) : !isScanning && (
                     <div className="bg-slate-800/20 rounded-lg p-8 border border-slate-800 border-dashed flex flex-col items-center justify-center text-gray-600 gap-3">
                         <Icon icon="bot" className="w-8 h-8 opacity-20" />
                         <span className="text-sm font-medium uppercase tracking-wider">Awaiting Intelligence Probe...</span>
