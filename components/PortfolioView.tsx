@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Icon } from './Icon';
+import { getClocksForEntity } from '../lib/clockData';
 
 interface PortfolioViewProps {
     sleevesWithStats: {
@@ -13,18 +14,13 @@ interface PortfolioViewProps {
 export const PortfolioView: React.FC<PortfolioViewProps> = ({ sleevesWithStats, totalLiquidity = 1240500 }) => {
     // Use a Record to track open state for each sleeve
     const [openSleeves, setOpenSleeves] = useState<Record<string, boolean>>(() => {
-        // Default all closed for the grid view initally, or maybe first one open?
-        // Let's keep closed for a clean "dashboard" look
+        // Default all closed for the grid view initally
         return {};
     });
 
     const toggleSleeve = (sleeveName: string) => {
         setOpenSleeves(prev => ({
             ...prev,
-            // If we want accordion style (one at a time), we would do:
-            // [sleeveName]: !prev[sleeveName], ...mapOtherToFalse
-            // But multiple open might be useful? For grid, usually single expansion is cleaner.
-            // Let's toggle individually.
             [sleeveName]: !prev[sleeveName]
         }));
     };
@@ -98,8 +94,6 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({ sleevesWithStats, 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         {sleevesWithStats.map((sleeve) => {
                             const isOpen = openSleeves[sleeve.sleeveName];
-
-                            // Dynamic class to handle spanning
                             const gridSpanClass = isOpen ? 'col-span-1 md:col-span-3' : 'col-span-1';
 
                             return (
@@ -136,7 +130,6 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({ sleevesWithStats, 
                                                 {/* Mini stats preview when collapsed */}
                                                 {!isOpen && (
                                                     <div className="flex gap-2 mt-1.5">
-                                                        {/* Simple pill indicators */}
                                                         {(sleeve.stats.green > 0 || sleeve.stats.yellow > 0 || sleeve.stats.red > 0) ? (
                                                             <div className="flex h-1.5 gap-0.5">
                                                                 {[...Array(sleeve.stats.green)].map((_, i) => <div key={`g-${i}`} className="w-3 rounded-full bg-emerald-500/50"></div>)}
@@ -150,9 +143,6 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({ sleevesWithStats, 
                                         </div>
 
                                         <div className="flex gap-2">
-                                            {/* Full stats pills only show when open or on large screens? 
-                                       Let's show a summary pill if open
-                                   */}
                                             {isOpen && (
                                                 <div className="flex gap-2">
                                                     {sleeve.stats.green > 0 && <span className="text-xs bg-emerald-500/10 text-emerald-400 px-2 py-1 rounded border border-emerald-500/20 font-mono">{sleeve.stats.green} Bullish</span>}
@@ -168,7 +158,6 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({ sleevesWithStats, 
                                         <div className="border-t border-slate-800/50 animate-fadeIn">
                                             <div className="bg-slate-950/30">
                                                 <table className="w-full text-left text-sm">
-                                                    {/* Minimal Header */}
                                                     <thead className="bg-slate-900/50 text-gray-500 text-xs uppercase tracking-wider">
                                                         <tr>
                                                             <th className="px-6 py-3 font-medium pl-14">Symbol</th>
@@ -178,10 +167,12 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({ sleevesWithStats, 
                                                         </tr>
                                                     </thead>
                                                     <tbody className="divide-y divide-slate-800/30">
-                                                        {sleeve.items.map((ticker) => {
+                                                        {sleeve.items.map((ticker: any) => {
                                                             const status = ['bg-emerald-500', 'bg-amber-500', 'bg-red-500'][ticker.symbol.length % 3];
                                                             const statusLabel = ['Bullish', 'Neutral', 'Bearish'][ticker.symbol.length % 3];
                                                             const statusColor = ['text-emerald-400', 'text-amber-400', 'text-red-400'][ticker.symbol.length % 3];
+
+                                                            const clocks = getClocksForEntity('TICKER', ticker.symbol);
 
                                                             return (
                                                                 <tr key={ticker.symbol} className="hover:bg-slate-800/30 transition-colors group">
@@ -193,9 +184,22 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({ sleevesWithStats, 
                                                                         {(100 / sleeve.items.length).toFixed(1)}%
                                                                     </td>
                                                                     <td className="px-6 py-3 text-right">
-                                                                        <div className="inline-flex items-center justify-end gap-2 px-3 py-1 rounded-full bg-slate-900/50 border border-slate-800/50">
-                                                                            <span className={`text-[10px] font-semibold uppercase tracking-wide ${statusColor}`}>{statusLabel}</span>
-                                                                            <div className={`w-1.5 h-1.5 rounded-full ${status}`}></div>
+                                                                        <div className="flex flex-col items-end gap-1.5">
+                                                                            <div className="inline-flex items-center justify-end gap-2 px-3 py-1 rounded-full bg-slate-900/50 border border-slate-800/50">
+                                                                                <span className={`text-[10px] font-semibold uppercase tracking-wide ${statusColor}`}>{statusLabel}</span>
+                                                                                <div className={`w-1.5 h-1.5 rounded-full ${status}`}></div>
+                                                                            </div>
+
+                                                                            {/* Clocks Row */}
+                                                                            <div className="flex items-center gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
+                                                                                {clocks.map(c => (
+                                                                                    <div
+                                                                                        key={c.code}
+                                                                                        className={`w-1.5 h-1.5 rounded-full ${c.status === 'green' ? 'bg-emerald-500' : c.status === 'yellow' ? 'bg-amber-500' : 'bg-red-500'}`}
+                                                                                        title={`${c.label}: ${c.reason}`}
+                                                                                    />
+                                                                                ))}
+                                                                            </div>
                                                                         </div>
                                                                     </td>
                                                                 </tr>
