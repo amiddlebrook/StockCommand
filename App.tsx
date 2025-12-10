@@ -528,51 +528,53 @@ const AppContent: React.FC = () => {
 
       {/* LEFT COLUMN: Portfolio & Actions */}
       <div className={`${isLeftSidebarOpen ? 'w-[300px] xl:w-[350px] border-r' : 'w-0 border-none'} flex flex-col border-slate-800 bg-slate-900/40 transition-all duration-300 overflow-hidden relative`}>
-        <div className="h-[60px] px-4 flex items-center justify-between border-b border-slate-800 bg-slate-950/50 backdrop-blur-sm min-w-[300px] z-50">
-          <div className="flex items-center gap-3">
-            <div className="p-1.5 bg-gradient-to-br from-cyan-600 to-purple-700 rounded-lg shadow-lg">
-              <Icon icon="bot" className="w-5 h-5 text-white" />
+        <div className="min-w-[300px] w-[300px] h-full flex flex-col">
+          <div className="h-[60px] px-4 flex items-center justify-between border-b border-slate-800 bg-slate-950/50 backdrop-blur-sm z-50">
+            <div className="flex items-center gap-3">
+              <div className="p-1.5 bg-gradient-to-br from-cyan-600 to-purple-700 rounded-lg shadow-lg">
+                <Icon icon="bot" className="w-5 h-5 text-white" />
+              </div>
+              <div className="flex flex-col">
+                <h1 className="text-lg font-bold bg-gradient-to-r from-cyan-400 via-purple-400 to-cyan-400 bg-clip-text text-transparent tracking-tight leading-none">
+                  StockCommand
+                </h1>
+              </div>
             </div>
-            <div className="flex flex-col">
-              <h1 className="text-lg font-bold bg-gradient-to-r from-cyan-400 via-purple-400 to-cyan-400 bg-clip-text text-transparent tracking-tight leading-none">
-                StockCommand
-              </h1>
-            </div>
+
+            <button onClick={() => setIsLeftSidebarOpen(false)} title="Collapse Sidebar" className="px-2 py-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded text-xs text-cyan-400 font-bold tracking-wider transition-colors z-50 whitespace-nowrap">
+              CLOSE &lt;
+            </button>
           </div>
 
-          <button onClick={() => setIsLeftSidebarOpen(false)} title="Collapse Sidebar" className="px-2 py-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded text-xs text-cyan-400 font-bold tracking-wider transition-colors z-50 whitespace-nowrap">
-            CLOSE &lt;
-          </button>
-        </div>
-
-        <div className="p-3 bg-slate-900 border-b border-slate-800 font-semibold text-xs text-cyan-400 tracking-wider min-w-[300px]">
-          PORTFOLIO CONTEXT
-        </div>
-        <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin scrollbar-thumb-slate-700 min-w-[300px]">
-          <div className="bg-slate-800/50 rounded p-3 border border-slate-700/50">
-            <div className="flex justify-between items-end mb-2">
-              <span className="text-gray-400 text-xs">Total Liquidity</span>
-              <span className="text-xl font-bold font-mono text-emerald-400">$1,240,500</span>
-            </div>
-            <div className="h-1.5 w-full bg-slate-700 rounded-full overflow-hidden">
-              <div className="h-full bg-gradient-to-r from-cyan-500 to-blue-500 w-[65%]" />
-            </div>
-            <div className="flex justify-between text-[10px] text-gray-500 mt-1">
-              <span>Core: 65%</span>
-              <span>Cash: 35%</span>
-            </div>
+          <div className="p-3 bg-slate-900 border-b border-slate-800 font-semibold text-xs text-cyan-400 tracking-wider">
+            PORTFOLIO CONTEXT
           </div>
+          <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin scrollbar-thumb-slate-700">
+            <div className="bg-slate-800/50 rounded p-3 border border-slate-700/50">
+              <div className="flex justify-between items-end mb-2">
+                <span className="text-gray-400 text-xs">Total Liquidity</span>
+                <span className="text-xl font-bold font-mono text-emerald-400">$1,240,500</span>
+              </div>
+              <div className="h-1.5 w-full bg-slate-700 rounded-full overflow-hidden">
+                <div className="h-full bg-gradient-to-r from-cyan-500 to-blue-500 w-[65%]" />
+              </div>
+              <div className="flex justify-between text-[10px] text-gray-500 mt-1">
+                <span>Core: 65%</span>
+                <span>Cash: 35%</span>
+              </div>
+            </div>
 
-          <Toolbox
-            symbols={symbols}
-            activeSymbol={activeSymbol}
-            onAddSymbol={handleAddSymbol}
-            onRemoveSymbol={handleRemoveSymbol}
-            onSelectSymbol={handleSelectSymbol}
-            onAnalysisRequested={handleAnalysisRequest}
-            onPortfolioReport={() => setIsPortfolioModalOpen(true)}
-            isLoading={isDashboardLoading}
-          />
+            <Toolbox
+              symbols={symbols}
+              activeSymbol={activeSymbol}
+              onAddSymbol={handleAddSymbol}
+              onRemoveSymbol={handleRemoveSymbol}
+              onSelectSymbol={handleSelectSymbol}
+              onAnalysisRequested={handleAnalysisRequest}
+              onPortfolioReport={() => setIsPortfolioModalOpen(true)}
+              isLoading={isDashboardLoading}
+            />
+          </div>
         </div>
       </div>
 
@@ -801,88 +803,90 @@ const AppContent: React.FC = () => {
 
       {/* RIGHT COLUMN: Market Data & Clocks */}
       <div className={`${isRightSidebarOpen ? 'w-[300px] xl:w-[350px] border-l' : 'w-0 border-none'} flex flex-col bg-slate-900/40 border-slate-800 transition-all duration-300 overflow-hidden relative`}>
-        <div className="h-[60px] px-4 flex items-center justify-between border-b border-slate-800 bg-slate-950/50 backdrop-blur-sm min-w-[300px] z-50">
-          <div className="flex items-center gap-2">
+        <div className="min-w-[300px] w-[300px] h-full flex flex-col">
+          <div className="h-[60px] px-4 flex items-center justify-between border-b border-slate-800 bg-slate-950/50 backdrop-blur-sm z-50">
             <div className="flex items-center gap-2">
-              <button onClick={() => setIsRightSidebarOpen(false)} title="Collapse Clocks" className="px-2 py-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded text-xs text-amber-500 font-bold tracking-wider transition-colors z-50 whitespace-nowrap">
-                &gt; CLOSE
-              </button>
               <div className="flex items-center gap-2">
-                <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse shadow-lg shadow-emerald-500/50" />
-                <span className="text-xs text-gray-400 font-medium">LIVE</span>
+                <button onClick={() => setIsRightSidebarOpen(false)} title="Collapse Clocks" className="px-2 py-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded text-xs text-amber-500 font-bold tracking-wider transition-colors z-50 whitespace-nowrap">
+                  &gt; CLOSE
+                </button>
+                <div className="flex items-center gap-2">
+                  <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse shadow-lg shadow-emerald-500/50" />
+                  <span className="text-xs text-gray-400 font-medium">LIVE</span>
+                </div>
               </div>
-            </div>
-            <button
-              onClick={() => setIsProfileOpen(true)}
-              className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-white font-bold text-xs shadow-lg hover:shadow-cyan-500/20 transition-all transform hover:scale-105"
-            >
-              AM
-            </button>
-          </div>
-
-          <div className="flex-1 overflow-y-auto p-4 space-y-6 scrollbar-thin scrollbar-thumb-slate-700 min-w-[300px]">
-            <div className="space-y-3">
-              {marketClocks.map(clock => {
-                const stale = isStale(clock.lastUpdated);
-                return (
-                  <div key={clock.code}
-                    className={`bg-slate-800/50 p-3 rounded border transition-colors cursor-pointer relative ${stale ? 'border-amber-500/50 hover:bg-amber-900/10' : 'border-slate-700/50 hover:border-amber-500/50'}`}
-                    onClick={() => handleViewEntityDetail(clock)}>
-
-                    {/* Action Needed Badge */}
-                    {stale && (
-                      <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-500 rounded-full animate-pulse border border-slate-900 z-10" title="Action Needed: Update Stale Data" />
-                    )}
-
-                    <div className="flex justify-between items-center mb-1">
-                      <span className={`text-xs font-medium ${stale ? 'text-gray-500' : 'text-gray-400'}`}>{clock.label}</span>
-                      <div className={`w-2 h-2 rounded-full shadow-md ${stale ? 'bg-slate-700' : (clock.status === 'green' ? 'bg-emerald-500' : clock.status === 'yellow' ? 'bg-amber-500' : 'bg-red-500')}`} />
-                    </div>
-                  </div>
-                )
-              })}
+              <button
+                onClick={() => setIsProfileOpen(true)}
+                className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-white font-bold text-xs shadow-lg hover:shadow-cyan-500/20 transition-all transform hover:scale-105"
+              >
+                AM
+              </button>
             </div>
 
-            <div>
-              <div className="text-xs font-semibold text-gray-500 mb-3 uppercase tracking-wider">Portfolio Sleeves</div>
-              <div className="space-y-2">
-                {sleevesWithStats.map(({ sleeveName, items, stats }) => (
-                  <div key={sleeveName} className="border border-slate-800 rounded bg-slate-900/30 overflow-hidden">
-                    <div className="p-2.5 flex justify-between items-center cursor-pointer hover:bg-slate-800/50 transition-colors" onClick={() => toggleSleeve(sleeveName)}>
-                      <span className="text-xs font-bold text-gray-300">{sleeveName}</span>
-                      <Icon icon="chevron-down" className={`w-3 h-3 text-gray-500 transition-transform ${expandedSleeves[sleeveName] ? 'rotate-180' : ''}`} />
-                    </div>
-                    {expandedSleeves[sleeveName] && (
-                      <div className="bg-slate-950/50 border-t border-slate-800/50">
-                        {items.map(ticker => {
-                          const tickerClocks = getClocksForEntity('TICKER', ticker.symbol);
-                          return (
-                            <div key={ticker.symbol} className="px-3 py-2 flex flex-col gap-2 hover:bg-slate-800/30 border-l-2 border-transparent hover:border-blue-500 transition-all cursor-pointer"
-                              onClick={() => handleAnalysisRequest('Company Profile', ticker.symbol)}>
-                              <div className="flex justify-between items-center">
-                                <span className="text-xs text-gray-400 font-mono text-cyan-400">{ticker.symbol}</span>
-                              </div>
-                              {/* Ticker Clocks Row */}
-                              <div className="flex gap-1">
-                                {tickerClocks.map(c => (
-                                  <div
-                                    key={c.code}
-                                    title={`${c.label}: ${c.reason}`}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleViewEntityDetail(c);
-                                    }}
-                                    className={`w-1.5 h-1.5 rounded-full hover:scale-150 transition-transform ${isStale(c.lastUpdated) ? 'bg-slate-700' : (c.status === 'green' ? 'bg-emerald-500' : c.status === 'yellow' ? 'bg-amber-500' : 'bg-red-500')}`}
-                                  />
-                                ))}
-                              </div>
-                            </div>
-                          );
-                        })}
+            <div className="flex-1 overflow-y-auto p-4 space-y-6 scrollbar-thin scrollbar-thumb-slate-700">
+              <div className="space-y-3">
+                {marketClocks.map(clock => {
+                  const stale = isStale(clock.lastUpdated);
+                  return (
+                    <div key={clock.code}
+                      className={`bg-slate-800/50 p-3 rounded border transition-colors cursor-pointer relative ${stale ? 'border-amber-500/50 hover:bg-amber-900/10' : 'border-slate-700/50 hover:border-amber-500/50'}`}
+                      onClick={() => handleViewEntityDetail(clock)}>
+
+                      {/* Action Needed Badge */}
+                      {stale && (
+                        <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-500 rounded-full animate-pulse border border-slate-900 z-10" title="Action Needed: Update Stale Data" />
+                      )}
+
+                      <div className="flex justify-between items-center mb-1">
+                        <span className={`text-xs font-medium ${stale ? 'text-gray-500' : 'text-gray-400'}`}>{clock.label}</span>
+                        <div className={`w-2 h-2 rounded-full shadow-md ${stale ? 'bg-slate-700' : (clock.status === 'green' ? 'bg-emerald-500' : clock.status === 'yellow' ? 'bg-amber-500' : 'bg-red-500')}`} />
                       </div>
-                    )}
-                  </div>
-                ))}
+                    </div>
+                  )
+                })}
+              </div>
+
+              <div>
+                <div className="text-xs font-semibold text-gray-500 mb-3 uppercase tracking-wider">Portfolio Sleeves</div>
+                <div className="space-y-2">
+                  {sleevesWithStats.map(({ sleeveName, items, stats }) => (
+                    <div key={sleeveName} className="border border-slate-800 rounded bg-slate-900/30 overflow-hidden">
+                      <div className="p-2.5 flex justify-between items-center cursor-pointer hover:bg-slate-800/50 transition-colors" onClick={() => toggleSleeve(sleeveName)}>
+                        <span className="text-xs font-bold text-gray-300">{sleeveName}</span>
+                        <Icon icon="chevron-down" className={`w-3 h-3 text-gray-500 transition-transform ${expandedSleeves[sleeveName] ? 'rotate-180' : ''}`} />
+                      </div>
+                      {expandedSleeves[sleeveName] && (
+                        <div className="bg-slate-950/50 border-t border-slate-800/50">
+                          {items.map(ticker => {
+                            const tickerClocks = getClocksForEntity('TICKER', ticker.symbol);
+                            return (
+                              <div key={ticker.symbol} className="px-3 py-2 flex flex-col gap-2 hover:bg-slate-800/30 border-l-2 border-transparent hover:border-blue-500 transition-all cursor-pointer"
+                                onClick={() => handleAnalysisRequest('Company Profile', ticker.symbol)}>
+                                <div className="flex justify-between items-center">
+                                  <span className="text-xs text-gray-400 font-mono text-cyan-400">{ticker.symbol}</span>
+                                </div>
+                                {/* Ticker Clocks Row */}
+                                <div className="flex gap-1">
+                                  {tickerClocks.map(c => (
+                                    <div
+                                      key={c.code}
+                                      title={`${c.label}: ${c.reason}`}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleViewEntityDetail(c);
+                                      }}
+                                      className={`w-1.5 h-1.5 rounded-full hover:scale-150 transition-transform ${isStale(c.lastUpdated) ? 'bg-slate-700' : (c.status === 'green' ? 'bg-emerald-500' : c.status === 'yellow' ? 'bg-amber-500' : 'bg-red-500')}`}
+                                    />
+                                  ))}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
