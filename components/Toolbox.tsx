@@ -9,6 +9,7 @@ interface ToolboxProps {
     onToggleSymbol: (symbol: string) => void; // Toggle selection on/off
     onAnalysisRequested: (featureType: string, symbols: string[]) => void; // Now takes array
     onPortfolioReport: () => void;
+    onThesisChange: () => void; // New: initiate thesis change discussion
     isLoading: boolean;
 }
 
@@ -33,6 +34,7 @@ export const Toolbox: React.FC<ToolboxProps> = ({
     onToggleSymbol,
     onAnalysisRequested,
     onPortfolioReport,
+    onThesisChange,
     isLoading,
 }) => {
     const [symbolInput, setSymbolInput] = useState('');
@@ -142,6 +144,22 @@ export const Toolbox: React.FC<ToolboxProps> = ({
                         <span className="text-sm font-medium">{feature.name}</span>
                     </button>
                 ))}
+            </div>
+
+            {/* Thesis Change Section */}
+            <div className="mt-6 pt-6 border-t border-slate-700/50">
+                <h3 className="text-xs font-semibold text-gray-400 block mb-3 uppercase tracking-wide">Strategy</h3>
+                <button
+                    onClick={onThesisChange}
+                    disabled={isLoading}
+                    className="group w-full flex items-center gap-3 px-3 py-3 text-left text-white bg-gradient-to-r from-purple-600/30 to-cyan-600/30 hover:from-purple-600/50 hover:to-cyan-600/50 border border-purple-500/50 hover:border-purple-400/80 rounded-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-lg shadow-purple-500/10"
+                >
+                    <Icon icon="strategy" className="w-5 h-5 text-purple-400 group-hover:text-purple-300 transition-colors" />
+                    <div>
+                        <span className="text-sm font-bold">Thesis Change</span>
+                        <p className="text-xs text-gray-400">Debate strategy with AI agent</p>
+                    </div>
+                </button>
             </div>
         </div>
     );

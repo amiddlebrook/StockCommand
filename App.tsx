@@ -764,6 +764,17 @@ const AppContent: React.FC = () => {
               onToggleSymbol={handleToggleSymbol}
               onAnalysisRequested={handleAnalysisRequest}
               onPortfolioReport={() => setIsPortfolioModalOpen(true)}
+              onThesisChange={() => {
+                // Start thesis change discussion in chat
+                const thesisMessage: ChatMessageType = {
+                  id: `thesis-${Date.now()}`,
+                  role: 'model',
+                  content: `🎯 **Thesis Change Mode Active**\n\nI'm ready to discuss changes to your portfolio thesis. You have control over all strategic decisions.\n\n**Current framework includes:**\n- Core Tech (structural holdings)\n- Rotatable Tech (cyclical positions)\n- Specialized sleeves (Energy, Defense, AI Infra, etc.)\n- Macro clocks for timing\n\n**What would you like to discuss?**\n1. Add/remove tickers from a sleeve\n2. Create a new specialized sleeve\n3. Adjust allocation weights\n4. Modify rotation triggers\n5. Something else?\n\nTell me what you're thinking and we'll debate IT!`,
+                  isLoading: false
+                };
+                setMessages(prev => [...prev, thesisMessage]);
+                setActiveTab('command-center');
+              }}
               isLoading={isDashboardLoading}
             />
           </div>
