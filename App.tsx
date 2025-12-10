@@ -29,6 +29,7 @@ import { MarketClock } from './lib/agent/types';
 import { GlassButton } from './components/ui/GlassButton';
 import { JobProvider, useJobContext } from './contexts/JobContext';
 import { getClocksForEntity } from './lib/clockData';
+import { ClockDetailView } from './components/ClockDetailView';
 
 type MobileView = 'toolbox' | 'dashboard' | 'chat';
 
@@ -48,7 +49,15 @@ const AppContent: React.FC = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [widgets, setWidgets] = useState<AnalysisWidget[]>([]);
   const [mobileView, setMobileView] = useState<MobileView>('toolbox');
-  const [activeTab, setActiveTab] = useState<'command-center' | 'portfolio'>('command-center');
+  const [activeTab, setActiveTab] = useState<'command-center' | 'portfolio' | 'clock-detail'>('command-center');
+
+  // Sidebar State
+  const [isLeftSidebarOpen, setIsLeftSidebarOpen] = useState(true);
+  const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(true);
+
+  // Selected Clock State
+  const [selectedClock, setSelectedClock] = useState<MarketClock | null>(null);
+
   const analysisModelId = DEFAULT_CHAT_MODEL.id;
   const [symbols, setSymbols] = useState<string[]>(DEFAULT_SYMBOLS);
   const [activeSymbol, setActiveSymbol] = useState<string | null>(DEFAULT_SYMBOLS[0]);
@@ -58,16 +67,9 @@ const AppContent: React.FC = () => {
   // Agent State
   const [agentOutput, setAgentOutput] = useState<string | null>(null);
   const [marketClocks, setMarketClocks] = useState<MarketClock[] | null>(null);
-  // We don't need local isAgentRunning anymore due to JobContext, but we might want it for specific UI feedback?
-  // Actually, let's rely on activeJobsCount for global "Busy" state usage if needed.
 
-  // Uncurated Ticker State
   const [uncuratedTicker, setUncuratedTicker] = useState<string | null>(null);
-
-  // Profile State
   const [isProfileOpen, setIsProfileOpen] = useState(false);
-
-  // Sleeve State
   const [expandedSleeves, setExpandedSleeves] = useState<Record<string, boolean>>({ 'Core Tech': true });
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -79,21 +81,18 @@ const AppContent: React.FC = () => {
     setExpandedSleeves(prev => ({ ...prev, [sleeve]: !prev[sleeve] }));
   };
 
-  // Group Universe by Sleeve
   const sleeves = UNIVERSE.reduce((acc, ticker) => {
     if (!acc[ticker.sleeve]) acc[ticker.sleeve] = [];
     acc[ticker.sleeve].push(ticker);
     return acc;
   }, {} as Record<string, typeof UNIVERSE>);
 
-  // Mock Ticker Status (Deterministic based on symbol char code)
   const getMockTickerStatus = (symbol: string): 'green' | 'yellow' | 'red' => {
     const sum = symbol.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
     const mod = sum % 3;
     return mod === 0 ? 'green' : mod === 1 ? 'yellow' : 'red';
   };
 
-  // Group Universe by Sleeve and Calculate Stats
   const sleevesWithStats = Object.entries(sleeves).map(([sleeveName, items]) => {
     const stats = items.reduce((acc, ticker) => {
       const status = getMockTickerStatus(ticker.symbol);
@@ -135,7 +134,6 @@ const AppContent: React.FC = () => {
     });
     const data = await res.json();
 
-    // Update State with Results
     setAgentOutput(data.analysis || "Analysis complete. See console.");
 
     if (data.clocks) {
@@ -152,7 +150,6 @@ const AppContent: React.FC = () => {
       });
     }
 
-    // Also add a widget for persistent view
     const widget: AnalysisWidget = {
       id: `agent-${Date.now()}`,
       type: 'profile',
@@ -177,6 +174,11 @@ const AppContent: React.FC = () => {
       "This process involves complex agentic reasoning and may take up to 2 minutes. You can continue using the dashboard while it runs.",
       async () => await executeAgentScan(scope, target, toolName)
     );
+  };
+
+  const handleViewClockDetail = (clock: MarketClock) => {
+    setSelectedClock(clock);
+    setActiveTab('clock-detail');
   };
 
   // Auto-scroll chat
@@ -235,7 +237,6 @@ const AppContent: React.FC = () => {
     const symbol = rawSymbol.trim().toUpperCase();
     if (!symbol) return;
     checkCurated(symbol);
-    // Redirect to the Agent Job logic
     handleRunAgentScan('TOOL', symbol, featureType);
   };
 
@@ -386,7 +387,6 @@ const AppContent: React.FC = () => {
     }
   };
 
-  // Load persisted agent run
   useEffect(() => {
     const loadPersistedRun = async () => {
       try {
@@ -420,23 +420,28 @@ const AppContent: React.FC = () => {
   return (
     <div className="h-screen w-screen bg-slate-950 text-gray-100 flex overflow-hidden font-sans">
 
-      {/* LEFT COLUMN: Portfolio & Actions (Fixed Width) */}
-      <div className="w-[300px] xl:w-[350px] flex flex-col border-r border-slate-800 bg-slate-900/40">
-        <div className="h-[60px] px-4 flex items-center gap-3 border-b border-slate-800 bg-slate-950/50 backdrop-blur-sm">
-          <div className="p-1.5 bg-gradient-to-br from-cyan-600 to-purple-700 rounded-lg shadow-lg">
-            <Icon icon="bot" className="w-5 h-5 text-white" />
+      {/* LEFT COLUMN: Portfolio & Actions */}
+      <div className={`${isLeftSidebarOpen ? 'w-[300px] xl:w-[350px]' : 'w-0 opacity-0'} flex flex-col border-r border-slate-800 bg-slate-900/40 transition-all duration-300 overflow-hidden relative`}>
+        <div className="h-[60px] px-4 flex items-center justify-between border-b border-slate-800 bg-slate-950/50 backdrop-blur-sm min-w-[300px]">
+          <div className="flex items-center gap-3">
+            <div className="p-1.5 bg-gradient-to-br from-cyan-600 to-purple-700 rounded-lg shadow-lg">
+              <Icon icon="bot" className="w-5 h-5 text-white" />
+            </div>
+            <div className="flex flex-col">
+              <h1 className="text-lg font-bold bg-gradient-to-r from-cyan-400 via-purple-400 to-cyan-400 bg-clip-text text-transparent tracking-tight leading-none">
+                StockCommand
+              </h1>
+            </div>
           </div>
-          <div className="flex flex-col">
-            <h1 className="text-lg font-bold bg-gradient-to-r from-cyan-400 via-purple-400 to-cyan-400 bg-clip-text text-transparent tracking-tight leading-none">
-              StockCommand
-            </h1>
-          </div>
+          <button onClick={() => setIsLeftSidebarOpen(false)} className="p-1 hover:bg-slate-800 rounded text-gray-500 hover:text-white transition-colors">
+            <Icon icon="chevron-down" className="w-4 h-4 rotate-90" />
+          </button>
         </div>
 
-        <div className="p-3 bg-slate-900 border-b border-slate-800 font-semibold text-xs text-cyan-400 tracking-wider">
+        <div className="p-3 bg-slate-900 border-b border-slate-800 font-semibold text-xs text-cyan-400 tracking-wider min-w-[300px]">
           PORTFOLIO CONTEXT
         </div>
-        <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin scrollbar-thumb-slate-700">
+        <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin scrollbar-thumb-slate-700 min-w-[300px]">
           <div className="bg-slate-800/50 rounded p-3 border border-slate-700/50">
             <div className="flex justify-between items-end mb-2">
               <span className="text-gray-400 text-xs">Total Liquidity</span>
@@ -465,53 +470,75 @@ const AppContent: React.FC = () => {
       </div>
 
       {/* MIDDLE COLUMN: Command Center (Flexible) */}
-      <div className="flex-1 flex flex-col min-w-0 bg-slate-950 relative border-r border-slate-800">
+      <div className="flex-1 flex flex-col min-w-0 bg-slate-950 relative border-r border-slate-800 transition-all duration-300">
 
-        {/* TOP BAR: Navigation & Status - PERSISTENT */}
+        {/* TOP BAR: Navigation & Status */}
         <div className="h-[60px] px-4 flex items-center justify-between border-b border-slate-800 bg-slate-950/50 backdrop-blur-sm z-20">
-          <div className="flex items-center bg-slate-900/50 p-1 rounded-lg border border-slate-800/50">
-            <button
-              onClick={() => setActiveTab('command-center')}
-              className={`px-3 py-1 rounded text-xs font-medium transition-all ${activeTab === 'command-center'
-                ? 'bg-slate-800 text-cyan-400 shadow-sm'
-                : 'text-gray-400 hover:text-gray-200 hover:bg-slate-800/50'
-                }`}
-            >
-              Command Center
-            </button>
-            <button
-              onClick={() => setActiveTab('portfolio')}
-              className={`px-3 py-1 rounded text-xs font-medium transition-all ${activeTab === 'portfolio'
-                ? 'bg-slate-800 text-purple-400 shadow-sm'
-                : 'text-gray-400 hover:text-gray-200 hover:bg-slate-800/50'
-                }`}
-            >
-              Portfolio
-            </button>
+          <div className="flex items-center gap-3">
+            {!isLeftSidebarOpen && (
+              <button onClick={() => setIsLeftSidebarOpen(true)} className="p-2 hover:bg-slate-800 rounded-lg text-gray-400 hover:text-cyan-400 border border-transparent hover:border-slate-700 transition-all">
+                <Icon icon="chevron-down" className="w-4 h-4 -rotate-90" />
+              </button>
+            )}
+
+            <div className="flex items-center bg-slate-900/50 p-1 rounded-lg border border-slate-800/50">
+              <button
+                onClick={() => setActiveTab('command-center')}
+                className={`px-3 py-1 rounded text-xs font-medium transition-all ${activeTab === 'command-center'
+                  ? 'bg-slate-800 text-cyan-400 shadow-sm'
+                  : 'text-gray-400 hover:text-gray-200 hover:bg-slate-800/50'
+                  }`}
+              >
+                Command Center
+              </button>
+              <button
+                onClick={() => setActiveTab('portfolio')}
+                className={`px-3 py-1 rounded text-xs font-medium transition-all ${activeTab === 'portfolio'
+                  ? 'bg-slate-800 text-purple-400 shadow-sm'
+                  : 'text-gray-400 hover:text-gray-200 hover:bg-slate-800/50'
+                  }`}
+              >
+                Portfolio
+              </button>
+            </div>
           </div>
 
-          <div className="font-semibold text-xs text-emerald-400 tracking-wider flex items-center gap-2">
-            {activeJobsCount > 0 && (
-              <span className="flex items-center gap-2 text-amber-400 animate-pulse">
-                <LoadingSpinner />
-                PROCESSING ({activeJobsCount})
-              </span>
+          <div className="flex items-center gap-4">
+            <div className="font-semibold text-xs text-emerald-400 tracking-wider flex items-center gap-2">
+              {activeJobsCount > 0 && (
+                <span className="flex items-center gap-2 text-amber-400 animate-pulse">
+                  <LoadingSpinner />
+                  PROCESSING ({activeJobsCount})
+                </span>
+              )}
+              <Icon icon="bot" className="w-4 h-4" />
+              AGENT COMMAND
+            </div>
+
+            {!isRightSidebarOpen && (
+              <button onClick={() => setIsRightSidebarOpen(true)} className="p-2 hover:bg-slate-800 rounded-lg text-gray-400 hover:text-amber-400 border border-transparent hover:border-slate-700 transition-all">
+                <Icon icon="chevron-down" className="w-4 h-4 rotate-90" />
+              </button>
             )}
-            <Icon icon="bot" className="w-4 h-4" />
-            AGENT COMMAND
           </div>
         </div>
 
-        {/* LOADING PROGRESS LINE (Optional, global) */}
+        {/* LOADING PROGRESS LINE */}
         {activeJobsCount > 0 && (
           <div className="absolute top-[60px] left-0 right-0 h-[2px] bg-amber-500/50 overflow-hidden z-30">
             <div className="absolute inset-0 bg-amber-400 animate-progress origin-left"></div>
           </div>
         )}
 
-        {/* MAIN CONTENT AREA: SWAPS BASED ON TAB */}
+        {/* MAIN CONTENT AREA */}
         <div className="flex-1 flex flex-col overflow-hidden relative">
-          {activeTab === 'command-center' ? (
+          {activeTab === 'clock-detail' ? (
+            // <<< CLOCK DETAIL VIEW >>>
+            <ClockDetailView
+              clock={selectedClock}
+              onBack={() => setActiveTab('command-center')}
+            />
+          ) : activeTab === 'command-center' ? (
             // <<< COMMAND CENTER VIEW >>>
             <>
               {/* Agent Controls Overlay */}
@@ -614,12 +641,17 @@ const AppContent: React.FC = () => {
         </div>
       </div>
 
-      {/* RIGHT COLUMN: Market Data & Clocks (Fixed Width) */}
-      <div className="w-[300px] xl:w-[350px] flex flex-col bg-slate-900/40 border-l border-slate-800">
-        <div className="h-[60px] px-4 flex items-center justify-between border-b border-slate-800 bg-slate-950/50 backdrop-blur-sm">
-          <div className="flex items-center gap-3">
-            <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse shadow-lg shadow-emerald-500/50" />
-            <span className="text-xs text-gray-400 font-medium">LIVE</span>
+      {/* RIGHT COLUMN: Market Data & Clocks */}
+      <div className={`${isRightSidebarOpen ? 'w-[300px] xl:w-[350px]' : 'w-0 opacity-0'} flex flex-col bg-slate-900/40 border-l border-slate-800 transition-all duration-300 overflow-hidden relative`}>
+        <div className="h-[60px] px-4 flex items-center justify-between border-b border-slate-800 bg-slate-950/50 backdrop-blur-sm min-w-[300px]">
+          <div className="flex items-center gap-2">
+            <button onClick={() => setIsRightSidebarOpen(false)} className="p-1 hover:bg-slate-800 rounded text-gray-500 hover:text-white transition-colors">
+              <Icon icon="chevron-down" className="w-4 h-4 -rotate-90" />
+            </button>
+            <div className="flex items-center gap-2">
+              <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse shadow-lg shadow-emerald-500/50" />
+              <span className="text-xs text-gray-400 font-medium">LIVE</span>
+            </div>
           </div>
           <button
             onClick={() => setIsProfileOpen(true)}
@@ -629,14 +661,16 @@ const AppContent: React.FC = () => {
           </button>
         </div>
 
-        <div className="p-3 bg-slate-900 border-b border-slate-800 font-semibold text-xs text-amber-400 tracking-wider">
+        <div className="p-3 bg-slate-900 border-b border-slate-800 font-semibold text-xs text-amber-400 tracking-wider min-w-[300px]">
           MARKET CLOCKS
         </div>
-        <div className="flex-1 overflow-y-auto p-4 space-y-6 scrollbar-thin scrollbar-thumb-slate-700">
+        <div className="flex-1 overflow-y-auto p-4 space-y-6 scrollbar-thin scrollbar-thumb-slate-700 min-w-[300px]">
           <div className="space-y-3">
             {marketClocks && marketClocks.length > 0 ? (
               marketClocks.map(clock => (
-                <div key={clock.code} className="bg-slate-800/50 p-3 rounded border border-slate-700/50 hover:border-amber-500/50 transition-colors cursor-pointer" onClick={() => handleRunAgentScan('TOOL', clock.code)}>
+                <div key={clock.code}
+                  className="bg-slate-800/50 p-3 rounded border border-slate-700/50 hover:border-amber-500/50 transition-colors cursor-pointer"
+                  onClick={() => handleViewClockDetail(clock)}>
                   <div className="flex justify-between items-center mb-1">
                     <span className="text-gray-400 text-xs font-medium">{clock.label}</span>
                     <div className={`w-2 h-2 rounded-full bg-${clock.status === 'green' ? 'emerald' : clock.status === 'yellow' ? 'amber' : 'red'}-500 shadow-md`} />
@@ -644,10 +678,16 @@ const AppContent: React.FC = () => {
                 </div>
               ))
             ) : (
-              // Fallback / Standard Market Clocks
+              // Standard Clocks
               ['Liquidity Cycle', 'Commodity Cycle', 'VIX Regime', 'Inflation Trend', 'Credit Impulse', 'Dollar Strength'].map((label, i) => (
-                <div key={i} className="bg-slate-800/50 p-3 rounded border border-slate-700/50 flex justify-between items-center group hover:border-amber-500/30 transition-colors cursor-pointer hover:bg-slate-800"
-                  onClick={() => handleRunAgentScan('TOOL', label.toUpperCase().replace(' ', '_'))}>
+                <div key={i}
+                  className="bg-slate-800/50 p-3 rounded border border-slate-700/50 flex justify-between items-center group hover:border-amber-500/30 transition-colors cursor-pointer hover:bg-slate-800"
+                  onClick={() => handleViewClockDetail({
+                    code: label.toUpperCase().replace(' ', '_'),
+                    label: label,
+                    status: 'yellow',
+                    reason: 'Detailed analysis required.'
+                  })}>
                   <span className="text-gray-500 text-xs font-medium group-hover:text-cyan-400 transition-colors">{label}</span>
                   <Icon icon="clock" className="w-3 h-3 text-gray-600 group-hover:text-amber-400" />
                 </div>
@@ -667,7 +707,6 @@ const AppContent: React.FC = () => {
                   {expandedSleeves[sleeveName] && (
                     <div className="bg-slate-950/50 border-t border-slate-800/50">
                       {items.map(ticker => {
-                        // Get clocks for this ticker
                         const tickerClocks = getClocksForEntity('TICKER', ticker.symbol);
                         return (
                           <div key={ticker.symbol} className="px-3 py-2 flex flex-col gap-2 hover:bg-slate-800/30 border-l-2 border-transparent hover:border-blue-500 transition-all cursor-pointer"
@@ -678,10 +717,15 @@ const AppContent: React.FC = () => {
                             {/* Ticker Clocks Row */}
                             <div className="flex gap-1">
                               {tickerClocks.map(c => (
-                                <div key={c.code} title={`${c.label}: ${c.reason}`} className={`
-                                                        w-1.5 h-1.5 rounded-full 
-                                                        ${c.status === 'green' ? 'bg-emerald-500' : c.status === 'yellow' ? 'bg-amber-500' : 'bg-red-500'}
-                                                    `} />
+                                <div
+                                  key={c.code}
+                                  title={`${c.label}: ${c.reason}`}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleViewClockDetail(c);
+                                  }}
+                                  className={`w-1.5 h-1.5 rounded-full hover:scale-150 transition-transform ${c.status === 'green' ? 'bg-emerald-500' : c.status === 'yellow' ? 'bg-amber-500' : 'bg-red-500'}`}
+                                />
                               ))}
                             </div>
                           </div>
