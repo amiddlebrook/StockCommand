@@ -924,6 +924,11 @@ const AppContent: React.FC = () => {
                     {[24, 168, 720].map(hours => (
                       <button
                         key={hours}
+                        onClick={() => setDataFreshnessHours(hours)}
+                        className={`px-3 py-1 text-xs font-mono rounded transition-colors ${dataFreshnessHours === hours ? 'bg-slate-700 text-white shadow' : 'text-gray-500 hover:text-gray-300'}`}
+                      >
+                        {hours === 24 ? '24H' : hours === 168 ? '7D' : '30D'}
+                      </button>
                     ))}
                   </div>
                   <GlassButton size="sm" variant="danger" onClick={() => {
