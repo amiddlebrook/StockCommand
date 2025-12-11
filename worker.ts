@@ -75,8 +75,14 @@ export default {
                 // Construct conversation for DeepSeek
                 let systemPrompt = "You are StockCommand, an advanced AI financial analyst. Answer queries concisely and professionally.";
 
-                if (context && context.latestReport) {
-                    systemPrompt += `\n\nCONTEXT - LATEST AGENT REPORT:\n"""${context.latestReport}"""\n\nUser questions may refer to this report. Answer based on it if relevant.`;
+                if (context) {
+                    if (context.activeTickers && context.activeTickers.length > 0) {
+                        systemPrompt += `\n\nCURRENT ACTIVE TICKERS: ${context.activeTickers.join(', ')}\nFocus your answers on these tickers unless the user explicitly asks about others.`;
+                    }
+
+                    if (context.latestReport) {
+                        systemPrompt += `\n\nCONTEXT - LATEST AGENT REPORT:\n"""${context.latestReport}"""\n\nINSTRUCTION: This report may be for a previously selected ticker. Only use this information if it is relevant to the Current Active Tickers or if the user explicitly asks about this specific report content. Otherwise, ignore it.`;
+                    }
                 }
 
                 const messages = [

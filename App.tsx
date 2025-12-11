@@ -285,7 +285,10 @@ const AppContent: React.FC = () => {
               role: m.role as 'user' | 'model',
               parts: [{ text: m.content }],
             }));
-          const context = agentOutput ? { latestReport: agentOutput } : undefined;
+          const context = {
+            latestReport: agentOutput,
+            activeTickers: selectedSymbols
+          };
           const response = await sendMessage(message, history, context);
           responseText = response.response ?? '';
         }
