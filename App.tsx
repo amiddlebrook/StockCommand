@@ -725,7 +725,7 @@ const AppContent: React.FC = () => {
   }, []);
 
   return (
-    <div className="h-screen w-screen bg-slate-950 text-gray-100 flex overflow-hidden font-sans">
+    <div className="h-screen w-screen bg-slate-950 text-gray-100 flex overflow-hidden font-sans border-b-4 border-slate-900">
 
       {/* LEFT COLUMN: Portfolio & Actions */}
       {/* LEFT COLUMN: Portfolio & Actions */}
@@ -1001,16 +1001,7 @@ const AppContent: React.FC = () => {
                 />
               </div>
 
-              {/* Chat Input Area */}
-              <div className="p-4 border-b border-slate-800 bg-slate-900/40 backdrop-blur">
-                <ChatInput
-                  onSendMessage={handleSendMessage}
-                  onStartRecording={handleStartRecording}
-                  onStopRecording={handleStopRecording}
-                  isRecording={isRecording}
-                  isLoading={isChatLoading}
-                />
-              </div>
+
 
               {/* Auto-Scroll Content Area */}
               <div className="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-thin scrollbar-thumb-slate-700 custom-markdown">
@@ -1050,6 +1041,17 @@ const AppContent: React.FC = () => {
                 {widgets.filter(w => !w.title.includes('Agent')).map(widget => (
                   <div key={widget.id} className="animate-fadeIn">{renderWidget(widget)}</div>
                 ))}
+              </div>
+
+              {/* Chat Input Area - Moved to Bottom */}
+              <div className="p-4 border-t border-slate-800 bg-slate-900/40 backdrop-blur z-20">
+                <ChatInput
+                  onSendMessage={handleSendMessage}
+                  onStartRecording={handleStartRecording}
+                  onStopRecording={handleStopRecording}
+                  isRecording={isRecording}
+                  isLoading={isChatLoading}
+                />
               </div>
 
               <div ref={chatContainerRef} />
