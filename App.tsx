@@ -11,6 +11,7 @@ import { LoadingSpinner } from './components/LoadingSpinner';
 import { MobileNav } from './components/MobileNav';
 import { CompetitionsView } from './components/CompetitionsView';
 import { FeatureDetailView, FEATURE_CONFIG } from './components/FeatureDetailView';
+import { CreatorModeView } from './components/CreatorModeView';
 import type { ChatMessage as ChatMessageType, Source } from './types';
 import {
   analyzeImage,
@@ -50,7 +51,7 @@ const AppContent: React.FC = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [widgets, setWidgets] = useState<AnalysisWidget[]>(() => StorageService.loadWidgets());
   const [mobileView, setMobileView] = useState<MobileView>('toolbox');
-  const [activeTab, setActiveTab] = useState<'command-center' | 'portfolio' | 'entity-detail' | 'competitions' | 'feature-detail' | 'features'>('command-center');
+  const [activeTab, setActiveTab] = useState<'command-center' | 'portfolio' | 'entity-detail' | 'competitions' | 'feature-detail' | 'features' | 'creator'>('command-center');
   const [activeFeature, setActiveFeature] = useState<{ name: string; symbols: string[]; content: string | null } | null>(null);
 
   // Sidebar State
@@ -810,13 +811,24 @@ const AppContent: React.FC = () => {
             <div className="flex items-center bg-slate-900/50 p-1 rounded-lg border border-slate-800/50">
               <button
                 onClick={() => setActiveTab('command-center')}
-                className={`px-3 py-1 rounded text-xs font-medium transition-all ${activeTab === 'command-center'
-                  ? 'bg-slate-800 text-cyan-400 shadow-sm'
-                  : 'text-gray-400 hover:text-gray-200 hover:bg-slate-800/50'
+                className={`py-2 px-3 rounded-t-lg text-sm font-bold transition-all ${activeTab === 'command-center'
+                  ? 'bg-slate-800 text-cyan-400 border-t border-x border-slate-700 shadow-[0_-5px_15px_-5px_rgba(34,211,238,0.2)]'
+                  : 'text-gray-500 hover:text-gray-300 hover:bg-slate-800/50'
                   }`}
               >
-                Command Center
+                COMMAND CENTER
               </button>
+
+              <button
+                onClick={() => setActiveTab('creator')}
+                className={`py-2 px-3 rounded-t-lg text-sm font-bold transition-all ${activeTab === 'creator'
+                  ? 'bg-slate-800 text-purple-400 border-t border-x border-slate-700 shadow-[0_-5px_15px_-5px_rgba(192,132,252,0.2)]'
+                  : 'text-gray-500 hover:text-gray-300 hover:bg-slate-800/50'
+                  }`}
+              >
+                CREATOR
+              </button>
+
               <button
                 onClick={() => setActiveTab('portfolio')}
                 className={`px-3 py-1 rounded text-xs font-medium transition-all ${activeTab === 'portfolio'
@@ -1103,6 +1115,9 @@ const AppContent: React.FC = () => {
                 setActiveTab('command-center');
               }}
             />
+          ) : activeTab === 'creator' ? (
+            // <<< CREATOR MODE VIEW >>>
+            <CreatorModeView />
           ) : (
             // <<< PORTFOLIO VIEW >>>
             <PortfolioView
