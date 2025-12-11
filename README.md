@@ -7,7 +7,7 @@
 
 An adaptive AI environment where users can analyze stocks and options through natural conversation. The AI generates data tables, divergence counts, visual patterns, and strategy suggestions dynamically.
 
-**Live App**: https://stockbrain.averymiddlebrook2014.workers.dev/
+**Live App**: https://stockcommand.averymiddlebrook2014.workers.dev/
 
 This contains everything you need to run your app locally and deploy to Cloudflare Workers.
 
