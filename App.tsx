@@ -16,6 +16,7 @@ import { ProfileModal } from './components/ProfileModal';
 import { CommandPalette } from './components/CommandPalette';
 import { Icon } from './components/Icon';
 import { MarketClocksView } from './components/MarketClocksView';
+import { SocialView } from './components/SocialView';
 
 import type { ChatMessage as ChatMessageType, Source } from './types';
 import {
@@ -419,6 +420,8 @@ const AppContent: React.FC = () => {
             </div>
           ) : activeTab === 'portfolio' ? (
             <div className="h-full overflow-y-auto"><PortfolioView sleevesWithStats={sleevesWithStats} onClockClick={() => { }} freshnessThreshold={0} /></div>
+          ) : activeTab === 'comms' ? (
+            <div className="h-full overflow-hidden"><SocialView /></div>
           ) : activeTab === 'market-clocks' ? (
             <div className="h-full overflow-y-auto"><MarketClocksView clocks={marketClocks} onClockClick={() => { }} onPinClock={() => { }} /></div>
           ) : activeTab === 'competitions' ? (
