@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/North-Star-Apps/StockCommand.git"
+    "url": "https://github.com/amiddlebrook/StockCommand.git"
   },
   "type": "module",
   "scripts": {
