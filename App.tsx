@@ -57,8 +57,9 @@ const AppContent: React.FC = () => {
   const [activeFeature, setActiveFeature] = useState<{ name: string; symbols: string[]; content: string | null } | null>(null);
 
   // Sidebar State
-  const [isLeftSidebarOpen, setIsLeftSidebarOpen] = useState(true);
-  const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(true);
+  // Sidebar State
+  const [isLeftSidebarOpen, setIsLeftSidebarOpen] = useState(() => typeof window !== 'undefined' ? window.innerWidth >= 768 : true);
+  const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(() => typeof window !== 'undefined' ? window.innerWidth >= 768 : true);
 
   // Chat/Navigation State
   const [initialChatInput, setInitialChatInput] = useState<string>('');
@@ -1124,7 +1125,7 @@ const AppContent: React.FC = () => {
               </div>
 
               {/* Chat Input Area - Moved to Bottom */}
-              <div className="p-4 border-t border-slate-800 bg-slate-900/40 backdrop-blur z-20">
+              <div className="p-4 border-t border-slate-800 bg-slate-900/40 backdrop-blur z-20 mb-16 md:mb-0">
                 <div className="mb-2">
                   <QuickActions onAction={handleQuickAction} />
                 </div>
