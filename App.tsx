@@ -904,12 +904,9 @@ const AppContent: React.FC = () => {
             >
               <Icon icon="user" className="w-4 h-4" />
             </button>
-            <div className="flex items-center gap-2 text-xs font-mono text-cyan-500/50 bg-slate-900/30 px-2 py-1 rounded border border-slate-800/30">
-              <Icon icon="terminal" className="w-3 h-3" />
-              <span>AGENT COMMAND</span>
-            </div>
+
             {!isRightSidebarOpen && (
-              <button onClick={() => setIsRightSidebarOpen(true)} className="px-2 md:px-3 py-1 bg-amber-900/50 hover:bg-amber-800/80 border border-amber-500/50 text-amber-300 rounded text-[10px] md:text-xs font-bold tracking-wider shadow-[0_0_10px_rgba(245,158,11,0.2)] transition-all z-50 flex gap-2 items-center whitespace-nowrap">
+              <button onClick={() => setIsRightSidebarOpen(true)} className="hidden md:flex px-2 md:px-3 py-1 bg-amber-900/50 hover:bg-amber-800/80 border border-amber-500/50 text-amber-300 rounded text-[10px] md:text-xs font-bold tracking-wider shadow-[0_0_10px_rgba(245,158,11,0.2)] transition-all z-50 gap-2 items-center whitespace-nowrap">
                 <Icon icon="chevron-down" className="w-3 h-3 rotate-90" />
                 <span>CLOCKS</span>
               </button>
@@ -981,93 +978,20 @@ const AppContent: React.FC = () => {
           ) : activeTab === 'command-center' ? (
             // <<< COMMAND CENTER VIEW >>>
             <>
-              {/* Header with Freshness Settings */}
-              <div className="flex justify-between items-end p-8 border-b border-slate-800/50">
-                <div>
-                  <h1 className="text-3xl font-bold text-white mb-2">Command Center</h1>
-                  <p className="text-gray-400">System Status & tactical overview.</p>
-                </div>
-                <div className="flex items-center gap-4">
-                  <span className="text-xs text-gray-500 uppercase tracking-wider">Data Validity:</span>
-                  <div className="flex bg-slate-900 rounded p-1 border border-slate-800">
-                    {[24, 168, 720].map(hours => (
-                      <button
-                        key={hours}
-                        onClick={() => setDataFreshnessHours(hours)}
-                        className={`px-3 py-1 text-xs font-mono rounded transition-colors ${dataFreshnessHours === hours ? 'bg-slate-700 text-white shadow' : 'text-gray-500 hover:text-gray-300'}`}
-                      >
-                        {hours === 24 ? '24H' : hours === 168 ? '7D' : '30D'}
-                      </button>
-                    ))}
+              {/* Minimal Feed Header */}
+              <div className="flex-none p-6 border-b border-slate-800/50 bg-slate-900/10 backdrop-blur-sm">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="relative">
+                      <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_15px_rgba(16,185,129,0.8)]" />
+                      <div className="absolute inset-0 rounded-full bg-emerald-500 animate-ping opacity-20" />
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-sm font-mono text-cyan-500 tracking-[0.2em] uppercase font-bold text-shadow-glow">System Online</span>
+                      <span className="text-[10px] text-gray-500 font-mono">Awaiting directives...</span>
+                    </div>
                   </div>
-                  <GlassButton size="sm" variant="danger" onClick={() => {
-                    if (confirm('Are you sure you want to revert to the initial application state? This will clear all data and local storage.')) {
-                      StorageService.resetToDefaults();
-                    }
-                  }}>
-                    Reset System
-                  </GlassButton>
                 </div>
-              </div>
-
-              {/* Agent Controls Overlay */}
-              <div className="p-4 border-b border-slate-800/50 flex gap-2 overflow-x-auto bg-slate-900/20">
-                <GlassButton
-                  variant="primary"
-                  size="sm"
-                  onClick={() => handleRunAgentScan('FULL')}
-                >
-                  RUN FULL SCAN
-                </GlassButton>
-
-                <div className="h-6 w-px bg-slate-700 mx-1" />
-
-                {[
-                  { label: 'Liquidity Cycle', code: 'CLOCK_LIQUIDITY_CYCLE' },
-                  { label: 'Commodity Cycle', code: 'CLOCK_COMMODITY_CYCLE' },
-                  { label: 'VIX Regime', code: 'CLOCK_VIX_REGIME' },
-                  { label: 'Inflation Trend', code: 'CLOCK_INFLATION_TREND' },
-                  { label: 'Credit Impulse', code: 'CLOCK_CREDIT_IMPULSE' },
-                  { label: 'Dollar Strength', code: 'CLOCK_DOLLAR_STRENGTH' }
-                ].map((tool, i) => (
-                  <GlassButton
-                    key={i}
-                    variant="glass"
-                    size="sm"
-                    onClick={() => handleRunAgentScan('TOOL', tool.code, tool.code)}
-                  >
-                    {tool.label}
-                  </GlassButton>
-                ))}
-
-                <div className="h-6 w-px bg-slate-700 mx-1" />
-
-                <select
-                  className="bg-slate-800 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200 outline-none focus:border-blue-500"
-                  onChange={(e) => {
-                    if (e.target.value) handleRunAgentScan('SLEEVE', e.target.value);
-                    e.target.value = "";
-                  }}
-                >
-                  <option value="">Analyze Sleeve...</option>
-                  <option value="Core Tech">Core Tech</option>
-                  <option value="Rotatable Tech">Rotatable Tech</option>
-                  <option value="Specialized: Energy">Energy</option>
-                  <option value="Physical Precious Metals">Metals</option>
-                </select>
-
-                <input
-                  type="text"
-                  placeholder="Ticker..."
-                  className="bg-slate-800 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200 w-24 outline-none focus:border-blue-500 transition-all focus:w-32"
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      const val = (e.currentTarget as HTMLInputElement).value;
-                      if (val) handleRunAgentScan('TICKER', val.toUpperCase());
-                      (e.currentTarget as HTMLInputElement).value = "";
-                    }
-                  }}
-                />
               </div>
 
 
