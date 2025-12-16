@@ -8,7 +8,7 @@ interface FeatureDetailViewProps {
     content: string | null;
     isLoading: boolean;
     onBack: () => void;
-    onRerun: () => void;
+    onRerun: (symbols?: string[]) => void;
 }
 
 // Feature-specific configurations
@@ -95,6 +95,9 @@ export const FeatureDetailView: React.FC<FeatureDetailViewProps> = ({
         sections: ['Analysis']
     };
 
+    const [targetInput, setTargetInput] = React.useState(symbols.join(', '));
+    const isCustomMode = targetInput.trim() !== symbols.join(', ');
+
     return (
         <div className="h-full flex flex-col bg-slate-900/50">
             {/* Header */}
@@ -114,23 +117,26 @@ export const FeatureDetailView: React.FC<FeatureDetailViewProps> = ({
                             <p className="text-gray-400 text-sm">{config.description}</p>
                         </div>
                     </div>
-                    <GlassButton variant="primary" size="sm" onClick={onRerun} disabled={isLoading}>
-                        <div className="flex items-center gap-2">
-                            <Icon icon="bot" className="w-4 h-4" />
-                            {isLoading ? 'Analyzing...' : 'Rerun Analysis'}
-                        </div>
-                    </GlassButton>
                 </div>
 
-                {/* Symbols being analyzed */}
-                <div className="flex items-center gap-2 mt-4">
-                    <span className="text-xs text-gray-500 uppercase">Analyzing:</span>
-                    <div className="flex gap-2">
-                        {symbols.map(sym => (
-                            <span key={sym} className="px-3 py-1 bg-slate-800/50 rounded-full text-sm font-mono text-cyan-400 border border-cyan-500/30">
-                                {sym}
-                            </span>
-                        ))}
+                {/* Symbols Input & Actions */}
+                <div className="flex items-end gap-3 mt-4">
+                    <div className="flex-1">
+                        <label className="text-xs text-gray-500 uppercase font-bold tracking-wider mb-1 block">Analysis Target(s)</label>
+                        <div className="flex gap-2">
+                            <input
+                                className="flex-1 bg-slate-900/80 border border-slate-700 rounded px-3 py-2 text-sm text-white font-mono placeholder-gray-600 focus:border-cyan-500 outline-none transition-all"
+                                value={targetInput}
+                                onChange={(e) => setTargetInput(e.target.value)}
+                                placeholder="Enter tickers (e.g. NVDA, TSLA)"
+                            />
+                            <GlassButton variant={isCustomMode ? "primary" : "glass"} size="sm" onClick={() => onRerun(targetInput.split(',').map(s => s.trim()).filter(Boolean))} disabled={isLoading}>
+                                <div className="flex items-center gap-2">
+                                    <Icon icon="bot" className="w-4 h-4" />
+                                    {isLoading ? 'Analyzing...' : isCustomMode ? 'Run New Scan' : 'Rerun Analysis'}
+                                </div>
+                            </GlassButton>
+                        </div>
                     </div>
                 </div>
             </div>

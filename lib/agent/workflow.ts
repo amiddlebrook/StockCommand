@@ -37,10 +37,14 @@ async function fetchMarketData(
     } else if (scope === 'TICKER') {
         if (target) targetSymbols = [target];
     } else if (scope === 'TOOL') {
-        if (target && TOOL_PROXIES[target]) {
-            targetSymbols = TOOL_PROXIES[target];
-        } else if (target) {
-            targetSymbols = [target];
+        if (target) {
+            // Check for proxies first, but if target looks like a list or specific symbol, use that
+            if (TOOL_PROXIES[target] && !target.includes(',')) {
+                targetSymbols = TOOL_PROXIES[target];
+            } else {
+                // It's a user-provided ticker or list of tickers
+                targetSymbols = target.split(',').map(s => s.trim());
+            }
         }
     }
 

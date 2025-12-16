@@ -58,12 +58,16 @@ export class LLMService {
             relevantTickers = UNIVERSE.filter(t => t.symbol === target);
         } else if (scope === 'TOOL') {
             // Check if it's a Macro Tool with Proxies
-            if (target && TOOL_PROXIES[target]) {
+            if (target && TOOL_PROXIES[target] && !target.includes(',')) {
                 const proxies = TOOL_PROXIES[target];
                 relevantTickers = UNIVERSE.filter(t => proxies.includes(t.symbol));
-            } else {
-                // Standard Tool (e.g. "Company Profile" on "NVDA")
-                relevantTickers = UNIVERSE.filter(t => t.symbol === target);
+            } else if (target) {
+                // User provided list (may contain symbols NOT in UNIVERSE)
+                const symbols = target.split(',').map(s => s.trim().toUpperCase());
+                relevantTickers = symbols.map(sym => {
+                    const found = UNIVERSE.find(t => t.symbol === sym);
+                    return found || { symbol: sym, name: sym, sleeve: 'Rotatable Tech', role: 'Custom', allocation: 0, description: 'Custom' };
+                });
             }
         }
 

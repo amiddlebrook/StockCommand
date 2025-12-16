@@ -898,9 +898,15 @@ const AppContent: React.FC = () => {
               content={activeFeature.content}
               isLoading={scanningTarget !== null}
               onBack={() => setActiveTab('command-center')}
-              onRerun={() => {
-                const symbol = activeFeature.symbols[0];
-                executeAgentScan('TOOL', symbol, activeFeature.name).then(content => {
+              onRerun={(newSymbols?: string[]) => {
+                const symbolsToUse = newSymbols && newSymbols.length > 0 ? newSymbols : activeFeature.symbols;
+                const target = symbolsToUse.join(',');
+
+                if (newSymbols && newSymbols.length > 0) {
+                  setActiveFeature(prev => prev ? { ...prev, symbols: newSymbols } : null);
+                }
+
+                executeAgentScan('TOOL', target, activeFeature.name).then(content => {
                   setActiveFeature(prev => prev ? { ...prev, content: content || 'Analysis complete.' } : null);
                 });
               }}
