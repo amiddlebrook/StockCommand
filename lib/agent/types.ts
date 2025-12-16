@@ -22,6 +22,7 @@ export interface MarketClock {
   code: string;
   reason?: string;
   lastUpdated?: number;
+  category?: 'FINANCIAL' | 'MARKETS' | 'SENTIMENT' | 'NEWS' | 'SECTOR' | 'MACRO';
 }
 
 export interface Ticker {

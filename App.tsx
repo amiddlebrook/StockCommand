@@ -278,7 +278,12 @@ const AppContent: React.FC = () => {
             responseText = "Please specify a target to analyze.";
           }
         } else {
-          const context = { latestReport: agentOutput, activeTickers: selectedSymbols };
+          const context = {
+            latestReport: agentOutput,
+            activeTickers: selectedSymbols,
+            currentView: activeTab,
+            activeTarget: scanningTarget
+          };
           const history = messages.filter(m => !m.isLoading).map(m => ({ role: m.role as 'user' | 'model', parts: [{ text: m.content }] }));
           const response = await sendMessage(message, history, context);
           responseText = response.response ?? '';

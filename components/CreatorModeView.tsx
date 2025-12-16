@@ -42,7 +42,35 @@ export const CreatorModeView: React.FC<CreatorModeViewProps> = ({ clocks = [] })
 
     useEffect(() => {
         const loaded = StorageService.loadStrategies();
-        setSavedStrategies(loaded);
+        if (loaded && loaded.length > 0) {
+            setSavedStrategies(loaded);
+        } else {
+            // DEPLOY DEFAULT ARCHETYPES IF NONE EXIST
+            const defaults: UserStrategy[] = [
+                {
+                    id: 'ARCH_VOL', name: 'VOLATILITY HUNTER', active: true, createdAt: Date.now(),
+                    triggers: [{ id: 't1', metric: 'VIX', operator: '>', value: 20 }],
+                    actions: [{ id: 'a1', type: 'SCAN', target: 'Options Flows' }]
+                },
+                {
+                    id: 'ARCH_TREND', name: 'TREND PILOT', active: true, createdAt: Date.now(),
+                    triggers: [{ id: 't2', metric: 'MA_50', operator: 'CROSSES_ABOVE', value: 200 }],
+                    actions: [{ id: 'a2', type: 'REBALANCE', target: 'Momentum Sleeve' }]
+                },
+                {
+                    id: 'ARCH_SENT', name: 'SENTIMENT SCOUT', active: true, createdAt: Date.now(),
+                    triggers: [{ id: 't3', metric: 'RSI', operator: '<', value: 30 }],
+                    actions: [{ id: 'a3', type: 'ALERT', target: 'Oversold Tech' }]
+                },
+                {
+                    id: 'ARCH_YIELD', name: 'YIELD SENTINEL', active: true, createdAt: Date.now(),
+                    triggers: [{ id: 't4', metric: 'DEFCON', operator: '>', value: 3 }],
+                    actions: [{ id: 'a4', type: 'SCAN', target: 'Credit Spreads' }]
+                }
+            ];
+            setSavedStrategies(defaults);
+            StorageService.saveStrategies(defaults);
+        }
     }, []);
 
     const addBlock = (type: 'TRIGGER' | 'ACTION') => {
