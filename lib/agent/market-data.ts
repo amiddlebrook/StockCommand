@@ -83,8 +83,8 @@ export class MarketDataService {
         if (symbol === 'ETH') ySymbol = 'ETH-USD';
         if (symbol === 'VIX') ySymbol = '^VIX';
 
-        // https://query1.finance.yahoo.com/v8/finance/chart/AAPL?interval=1d&range=1d
-        const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ySymbol}?interval=1d&range=1d`;
+        // https://query1.finance.yahoo.com/v8/finance/chart/AAPL?interval=1d&range=6mo
+        const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ySymbol}?interval=1d&range=6mo`;
 
         const response = await fetch(url, {
             headers: {
@@ -104,17 +104,106 @@ export class MarketDataService {
         const meta = result.meta;
         const price = meta.regularMarketPrice;
         const prevClose = meta.previousClose;
-        const volume = result.indicators?.quote?.[0]?.volume?.[0] || 0;
+        const volume = result.indicators?.quote?.[0]?.volume?.slice(-1)[0] || 0;
 
         let changePercent = 0;
         if (price && prevClose) {
             changePercent = ((price - prevClose) / prevClose) * 100;
         }
 
+        // --- TECHNICAL ANALYSIS ---
+        const closes = result.indicators?.quote?.[0]?.close || [];
+        // Filter out nulls
+        const validCloses: number[] = closes.filter((c: any) => c !== null);
+
+        let rsi = undefined;
+        let macd = undefined;
+
+        if (validCloses.length > 50) {
+            rsi = calculateRSI(validCloses, 14);
+            macd = calculateMACD(validCloses, 12, 26, 9);
+        }
+
         return {
-            price: price || 0,
+            price: price || validCloses[validCloses.length - 1] || 0,
             changePercent: changePercent,
-            volume: volume
+            volume: volume,
+            rsi,
+            macd,
+            dailyClose: validCloses.slice(-50), // Send last 50 for LLM pattern matching if needed
+            technicalSignal: rsi && rsi > 70 ? 'Overbought' : rsi && rsi < 30 ? 'Oversold' : 'Neutral'
         };
     }
+}
+
+// --- TA HELPERS ---
+
+function calculateRSI(closes: number[], period: number = 14): number {
+    if (closes.length < period + 1) return 50;
+
+    let gains = 0;
+    let losses = 0;
+
+    // First period
+    for (let i = 1; i <= period; i++) {
+        const change = closes[i] - closes[i - 1];
+        if (change > 0) gains += change;
+        else losses -= change;
+    }
+
+    let avgGain = gains / period;
+    let avgLoss = losses / period;
+
+    // Smoothing
+    for (let i = period + 1; i < closes.length; i++) {
+        const change = closes[i] - closes[i - 1];
+        const gain = change > 0 ? change : 0;
+        const loss = change < 0 ? -change : 0;
+
+        avgGain = (avgGain * (period - 1) + gain) / period;
+        avgLoss = (avgLoss * (period - 1) + loss) / period;
+    }
+
+    if (avgLoss === 0) return 100;
+    const rs = avgGain / avgLoss;
+    return 100 - (100 / (1 + rs));
+}
+
+function calculateMACD(closes: number[], fast: number = 12, slow: number = 26, signal: number = 9): { macd: number, signal: number, histogram: number } {
+    const emaFast = calculateEMA(closes, fast);
+    const emaSlow = calculateEMA(closes, slow);
+
+    const macdLine: number[] = [];
+    // Alignment is tricky, simplistic approach:
+    // We only care about the LATEST values really.
+    // Calculate MACD line for the valid overlap
+    const maxLength = Math.min(emaFast.length, emaSlow.length);
+    // Align end
+    const fastOffset = emaFast.length - maxLength;
+    const slowOffset = emaSlow.length - maxLength;
+
+    for (let i = 0; i < maxLength; i++) {
+        macdLine.push(emaFast[i + fastOffset] - emaSlow[i + slowOffset]);
+    }
+
+    const signalLine = calculateEMA(macdLine, signal);
+
+    // Get latest
+    const currentMACD = macdLine[macdLine.length - 1];
+    const currentSignal = signalLine[signalLine.length - 1];
+
+    return {
+        macd: currentMACD,
+        signal: currentSignal,
+        histogram: currentMACD - currentSignal
+    };
+}
+
+function calculateEMA(data: number[], period: number): number[] {
+    const k = 2 / (period + 1);
+    const emaArray = [data[0]];
+    for (let i = 1; i < data.length; i++) {
+        emaArray.push(data[i] * k + emaArray[i - 1] * (1 - k));
+    }
+    return emaArray;
 }

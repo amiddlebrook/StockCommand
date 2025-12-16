@@ -36,7 +36,10 @@ export interface MarketData {
   price: number;
   changePercent: number;
   volume: number;
-  // Add more fields as needed for analysis
+  rsi?: number;
+  macd?: { macd: number; signal: number; histogram: number };
+  dailyClose?: number[]; // For chart pattern analysis
+  technicalSignal?: string; // "Buy", "Sell", "Neutral" (simple heuristic)
 }
 
 export interface AgentAction {

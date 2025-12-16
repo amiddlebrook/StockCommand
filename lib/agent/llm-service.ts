@@ -79,7 +79,8 @@ export class LLMService {
         const dataSummary = relevantTickers.map(t => {
             const data = marketData[t.symbol];
             if (!data) return `${t.symbol}: No Data`;
-            return `${t.symbol} (${t.sleeve}): Price $${data.price.toFixed(2)}, Change ${data.changePercent.toFixed(2)}%, Vol ${data.volume}`;
+            const ta = data.rsi ? ` | RSI: ${data.rsi.toFixed(1)} | MACD: ${data.macd?.histogram.toFixed(3)} | Signal: ${data.technicalSignal}` : '';
+            return `${t.symbol} (${t.sleeve}): Price $${data.price.toFixed(2)}, Change ${data.changePercent.toFixed(2)}%, Vol ${data.volume}${ta}`;
         }).join('\n');
 
         const systemPrompt = `You are the "StockCommand" AI Agent, an expert portfolio manager running a specific Multi-Clock Rotation Framework.`;

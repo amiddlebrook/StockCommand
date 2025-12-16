@@ -177,7 +177,7 @@ export const FeatureDetailView: React.FC<FeatureDetailViewProps> = ({
                         </div>
                         <p className="text-gray-400 text-lg mb-2">No analysis data yet</p>
                         <p className="text-gray-600 text-sm mb-4">Click "Rerun Analysis" to generate insights</p>
-                        <GlassButton variant="primary" onClick={onRerun}>
+                        <GlassButton variant="primary" onClick={() => onRerun(targetInput.split(',').map(s => s.trim()).filter(Boolean))}>
                             Start Analysis
                         </GlassButton>
                     </div>
