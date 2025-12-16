@@ -1,6 +1,6 @@
 import { AgentEngine } from './engine';
 import { ActionExecutor } from './actions';
-import { MarketData, PortfolioState } from './types';
+import { MarketData, PortfolioState, UserStrategy, AgentAction, StrategyTrigger, StrategyAction } from './types';
 import { UNIVERSE } from './universe';
 import { MarketDataService } from './market-data';
 
@@ -25,12 +25,7 @@ async function fetchMarketData(
     let targetSymbols: string[] = [];
 
     if (scope === 'FULL') {
-        // For FULL scan, we might still need everything, or we can limit to top holdings + proxies
-        // To avoid timeouts, let's prioritize proxies and core tech for now
-        // Or specific list of "Active" tickers if we had that context.
-        // For safely, let's limit to 30 random/important cached ones or just mapped proxies?
-        // Actually, fetching 100+ symbols sequentially is definitely asking for a timeout.
-        // Let's filter to Core Tech + Macro Proxies
+        // Limited FULL scan
         targetSymbols = UNIVERSE.filter(t => t.sleeve === 'Core Tech' || t.sleeve === 'Macro' || t.sleeve.includes("Specialized")).map(t => t.symbol);
     } else if (scope === 'SLEEVE') {
         targetSymbols = UNIVERSE.filter(t => t.sleeve === target).map(t => t.symbol);
@@ -38,17 +33,14 @@ async function fetchMarketData(
         if (target) targetSymbols = [target];
     } else if (scope === 'TOOL') {
         if (target) {
-            // Check for proxies first, but if target looks like a list or specific symbol, use that
             if (TOOL_PROXIES[target] && !target.includes(',')) {
                 targetSymbols = TOOL_PROXIES[target];
             } else {
-                // It's a user-provided ticker or list of tickers
                 targetSymbols = target.split(',').map(s => s.trim());
             }
         }
     }
 
-    // Deduplicate
     targetSymbols = Array.from(new Set(targetSymbols));
 
     console.log(`Identified ${targetSymbols.length} symbols to fetch.`);
@@ -67,13 +59,69 @@ async function fetchPortfolioState(): Promise<PortfolioState> {
     };
 }
 
+function evaluateStrategies(strategies: UserStrategy[], marketData: Record<string, MarketData>): AgentAction[] {
+    const actions: AgentAction[] = [];
+
+    // Simplistic evaluation engine
+    strategies.forEach(strategy => {
+        if (!strategy.active) return;
+
+        let triggersMet = false;
+
+        // Check triggers (OR logic for now, or AND? Usually AND for complex, OR for simple. Let's assume AND for now)
+        const metCount = strategy.triggers.filter(trigger => {
+            const data = marketData[trigger.metric] || marketData['SPY']; // Default to SPY if metric not found directly (e.g. VIX logic)
+            // Note: Real VIX logic needs explicit VIX symbol fetch.
+
+            // Mock VIX check if metric is VIX
+            let currentValue = 0;
+            if (trigger.metric === 'VIX') currentValue = 20; // Mock
+            else if (trigger.metric === 'RSI') currentValue = 50; // Mock
+            else if (trigger.metric === 'PRICE' && data) currentValue = data.price;
+            else if (trigger.metric === 'DEFCON') currentValue = 3; // Mock
+
+            switch (trigger.operator) {
+                case '>': return currentValue > trigger.value;
+                case '<': return currentValue < trigger.value;
+                case '=': return currentValue === trigger.value;
+                default: return false;
+            }
+        }).length;
+
+        triggersMet = metCount === strategy.triggers.length;
+
+        if (triggersMet) {
+            console.log(`Strategy [${strategy.name}] FIRED!`);
+            strategy.actions.forEach(action => {
+                let agentActionType: AgentAction['type'] = 'ALERT';
+                if (action.type === 'REBALANCE') agentActionType = 'TRIM';
+                else if (action.type === 'BUY') agentActionType = 'BUY';
+                else if (action.type === 'SELL') agentActionType = 'SELL';
+
+                const isSleeve = action.target.includes('Tech') || action.target.includes('Macro') || action.target.length > 5;
+
+                actions.push({
+                    type: agentActionType,
+                    ticker: !isSleeve ? action.target : undefined,
+                    sleeve: isSleeve ? action.target as any : undefined,
+                    confidence: 1.0,
+                    reason: `Strategy [${strategy.name}] triggered: ${strategy.triggers.map(t => `${t.metric} ${t.operator} ${t.value}`).join(', ')}`
+                });
+            });
+        }
+    });
+
+    return actions;
+}
+
 export async function runAgentWorkflow(
     env: any,
     scope: 'FULL' | 'SLEEVE' | 'TICKER' | 'TOOL' = 'FULL',
     target?: string,
-    tool?: string
+    tool?: string,
+    strategies: UserStrategy[] = []
 ) {
-    console.log(`Starting StockCommand Agent Workflow (Scope: ${scope}, Tool: ${tool || 'None'})...`);
+    console.log(`Starting StockCommand Agent Workflow (Scope: ${scope}, Tool: ${tool || 'None'}, Strategies: ${strategies.length})...`);
 
     const AV_KEY = env.ALPHA_VANTAGE_API_KEY || '';
     const DEEPSEEK_KEY = env.OPENROUTER_DEEPSEEK_CHAT_API_KEY || '';
@@ -88,15 +136,7 @@ export async function runAgentWorkflow(
         return { analysis: "Error: Missing DeepSeek API Key", actions: [] };
     }
 
-    console.log(`DEBUG: DeepSeek Key Length: ${DEEPSEEK_KEY.length}`);
-    if (DEEPSEEK_KEY.length > 5) {
-        console.log(`DEBUG: DeepSeek Key Start: ${DEEPSEEK_KEY.substring(0, 4)}... End: ...${DEEPSEEK_KEY.slice(-4)}`);
-    } else {
-        console.log(`DEBUG: DeepSeek Key is too short! (${DEEPSEEK_KEY})`);
-    }
-
     // 1. Refresh Data
-    // 1. Refresh Data (Parallelized)
     const [marketData, portfolio] = await Promise.all([
         fetchMarketData(AV_KEY, scope, target),
         fetchPortfolioState()
@@ -104,21 +144,34 @@ export async function runAgentWorkflow(
 
     // 2. Research & Analyze (Engine with LLM)
     const engine = new AgentEngine(DEEPSEEK_KEY);
-    const { analysis, actions, clocks } = await engine.evaluate(scope, marketData, portfolio, target, tool);
+    const { analysis, actions: engineActions, clocks } = await engine.evaluate(scope, marketData, portfolio, target, tool);
 
-    // 3. Act
+    // 3. Evaluate User Strategies (Strategic Overlay)
+    const strategyActions = evaluateStrategies(strategies, marketData);
+    const allActions = [...engineActions, ...strategyActions];
+
+    // 4. Act
     console.log("--- ANALYSIS REPORT ---");
     console.log(analysis);
+    if (strategyActions.length > 0) {
+        console.log("--- STRATEGY OVERRIDES ---");
+        strategyActions.forEach(a => console.log(`[${a.type}] ${a.ticker || a.sleeve}: ${a.reason}`));
+    }
     console.log("-----------------------");
 
-    if (actions.length > 0) {
-        console.log(`Found ${actions.length} recommended actions.`);
+    if (allActions.length > 0) {
+        console.log(`Found ${allActions.length} actions (${engineActions.length} AI, ${strategyActions.length} Strategy).`);
         const executor = new ActionExecutor();
-        await executor.execute(actions);
+        await executor.execute(allActions);
     } else {
-        console.log('No actions recommended by the AI.');
+        console.log('No actions recommended.');
     }
 
     console.log('Workflow complete.');
-    return { analysis, actions, clocks };
+    // Append strategy report to analysis (hacky but visible)
+    const strategyReport = strategyActions.length > 0
+        ? `\n\n### STRATEGY FORGE ACTIVATION\n${strategyActions.map(a => `- **${a.ticker || a.sleeve}**: ${a.reason}`).join('\n')}`
+        : '';
+
+    return { analysis: analysis + strategyReport, actions: allActions, clocks };
 }

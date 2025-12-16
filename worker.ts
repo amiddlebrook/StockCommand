@@ -186,7 +186,7 @@ export default {
                 const body = await request.json() as any;
 
                 // Run the agent
-                const result = await runAgentWorkflow(env, body.scope, body.target, body.tool);
+                const result = await runAgentWorkflow(env, body.scope, body.target, body.tool, body.strategies);
 
                 // Persist the result to KV
                 if (env.STOCK_CACHE_KV) {

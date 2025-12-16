@@ -509,6 +509,8 @@ const AppContent: React.FC = () => {
       console.warn("Live search failed, falling back to cached agent logic", e);
     }
 
+    const strategies = StorageService.loadStrategies();
+
     const res = await (window.fetch as any)('/api/agent/scan', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -516,7 +518,8 @@ const AppContent: React.FC = () => {
         scope,
         target: scope === 'TOOL' ? target : target,
         tool: toolName || (scope === 'TOOL' ? target : undefined),
-        context: searchContext
+        context: searchContext,
+        strategies: strategies.filter(s => s.active) // Pass only active strategies
       })
     });
     const data = await res.json();
