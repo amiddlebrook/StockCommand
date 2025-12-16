@@ -834,7 +834,7 @@ const AppContent: React.FC = () => {
       </div>
 
       {/* MIDDLE COLUMN: Command Center (Flexible) */}
-      <div className="flex-1 flex flex-col min-w-0 bg-slate-950 relative border-r border-slate-800 transition-all duration-300">
+      <div className="flex-1 flex flex-col min-w-0 bg-slate-950 relative border-r border-slate-800 transition-all duration-300 pb-16 md:pb-0">
 
         {/* TOP BAR: Navigation & Status */}
         <div className="h-[60px] px-4 flex items-center justify-between border-b border-slate-800 bg-slate-950/50 backdrop-blur-sm z-50 relative">
@@ -846,7 +846,7 @@ const AppContent: React.FC = () => {
               </button>
             )}
 
-            <div className="flex items-center bg-slate-900/50 p-1 rounded-lg border border-slate-800/50">
+            <div className="hidden md:flex items-center bg-slate-900/50 p-1 rounded-lg border border-slate-800/50">
               <button
                 onClick={() => setActiveTab('command-center')}
                 className={`py-2 px-3 rounded-t-lg text-sm font-bold transition-all ${activeTab === 'command-center'
@@ -1306,6 +1306,7 @@ const AppContent: React.FC = () => {
       />
 
 
+      <MobileNav activeTab={activeTab} setActiveTab={setActiveTab} />
     </div >
   );
 };
