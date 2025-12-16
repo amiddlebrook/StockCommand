@@ -1,11 +1,17 @@
 /* Sci-Fi HUD Theme Variables */
 :root {
-  --hud-c-primary: #06b6d4;  /* Cyan-500 */
-  --hud-c-secondary: #3b82f6; /* Blue-500 */
-  --hud-c-accent: #f97316;    /* Orange-500 */
-  --hud-c-danger: #ef4444;    /* Red-500 */
-  --hud-c-bg: #020617;        /* Slate-950 */
-  
+  --hud-c-primary: #06b6d4;
+  /* Cyan-500 */
+  --hud-c-secondary: #3b82f6;
+  /* Blue-500 */
+  --hud-c-accent: #f97316;
+  /* Orange-500 */
+  --hud-c-danger: #ef4444;
+  /* Red-500 */
+  --hud-c-bg: #020617;
+  /* Slate-950 */
+  --hud-border: rgba(6, 182, 212, 0.3);
+
   --hud-font: 'IBM Plex Mono', monospace;
 }
 
@@ -14,51 +20,123 @@
   text-shadow: 0 0 10px rgba(6, 182, 212, 0.7);
 }
 
-.hud-panel {
-  background: rgba(2, 6, 23, 0.7); /* Deep Slate with opacity */
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(6, 182, 212, 0.2);
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
+/* The Root Grid Container - REPLACES Body/App Flex */
+.hud-grid {
+  display: grid;
+  grid-template-columns: 64px 1fr 320px;
+  /* Nav | Main | Side */
+  grid-template-rows: 48px 1fr 32px;
+  /* Header | Content | Footer */
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  background-color: var(--hud-c-bg);
+  background-image:
+    linear-gradient(rgba(6, 182, 212, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(6, 182, 212, 0.05) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* Hard Grid Cells */
+.hud-cell-nav {
+  grid-column: 1;
+  grid-row: 1 / -1;
+  border-right: 1px solid var(--hud-border);
+  background: rgba(2, 6, 23, 0.8);
+  backdrop-filter: blur(4px);
+  z-index: 50;
+}
+
+.hud-cell-header {
+  grid-column: 2 / -1;
+  grid-row: 1;
+  border-bottom: 1px solid var(--hud-border);
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  background: rgba(2, 6, 23, 0.6);
+  backdrop-filter: blur(4px);
+}
+
+.hud-cell-main {
+  grid-column: 2;
+  grid-row: 2;
   position: relative;
+  /* Context for absolute children */
   overflow: hidden;
 }
 
-/* Corner Brackets / Tactical Borders */
-.hud-corners::before,
-.hud-corners::after {
-  content: '';
-  position: absolute;
-  width: 8px;
-  height: 8px;
-  border-color: var(--hud-c-primary);
-  border-style: solid;
-  transition: all 0.3s ease;
+.hud-cell-right {
+  grid-column: 3;
+  grid-row: 2 / -1;
+  border-left: 1px solid var(--hud-border);
+  background: rgba(2, 6, 23, 0.4);
+  backdrop-filter: blur(2px);
 }
 
-.hud-corners::before {
-  top: 0; left: 0;
-  border-width: 2px 0 0 2px;
+.hud-cell-footer {
+  grid-column: 2;
+  grid-row: 3;
+  border-top: 1px solid var(--hud-border);
+  background: rgba(2, 6, 23, 0.9);
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  font-size: 10px;
+  color: var(--hud-c-primary);
 }
 
-.hud-corners::after {
-  bottom: 0; right: 0;
-  border-width: 0 2px 2px 0;
+/* "Panel" is now just a flat zone, no shadows/radius */
+.hud-panel {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  height: 100%;
+  width: 100%;
+  position: relative;
 }
 
-.hud-corners:hover::before { width: 100%; height: 100%; opacity: 0.1; background: var(--hud-c-primary); }
+/* Hard Lines & Ticks */
+.hud-line-v {
+  width: 1px;
+  height: 100%;
+  background: var(--hud-border);
+}
+
+.hud-line-h {
+  height: 1px;
+  width: 100%;
+  background: var(--hud-border);
+}
 
 /* Scanline Animation */
 @keyframes scanline-move {
-  0% { transform: translateY(-100%); opacity: 0; }
-  20% { opacity: 1; }
-  80% { opacity: 1; }
-  100% { transform: translateY(100vh); opacity: 0; }
+  0% {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+
+  20% {
+    opacity: 1;
+  }
+
+  80% {
+    opacity: 1;
+  }
+
+  100% {
+    transform: translateY(100vh);
+    opacity: 0;
+  }
 }
 
 .hud-scanline::after {
   content: '';
   position: absolute;
-  top: 0; left: 0; right: 0; height: 100px;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 100px;
   background: linear-gradient(to bottom, transparent, rgba(6, 182, 212, 0.1), transparent);
   animation: scanline-move 6s linear infinite;
   pointer-events: none;
@@ -67,31 +145,34 @@
 
 /* Spinner Animations */
 @keyframes spin-slow {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
 }
 
-@keyframes spin-reverse {
-  from { transform: rotate(360deg); }
-  to { transform: rotate(0deg); }
+.animate-spin-slow {
+  animation: spin-slow 20s linear infinite;
 }
-
-.animate-spin-slow { animation: spin-slow 20s linear infinite; }
-.animate-spin-reverse { animation: spin-reverse 15s linear infinite; }
-.animate-spin-fast { animation: spin-slow 3s linear infinite; }
 
 /* Pulse Effect */
 @keyframes hud-pulse {
-  0%, 100% { opacity: 1; box-shadow: 0 0 5px var(--hud-c-primary); }
-  50% { opacity: 0.7; box-shadow: 0 0 15px var(--hud-c-primary); }
+
+  0%,
+  100% {
+    opacity: 1;
+    text-shadow: 0 0 5px var(--hud-c-primary);
+  }
+
+  50% {
+    opacity: 0.7;
+    text-shadow: 0 0 15px var(--hud-c-primary);
+  }
 }
 
 .animate-hud-pulse {
   animation: hud-pulse 2s ease-in-out infinite;
-}
-
-/* Glitch Text (Optional Flavor) */
-.hud-glitch:hover {
-  animation: pulse-glitch 0.3s linear infinite;
-  color: var(--hud-c-accent);
 }

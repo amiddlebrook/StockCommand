@@ -14,7 +14,6 @@ import { EntityDetailView } from './components/EntityDetailView';
 import { PortfolioReportModal } from './components/PortfolioReportModal';
 import { ProfileModal } from './components/ProfileModal';
 import { CommandPalette } from './components/CommandPalette';
-import { LoadingSpinner } from './components/LoadingSpinner';
 import { Icon } from './components/Icon';
 
 import type { ChatMessage as ChatMessageType, Source } from './types';
@@ -348,98 +347,95 @@ const AppContent: React.FC = () => {
   const sleevesWithStats = [];
 
   return (
-    <div className="flex h-screen bg-slate-950 text-gray-100 overflow-hidden font-sans selection:bg-cyan-500/30">
-      <HUDNav
-        activeTab={activeTab}
-        onNavigate={(tab) => setActiveTab(tab as any)}
-        activeJobsCount={activeJobsCount}
-      />
+    <div className="hud-grid">
+      {/* 1. LEFT RAIL (NAV) */}
+      <div className="hud-cell-nav">
+        <HUDNav
+          activeTab={activeTab}
+          onNavigate={(tab) => setActiveTab(tab as any)}
+          activeJobsCount={activeJobsCount}
+        />
+      </div>
 
-      <main className="flex-1 flex overflow-hidden relative">
-        {/* BACKGROUND EFFECT */}
-        <div className="absolute inset-0 z-0 pointer-events-none opacity-20 bg-[url('https://grainy-gradients.vercel.app/noise.svg')]"></div>
-
-        {/* LEFT HUD PANEL (Fixed) */}
-        <div className="w-80 flex flex-col gap-4 p-4 z-10 hidden xl:flex pointer-events-none border-r border-slate-800/50 bg-slate-950/20 backdrop-blur-sm">
-          <div className="pointer-events-auto h-auto"><StatusWidget /></div>
-          <div className="pointer-events-auto flex-1 h-full"><LogicPipeline steps={pipelineSteps} /></div>
+      {/* 2. HEADER (SYSTEM STATUS) */}
+      <div className="hud-cell-header justify-between">
+        <div className="flex items-center gap-4">
+          <span className="text-cyan-500 font-bold tracking-[0.2em] text-sm">OS // V2.1</span>
+          <div className="h-4 w-[1px] bg-cyan-900"></div>
+          <span className="text-slate-500 text-xs text-shadow-glow">SYS_NOMINAL</span>
         </div>
+        <div className="flex items-center gap-4">
+          {scanningTarget && <span className="text-orange-500 text-xs animate-pulse font-mono">SCANNING_TARGET: {scanningTarget}</span>}
+          <button onClick={() => setIsProfileOpen(true)} className="p-2 hover:bg-cyan-900/30 rounded text-cyan-500 transition-colors">
+            <Icon icon="user" className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
 
-        {/* CENTER VIEWPORT (Dynamic) */}
-        <div className="flex-1 flex flex-col relative z-20 overflow-hidden">
-
-          {/* Top Bar / Header */}
-          <div className="h-14 flex items-center justify-between px-6 border-b border-slate-800 bg-slate-950/80 backdrop-blur">
-            <div className="flex items-center gap-4">
-              <h1 className="text-lg font-bold text-cyan-500 tracking-widest font-mono">
-                STOCK_COMMAND <span className="text-slate-600">v2.1</span>
-              </h1>
-              {scanningTarget && <span className="text-xs text-orange-400 animate-pulse">SCANNING: {scanningTarget}</span>}
-            </div>
-            <div className="flex items-center gap-3">
-              <button onClick={() => setIsCommandPaletteOpen(true)} className="p-2 hover:bg-slate-800 rounded text-slate-400 hover:text-white"><Icon icon="search" className="w-4 h-4" /></button>
-              <button onClick={() => setIsProfileOpen(true)} className="p-2 hover:bg-slate-800 rounded text-slate-400 hover:text-white"><Icon icon="user" className="w-4 h-4" /></button>
+      {/* 3. MAIN VIEWPORT */}
+      <div className="hud-cell-main">
+        {activeTab === 'command-center' ? (
+          <ConsoleWidget
+            messages={messages}
+            onSendMessage={handleSendMessage}
+            isLoading={isChatLoading}
+            isRecording={isRecording}
+            onStartRecording={handleStartRecording}
+            onStopRecording={handleStopRecording}
+          />
+        ) : activeTab === 'portfolio' ? (
+          <div className="h-full overflow-y-auto"><PortfolioView sleevesWithStats={sleevesWithStats} onClockClick={() => { }} freshnessThreshold={0} /></div>
+        ) : activeTab === 'market-clocks' ? (
+          <div className="h-full overflow-y-auto"><NetworkTopology nodes={marketClocks} /></div>
+        ) : activeTab === 'competitions' ? (
+          <div className="h-full overflow-y-auto"><CompetitionsView clocks={marketClocks} onSubmitPortfolio={() => { }} /></div>
+        ) : activeTab === 'creator' ? (
+          <div className="h-full overflow-y-auto"><CreatorModeView /></div>
+        ) : activeTab === 'features' ? (
+          <div className="h-full overflow-y-auto p-4">
+            <h2 className="text-xl font-bold mb-4 font-mono text-cyan-400">AVAILABLE_MODULES</h2>
+            <div className="grid grid-cols-2 gap-4">
+              {Object.entries(FEATURE_CONFIG).map(([name, config]) => (
+                <div key={name} className="bg-slate-900/40 border border-cyan-900/30 p-4 hover:border-cyan-500 hover:bg-cyan-900/10 cursor-pointer transition-all" onClick={() => { setActiveFeature({ name, symbols: ['SPY'], content: null }); setActiveTab('feature-detail'); }}>
+                  <h3 className="text-cyan-400 font-bold font-mono text-sm mb-1">{name}</h3>
+                  <p className="text-[10px] text-slate-500">{config.description}</p>
+                </div>
+              ))}
             </div>
           </div>
+        ) : activeTab === 'feature-detail' && activeFeature ? (
+          <FeatureDetailView featureName={activeFeature.name} symbols={activeFeature.symbols} content={activeFeature.content} isLoading={false} onBack={() => setActiveTab('features')} onRerun={() => { }} />
+        ) : activeTab === 'entity-detail' && selectedEntity ? (
+          <EntityDetailView entity={selectedEntity} freshnessThreshold={0} onBack={() => setActiveTab('command-center')} onRunAnalysis={() => { }} researchContent={null} />
+        ) : null}
+      </div>
 
-          {/* Content Area */}
-          <div className="flex-1 overflow-hidden relative p-4 flex flex-col">
-            {activeTab === 'command-center' ? (
-              <>
-                <div className="flex-none h-64 mb-4 flex items-center justify-center shrink-0">
-                  <CentralCommand activeMode={scanningTarget ? 'SCANNING' : 'READY'} status={scanningTarget ? 'warning' : 'optimal'} />
-                </div>
-                <div className="flex-1 min-h-0">
-                  <ConsoleWidget
-                    messages={messages}
-                    onSendMessage={handleSendMessage}
-                    isLoading={isChatLoading}
-                    isRecording={isRecording}
-                    onStartRecording={handleStartRecording}
-                    onStopRecording={handleStopRecording}
-                  />
-                </div>
-              </>
-            ) : activeTab === 'portfolio' ? (
-              <div className="h-full overflow-y-auto"><PortfolioView sleevesWithStats={sleevesWithStats} onClockClick={() => { }} freshnessThreshold={0} /></div>
-            ) : activeTab === 'market-clocks' ? (
-              <div className="h-full overflow-y-auto"><NetworkTopology nodes={marketClocks} /></div>
-            ) : activeTab === 'competitions' ? (
-              <div className="h-full overflow-y-auto"><CompetitionsView clocks={marketClocks} onSubmitPortfolio={() => { }} /></div>
-            ) : activeTab === 'creator' ? (
-              <div className="h-full overflow-y-auto"><CreatorModeView /></div>
-            ) : activeTab === 'features' ? (
-              <div className="h-full overflow-y-auto p-4">
-                <h2 className="text-xl font-bold mb-4">Features</h2>
-                <div className="grid grid-cols-2 gap-4">
-                  {Object.entries(FEATURE_CONFIG).map(([name, config]) => (
-                    <div key={name} className="hud-panel p-4 rounded hover:bg-slate-900 cursor-pointer" onClick={() => { setActiveFeature({ name, symbols: ['SPY'], content: null }); setActiveTab('feature-detail'); }}>
-                      <h3 className="text-cyan-400 font-bold">{name}</h3>
-                      <p className="text-xs text-slate-400">{config.description}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : activeTab === 'feature-detail' && activeFeature ? (
-              <FeatureDetailView featureName={activeFeature.name} symbols={activeFeature.symbols} content={activeFeature.content} isLoading={false} onBack={() => setActiveTab('features')} onRerun={() => { }} />
-            ) : activeTab === 'entity-detail' && selectedEntity ? (
-              <EntityDetailView entity={selectedEntity} freshnessThreshold={0} onBack={() => setActiveTab('command-center')} onRunAnalysis={() => { }} researchContent={null} />
-            ) : null}
+      {/* 4. RIGHT SIDEBAR (ANCILLARY) */}
+      <div className="hud-cell-right flex flex-col">
+        <div className="h-1/3 border-b border-cyan-900/30">
+          <StatusWidget />
+        </div>
+        <div className="flex-1 overflow-hidden relative">
+          <div className="absolute top-0 left-0 w-full z-10 p-2 bg-slate-950/80 border-b border-slate-800 text-[10px] font-mono text-cyan-600">
+            MARKET_TOPOLOGY // VISUALIZER
           </div>
+          <NetworkTopology nodes={marketClocks} />
         </div>
+      </div>
 
-        {/* RIGHT HUD PANEL (Fixed) */}
-        <div className="w-80 flex flex-col gap-4 p-4 z-10 hidden lg:flex pointer-events-none border-l border-slate-800/50 bg-slate-950/20 backdrop-blur-sm">
-          <div className="pointer-events-auto h-2/3"><NetworkTopology nodes={marketClocks} /></div>
-          <div className="pointer-events-auto flex-1"><MetricsAnalytics /></div>
-        </div>
+      {/* 5. FOOTER (TICKER) */}
+      <div className="hud-cell-footer justify-between">
+        <span className="flex items-center gap-2">
+          <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
+          LIVE FEED :: MARKET OPEN
+        </span>
+        <span className="opacity-50">LATE_PACKET_LOSS: 0.00%</span>
+      </div>
 
-        {/* Command Palette */}
-        <CommandPalette isOpen={isCommandPaletteOpen} onClose={() => setIsCommandPaletteOpen(false)} onNavigate={(tab) => { setActiveTab(tab as any); setIsCommandPaletteOpen(false); }} onSearch={(q) => { setActiveTab('command-center'); handleSendMessage(q); }} />
-        <PortfolioReportModal isOpen={isPortfolioModalOpen} symbols={symbols} activeSymbol={null} isGenerating={isPortfolioGenerating} onClose={() => setIsPortfolioModalOpen(false)} onSubmit={handleGeneratePortfolioReport} />
-        <ProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
-
-      </main>
+      {/* Overlays */}
+      <CommandPalette isOpen={isCommandPaletteOpen} onClose={() => setIsCommandPaletteOpen(false)} onNavigate={(tab) => { setActiveTab(tab as any); setIsCommandPaletteOpen(false); }} onSearch={(q) => { setActiveTab('command-center'); handleSendMessage(q); }} />
+      <PortfolioReportModal isOpen={isPortfolioModalOpen} symbols={symbols} activeSymbol={null} isGenerating={isPortfolioGenerating} onClose={() => setIsPortfolioModalOpen(false)} onSubmit={handleGeneratePortfolioReport} />
+      <ProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
     </div>
   );
 };
