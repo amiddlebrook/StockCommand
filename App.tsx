@@ -35,6 +35,8 @@ import { getClocksForEntity, getGlobalClocks } from './lib/clockData';
 import { EntityDetailView } from './components/EntityDetailView';
 
 import { StorageService } from './lib/storage';
+import { MarketClocksView } from './components/MarketClocksView';
+import { QuickActions } from './components/QuickActions';
 
 type MobileView = 'toolbox' | 'dashboard' | 'chat';
 
@@ -51,7 +53,7 @@ const AppContent: React.FC = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [widgets, setWidgets] = useState<AnalysisWidget[]>(() => StorageService.loadWidgets());
   const [mobileView, setMobileView] = useState<MobileView>('toolbox');
-  const [activeTab, setActiveTab] = useState<'command-center' | 'portfolio' | 'entity-detail' | 'competitions' | 'feature-detail' | 'features' | 'creator'>('command-center');
+  const [activeTab, setActiveTab] = useState<'command-center' | 'portfolio' | 'entity-detail' | 'competitions' | 'feature-detail' | 'features' | 'creator' | 'market-clocks'>('command-center');
   const [activeFeature, setActiveFeature] = useState<{ name: string; symbols: string[]; content: string | null } | null>(null);
 
   // Sidebar State
@@ -650,12 +652,25 @@ const AppContent: React.FC = () => {
     return finalAnalysis; // Return analysis for use in chat
   };
 
-  const handleRunAgentScan = async (scope: 'FULL' | 'SLEEVE' | 'TICKER' | 'TOOL', target?: string, toolName?: string) => {
-    if (scope === 'TOOL' && toolName) {
-      // Auto-open Feature View for tools
-      setActiveTab('feature-detail');
-      setActiveFeature({ name: toolName, symbols: target ? [target] : symbols.slice(0, 3), content: null });
+  const handleQuickAction = (action: string) => {
+    switch (action) {
+      case 'LIQUIDITY_CHECK':
+        handleRunAgentScan('TOOL', undefined, 'Liquidity Cycle');
+        break;
+      case 'DIVERGENCE_SCAN':
+        setInitialChatInput('Run Divergence Analysis on [TICKER]');
+        break;
+      case 'PORTFOLIO_REPORT':
+        handleGeneratePortfolioReport(symbols, 'Total Return');
+        break;
+      case 'MARKET_VITALS':
+        handleRunAgentScan('FULL');
+        break;
     }
+  };
+
+  const handleRunAgentScan = async (scope: 'FULL' | 'SLEEVE' | 'TICKER' | 'TOOL', target?: string, toolName?: string) => {
+    // Stay in chat for analysis results
 
     if (scope === 'TICKER' && target) {
       checkCurated(target);
@@ -879,6 +894,15 @@ const AppContent: React.FC = () => {
               >
                 ✨ Features
               </button>
+              <button
+                onClick={() => setActiveTab('market-clocks')}
+                className={`px-3 py-1 rounded text-xs font-medium transition-all ${activeTab === 'market-clocks'
+                  ? 'bg-slate-800 text-amber-400 shadow-sm'
+                  : 'text-gray-400 hover:text-gray-200 hover:bg-slate-800/50'
+                  }`}
+              >
+                ⏰ Clocks
+              </button>
             </div>
           </div>
 
@@ -1101,6 +1125,9 @@ const AppContent: React.FC = () => {
 
               {/* Chat Input Area - Moved to Bottom */}
               <div className="p-4 border-t border-slate-800 bg-slate-900/40 backdrop-blur z-20">
+                <div className="mb-2">
+                  <QuickActions onAction={handleQuickAction} />
+                </div>
                 <ChatInput
                   onSendMessage={handleSendMessage}
                   onStartRecording={handleStartRecording}
@@ -1157,6 +1184,9 @@ const AppContent: React.FC = () => {
                 setActiveTab('command-center');
               }}
             />
+          ) : activeTab === 'market-clocks' ? (
+            // <<< MARKET CLOCKS VIEW >>>
+            <MarketClocksView clocks={marketClocks} onClockClick={handleViewEntityDetail} />
           ) : activeTab === 'creator' ? (
             // <<< CREATOR MODE VIEW >>>
             <CreatorModeView />
