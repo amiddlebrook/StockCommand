@@ -5,14 +5,49 @@ import { UNIVERSE } from './universe';
 import { MarketDataService } from './market-data';
 
 // Env variables should be passed in from the worker
-async function fetchMarketData(avKey: string): Promise<Record<string, MarketData>> {
-    console.log('Fetching market data with MarketDataService...');
+const TOOL_PROXIES: Record<string, string[]> = {
+    'CLOCK_LIQUIDITY_CYCLE': ['BTC', 'HYG', 'SPY'],
+    'CLOCK_COMMODITY_CYCLE': ['DBC', 'USO', 'DBB'],
+    'CLOCK_VIX_REGIME': ['VIX', 'SPY'],
+    'CLOCK_INFLATION_TREND': ['TIP', 'IEF', 'USO'],
+    'CLOCK_CREDIT_IMPULSE': ['HYG', 'LQD'],
+    'CLOCK_DOLLAR_STRENGTH': ['UUP', 'GLD', 'SPY']
+};
+
+async function fetchMarketData(
+    avKey: string,
+    scope: 'FULL' | 'SLEEVE' | 'TICKER' | 'TOOL',
+    target?: string
+): Promise<Record<string, MarketData>> {
+    console.log(`Fetching market data via MarketDataService (Scope: ${scope}, Target: ${target})...`);
     const service = new MarketDataService(avKey);
 
-    // For testing, we might want to slice the UNIVERSE to avoid hammering APIs immediately
-    // But for the full run, we use the whole thing.
-    const targetSymbols = UNIVERSE.map(t => t.symbol);
+    let targetSymbols: string[] = [];
 
+    if (scope === 'FULL') {
+        // For FULL scan, we might still need everything, or we can limit to top holdings + proxies
+        // To avoid timeouts, let's prioritize proxies and core tech for now
+        // Or specific list of "Active" tickers if we had that context.
+        // For safely, let's limit to 30 random/important cached ones or just mapped proxies?
+        // Actually, fetching 100+ symbols sequentially is definitely asking for a timeout.
+        // Let's filter to Core Tech + Macro Proxies
+        targetSymbols = UNIVERSE.filter(t => t.sleeve === 'Core Tech' || t.sleeve === 'Macro' || t.sleeve.includes("Specialized")).map(t => t.symbol);
+    } else if (scope === 'SLEEVE') {
+        targetSymbols = UNIVERSE.filter(t => t.sleeve === target).map(t => t.symbol);
+    } else if (scope === 'TICKER') {
+        if (target) targetSymbols = [target];
+    } else if (scope === 'TOOL') {
+        if (target && TOOL_PROXIES[target]) {
+            targetSymbols = TOOL_PROXIES[target];
+        } else if (target) {
+            targetSymbols = [target];
+        }
+    }
+
+    // Deduplicate
+    targetSymbols = Array.from(new Set(targetSymbols));
+
+    console.log(`Identified ${targetSymbols.length} symbols to fetch.`);
     return await service.fetchMarketData(targetSymbols);
 }
 
@@ -57,7 +92,8 @@ export async function runAgentWorkflow(
     }
 
     // 1. Refresh Data
-    const marketData = await fetchMarketData(AV_KEY);
+    // 1. Refresh Data
+    const marketData = await fetchMarketData(AV_KEY, scope, target);
     const portfolio = await fetchPortfolioState();
 
     // 2. Research & Analyze (Engine with LLM)
