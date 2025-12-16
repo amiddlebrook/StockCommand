@@ -43,6 +43,7 @@ import { CommandPalette } from './components/CommandPalette';
 import { ActionBar } from './components/ActionBar';
 import { MarketRadar } from './components/MarketRadar';
 import { ActivityFeed } from './components/ActivityFeed';
+import { HUDNav } from './components/HUDNav';
 
 type MobileView = 'toolbox' | 'dashboard' | 'chat';
 
@@ -774,449 +775,458 @@ const AppContent: React.FC = () => {
   return (
     <div className="h-screen w-screen bg-slate-950 text-gray-100 flex overflow-hidden font-sans border-b-4 border-slate-900">
 
+      {/* HUD Navigation - Fixed Left Rail */}
+      <HUDNav
+        activeTab={activeTab}
+        onNavigate={(tab) => setActiveTab(tab as typeof activeTab)}
+        activeJobsCount={activeJobsCount}
+      />
 
+      {/* Main Content - Offset for HUD nav */}
+      <div className="flex-1 flex ml-16">
 
-      {/* LEFT COLUMN: Portfolio & Actions */}
-      <div className={`hidden md:flex flex-col flex-shrink-0 border-slate-800 bg-slate-900/40 transition-all duration-300 overflow-hidden ${isLeftSidebarOpen ? 'w-[300px] xl:w-[350px] border-r' : 'w-0 border-none'}`}>
-        <div className="min-w-[300px] w-[300px] h-full flex flex-col">
-          <div className="h-[60px] px-4 flex items-center justify-between border-b border-slate-800 bg-slate-950/50 backdrop-blur-sm z-50">
-            <div className="flex items-center gap-3">
-              <div className="p-1.5 bg-gradient-to-br from-cyan-600 to-purple-700 rounded-lg shadow-lg">
-                <Icon icon="bot" className="w-5 h-5 text-white" />
-              </div>
-              <div className="flex flex-col">
-                <h1 className="text-lg font-bold bg-gradient-to-r from-cyan-400 via-purple-400 to-cyan-400 bg-clip-text text-transparent tracking-tight leading-none">
-                  StockCommand
-                </h1>
-              </div>
-            </div>
-
-            <button onClick={() => setIsLeftSidebarOpen(false)} title="Collapse Sidebar" className="px-2 py-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded text-xs text-cyan-400 font-bold tracking-wider transition-colors z-50 whitespace-nowrap">
-              CLOSE &lt;
-            </button>
-          </div>
-
-          <div className="p-3 bg-slate-900 border-b border-slate-800 font-semibold text-xs text-cyan-400 tracking-wider">
-            PORTFOLIO CONTEXT
-          </div>
-          <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin scrollbar-thumb-slate-700">
-            <div className="bg-slate-800/50 rounded p-3 border border-slate-700/50">
-              <div className="flex justify-between items-end mb-2">
-                <span className="text-gray-400 text-xs">Total Liquidity</span>
-                <span className="text-xl font-bold font-mono text-emerald-400">$1,240,500</span>
-              </div>
-              <div className="h-1.5 w-full bg-slate-700 rounded-full overflow-hidden">
-                <div className="h-full bg-gradient-to-r from-cyan-500 to-blue-500 w-[65%]" />
-              </div>
-              <div className="flex justify-between text-[10px] text-gray-500 mt-1">
-                <span>Core: 65%</span>
-                <span>Cash: 35%</span>
-              </div>
-            </div>
-
-            <Toolbox
-              symbols={symbols}
-              selectedSymbols={selectedSymbols}
-              onAddSymbol={handleAddSymbol}
-              onRemoveSymbol={handleRemoveSymbol}
-              onToggleSymbol={handleToggleSymbol}
-              onAnalysisRequested={handleAnalysisRequest}
-              onPortfolioReport={() => setIsPortfolioModalOpen(true)}
-              onThesisChange={() => {
-                // Start thesis change discussion in chat
-                const thesisMessage: ChatMessageType = {
-                  id: `thesis-${Date.now()}`,
-                  role: 'model',
-                  content: `🎯 **Thesis Change Mode Active**\n\nI'm ready to discuss changes to your portfolio thesis. You have control over all strategic decisions.\n\n**Current framework includes:**\n- Core Tech (structural holdings)\n- Rotatable Tech (cyclical positions)\n- Specialized sleeves (Energy, Defense, AI Infra, etc.)\n- Macro clocks for timing\n\n**What would you like to discuss?**\n1. Add/remove tickers from a sleeve\n2. Create a new specialized sleeve\n3. Adjust allocation weights\n4. Modify rotation triggers\n5. Something else?\n\nTell me what you're thinking and we'll debate IT!`,
-                  isLoading: false
-                };
-                setMessages(prev => [...prev, thesisMessage]);
-                setActiveTab('command-center');
-              }}
-              isLoading={isDashboardLoading}
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* MIDDLE COLUMN: Command Center (Flexible) */}
-      <div className="flex-1 flex flex-col min-w-0 bg-slate-950 relative border-r border-slate-800 transition-all duration-300 pb-16 md:pb-0">
-
-        {/* TOP BAR: Navigation & Status */}
-        <div className="h-[60px] px-4 flex items-center justify-between border-b border-slate-800 bg-slate-950/50 backdrop-blur-sm z-50 relative">
-          <div className="flex items-center gap-3">
-            {!isLeftSidebarOpen && (
-              <button onClick={() => setIsLeftSidebarOpen(true)} className="hidden md:flex px-2 md:px-3 py-1 bg-cyan-900/50 hover:bg-cyan-800/80 border border-cyan-500/50 text-cyan-300 rounded text-[10px] md:text-xs font-bold tracking-wider shadow-[0_0_10px_rgba(34,211,238,0.2)] transition-all z-50 gap-2 items-center whitespace-nowrap">
-                <span>TOOLBOX</span>
-                <Icon icon="chevron-down" className="w-3 h-3 -rotate-90" />
-              </button>
-            )}
-
-            <div className="hidden md:flex items-center bg-slate-900/50 p-1 rounded-lg border border-slate-800/50">
-              <button
-                onClick={() => setActiveTab('command-center')}
-                className={`py-2 px-3 rounded-t-lg text-sm font-bold transition-all ${activeTab === 'command-center'
-                  ? 'bg-slate-800 text-cyan-400 border-t border-x border-slate-700 shadow-[0_-5px_15px_-5px_rgba(34,211,238,0.2)]'
-                  : 'text-gray-500 hover:text-gray-300 hover:bg-slate-800/50'
-                  }`}
-              >
-                COMMAND CENTER
-              </button>
-
-              <button
-                onClick={() => setActiveTab('creator')}
-                className={`py-2 px-3 rounded-t-lg text-sm font-bold transition-all ${activeTab === 'creator'
-                  ? 'bg-slate-800 text-purple-400 border-t border-x border-slate-700 shadow-[0_-5px_15px_-5px_rgba(192,132,252,0.2)]'
-                  : 'text-gray-500 hover:text-gray-300 hover:bg-slate-800/50'
-                  }`}
-              >
-                CREATOR
-              </button>
-
-              <button
-                onClick={() => setActiveTab('portfolio')}
-                className={`px-3 py-1 rounded text-xs font-medium transition-all ${activeTab === 'portfolio'
-                  ? 'bg-slate-800 text-cyan-400 shadow-sm'
-                  : 'text-gray-400 hover:text-gray-200 hover:bg-slate-800/50'
-                  }`}
-              >
-                Portfolio
-              </button>
-              <button
-                onClick={() => setActiveTab('competitions')}
-                className={`px-3 py-1 rounded text-xs font-medium transition-all ${activeTab === 'competitions'
-                  ? 'bg-slate-800 text-purple-400 shadow-sm'
-                  : 'text-gray-400 hover:text-gray-200 hover:bg-slate-800/50'
-                  }`}
-              >
-                🏆 Compete
-              </button>
-              <button
-                onClick={() => setActiveTab('features')}
-                className={`px-3 py-1 rounded text-xs font-medium transition-all ${activeTab === 'features'
-                  ? 'bg-slate-800 text-cyan-400 shadow-sm'
-                  : 'text-gray-400 hover:text-gray-200 hover:bg-slate-800/50'
-                  }`}
-              >
-                ✨ Features
-              </button>
-              <button
-                onClick={() => setActiveTab('market-clocks')}
-                className={`px-3 py-1 rounded text-xs font-medium transition-all ${activeTab === 'market-clocks'
-                  ? 'bg-slate-800 text-amber-400 shadow-sm'
-                  : 'text-gray-400 hover:text-gray-200 hover:bg-slate-800/50'
-                  }`}
-              >
-                ⏰ Clocks
-              </button>
-            </div>
-          </div>
-
-
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => setIsProfileOpen(true)}
-              className="p-1.5 hover:bg-slate-800 rounded-full text-gray-400 hover:text-cyan-400 transition-colors border border-transparent hover:border-slate-700"
-              title="User Profile & Settings"
-            >
-              <Icon icon="user" className="w-4 h-4" />
-            </button>
-
-            {!isRightSidebarOpen && (
-              <button onClick={() => setIsRightSidebarOpen(true)} className="hidden md:flex px-2 md:px-3 py-1 bg-amber-900/50 hover:bg-amber-800/80 border border-amber-500/50 text-amber-300 rounded text-[10px] md:text-xs font-bold tracking-wider shadow-[0_0_10px_rgba(245,158,11,0.2)] transition-all z-50 gap-2 items-center whitespace-nowrap">
-                <Icon icon="chevron-down" className="w-3 h-3 rotate-90" />
-                <span>CLOCKS</span>
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* LOADING PROGRESS LINE */}
-        {activeJobsCount > 0 && (
-          <div className="absolute top-[60px] left-0 right-0 h-[2px] bg-amber-500/50 overflow-hidden z-30">
-            <div className="absolute inset-0 bg-amber-400 animate-progress origin-left"></div>
-          </div>
-        )}
-
-        {/* MAIN CONTENT AREA */}
-        <div className="flex-1 flex flex-col overflow-hidden relative">
-          {activeTab === 'feature-detail' && activeFeature ? (
-            // <<< FEATURE DETAIL VIEW >>>
-            <FeatureDetailView
-              featureName={activeFeature.name}
-              symbols={activeFeature.symbols}
-              content={activeFeature.content}
-              isLoading={scanningTarget !== null}
-              onBack={() => setActiveTab('command-center')}
-              onRerun={(newSymbols?: string[]) => {
-                const symbolsToUse = newSymbols && newSymbols.length > 0 ? newSymbols : activeFeature.symbols;
-                const target = symbolsToUse.join(',');
-
-                if (newSymbols && newSymbols.length > 0) {
-                  setActiveFeature(prev => prev ? { ...prev, symbols: newSymbols } : null);
-                }
-
-                executeAgentScan('TOOL', target, activeFeature.name).then(content => {
-                  setActiveFeature(prev => prev ? { ...prev, content: content || 'Analysis complete.' } : null);
-                });
-              }}
-            />
-          ) : activeTab === 'entity-detail' ? (
-            // <<< ENTITY DETAIL VIEW >>>
-            <EntityDetailView
-              entity={selectedEntity}
-              freshnessThreshold={dataFreshnessHours * 60 * 60 * 1000}
-              onBack={() => setActiveTab('command-center')}
-              onRunAnalysis={(e) => {
-                if (e.code.startsWith('CLOCK_')) {
-                  executeAgentScan('TOOL', e.code, e.code);
-                } else {
-                  // Extract ticker symbol from entity code (e.g., "AMZN_VOL" -> "AMZN")
-                  const ticker = e.code.split('_')[0];
-                  executeAgentScan('TICKER', ticker);
-                }
-              }}
-              researchContent={selectedEntity ? researchReports[selectedEntity.code.split('_')[0]] : null}
-              isScanning={scanningTarget !== null && selectedEntity !== null && (scanningTarget === selectedEntity.code || scanningTarget === selectedEntity.code.split('_')[0])}
-              researchHistory={selectedEntity ? researchHistory[selectedEntity.code.split('_')[0]] : undefined}
-              onViewHistory={() => {
-                if (selectedEntity) {
-                  const ticker = selectedEntity.code.split('_')[0];
-                  const history = researchHistory[ticker];
-                  if (history && history.length > 0) {
-                    const historyText = history.map((h, i) =>
-                      `--- Entry ${i + 1} (${new Date(h.timestamp).toLocaleString()}) ---\n${h.content.substring(0, 500)}...`
-                    ).join('\n\n');
-                    alert(`Research History for ${ticker}:\n\n${historyText}`);
-                  }
-                }
-              }}
-            />
-          ) : activeTab === 'command-center' ? (
-            // <<< COMMAND CENTER VIEW >>>
-            <>
-              {/* Minimal Feed Header */}
-              <div className="flex-none p-6 border-b border-slate-800/50 bg-slate-900/10 backdrop-blur-sm">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="relative">
-                      <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_15px_rgba(16,185,129,0.8)]" />
-                      <div className="absolute inset-0 rounded-full bg-emerald-500 animate-ping opacity-20" />
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="text-sm font-mono text-cyan-500 tracking-[0.2em] uppercase font-bold text-shadow-glow">System Online</span>
-                      <span className="text-[10px] text-gray-500 font-mono">Awaiting directives...</span>
-                    </div>
-                  </div>
+        {/* LEFT COLUMN: Portfolio & Actions */}
+        <div className={`hidden md:flex flex-col flex-shrink-0 border-slate-800 bg-slate-900/40 transition-all duration-300 overflow-hidden ${isLeftSidebarOpen ? 'w-[300px] xl:w-[350px] border-r' : 'w-0 border-none'}`}>
+          <div className="min-w-[300px] w-[300px] h-full flex flex-col">
+            <div className="h-[60px] px-4 flex items-center justify-between border-b border-slate-800 bg-slate-950/50 backdrop-blur-sm z-50">
+              <div className="flex items-center gap-3">
+                <div className="p-1.5 bg-gradient-to-br from-cyan-600 to-purple-700 rounded-lg shadow-lg">
+                  <Icon icon="bot" className="w-5 h-5 text-white" />
+                </div>
+                <div className="flex flex-col">
+                  <h1 className="text-lg font-bold bg-gradient-to-r from-cyan-400 via-purple-400 to-cyan-400 bg-clip-text text-transparent tracking-tight leading-none">
+                    StockCommand
+                  </h1>
                 </div>
               </div>
 
+              <button onClick={() => setIsLeftSidebarOpen(false)} title="Collapse Sidebar" className="px-2 py-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded text-xs text-cyan-400 font-bold tracking-wider transition-colors z-50 whitespace-nowrap">
+                CLOSE &lt;
+              </button>
+            </div>
+
+            <div className="p-3 bg-slate-900 border-b border-slate-800 font-semibold text-xs text-cyan-400 tracking-wider">
+              PORTFOLIO CONTEXT
+            </div>
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin scrollbar-thumb-slate-700">
+              <div className="bg-slate-800/50 rounded p-3 border border-slate-700/50">
+                <div className="flex justify-between items-end mb-2">
+                  <span className="text-gray-400 text-xs">Total Liquidity</span>
+                  <span className="text-xl font-bold font-mono text-emerald-400">$1,240,500</span>
+                </div>
+                <div className="h-1.5 w-full bg-slate-700 rounded-full overflow-hidden">
+                  <div className="h-full bg-gradient-to-r from-cyan-500 to-blue-500 w-[65%]" />
+                </div>
+                <div className="flex justify-between text-[10px] text-gray-500 mt-1">
+                  <span>Core: 65%</span>
+                  <span>Cash: 35%</span>
+                </div>
+              </div>
+
+              <Toolbox
+                symbols={symbols}
+                selectedSymbols={selectedSymbols}
+                onAddSymbol={handleAddSymbol}
+                onRemoveSymbol={handleRemoveSymbol}
+                onToggleSymbol={handleToggleSymbol}
+                onAnalysisRequested={handleAnalysisRequest}
+                onPortfolioReport={() => setIsPortfolioModalOpen(true)}
+                onThesisChange={() => {
+                  // Start thesis change discussion in chat
+                  const thesisMessage: ChatMessageType = {
+                    id: `thesis-${Date.now()}`,
+                    role: 'model',
+                    content: `🎯 **Thesis Change Mode Active**\n\nI'm ready to discuss changes to your portfolio thesis. You have control over all strategic decisions.\n\n**Current framework includes:**\n- Core Tech (structural holdings)\n- Rotatable Tech (cyclical positions)\n- Specialized sleeves (Energy, Defense, AI Infra, etc.)\n- Macro clocks for timing\n\n**What would you like to discuss?**\n1. Add/remove tickers from a sleeve\n2. Create a new specialized sleeve\n3. Adjust allocation weights\n4. Modify rotation triggers\n5. Something else?\n\nTell me what you're thinking and we'll debate IT!`,
+                    isLoading: false
+                  };
+                  setMessages(prev => [...prev, thesisMessage]);
+                  setActiveTab('command-center');
+                }}
+                isLoading={isDashboardLoading}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* MIDDLE COLUMN: Command Center (Flexible) */}
+        <div className="flex-1 flex flex-col min-w-0 bg-slate-950 relative border-r border-slate-800 transition-all duration-300 pb-16 md:pb-0">
+
+          {/* TOP BAR: Navigation & Status */}
+          <div className="h-[60px] px-4 flex items-center justify-between border-b border-slate-800 bg-slate-950/50 backdrop-blur-sm z-50 relative">
+            <div className="flex items-center gap-3">
+              {!isLeftSidebarOpen && (
+                <button onClick={() => setIsLeftSidebarOpen(true)} className="hidden md:flex px-2 md:px-3 py-1 bg-cyan-900/50 hover:bg-cyan-800/80 border border-cyan-500/50 text-cyan-300 rounded text-[10px] md:text-xs font-bold tracking-wider shadow-[0_0_10px_rgba(34,211,238,0.2)] transition-all z-50 gap-2 items-center whitespace-nowrap">
+                  <span>TOOLBOX</span>
+                  <Icon icon="chevron-down" className="w-3 h-3 -rotate-90" />
+                </button>
+              )}
+
+              <div className="hidden md:flex items-center bg-slate-900/50 p-1 rounded-lg border border-slate-800/50">
+                <button
+                  onClick={() => setActiveTab('command-center')}
+                  className={`py-2 px-3 rounded-t-lg text-sm font-bold transition-all ${activeTab === 'command-center'
+                    ? 'bg-slate-800 text-cyan-400 border-t border-x border-slate-700 shadow-[0_-5px_15px_-5px_rgba(34,211,238,0.2)]'
+                    : 'text-gray-500 hover:text-gray-300 hover:bg-slate-800/50'
+                    }`}
+                >
+                  COMMAND CENTER
+                </button>
+
+                <button
+                  onClick={() => setActiveTab('creator')}
+                  className={`py-2 px-3 rounded-t-lg text-sm font-bold transition-all ${activeTab === 'creator'
+                    ? 'bg-slate-800 text-purple-400 border-t border-x border-slate-700 shadow-[0_-5px_15px_-5px_rgba(192,132,252,0.2)]'
+                    : 'text-gray-500 hover:text-gray-300 hover:bg-slate-800/50'
+                    }`}
+                >
+                  CREATOR
+                </button>
+
+                <button
+                  onClick={() => setActiveTab('portfolio')}
+                  className={`px-3 py-1 rounded text-xs font-medium transition-all ${activeTab === 'portfolio'
+                    ? 'bg-slate-800 text-cyan-400 shadow-sm'
+                    : 'text-gray-400 hover:text-gray-200 hover:bg-slate-800/50'
+                    }`}
+                >
+                  Portfolio
+                </button>
+                <button
+                  onClick={() => setActiveTab('competitions')}
+                  className={`px-3 py-1 rounded text-xs font-medium transition-all ${activeTab === 'competitions'
+                    ? 'bg-slate-800 text-purple-400 shadow-sm'
+                    : 'text-gray-400 hover:text-gray-200 hover:bg-slate-800/50'
+                    }`}
+                >
+                  🏆 Compete
+                </button>
+                <button
+                  onClick={() => setActiveTab('features')}
+                  className={`px-3 py-1 rounded text-xs font-medium transition-all ${activeTab === 'features'
+                    ? 'bg-slate-800 text-cyan-400 shadow-sm'
+                    : 'text-gray-400 hover:text-gray-200 hover:bg-slate-800/50'
+                    }`}
+                >
+                  ✨ Features
+                </button>
+                <button
+                  onClick={() => setActiveTab('market-clocks')}
+                  className={`px-3 py-1 rounded text-xs font-medium transition-all ${activeTab === 'market-clocks'
+                    ? 'bg-slate-800 text-amber-400 shadow-sm'
+                    : 'text-gray-400 hover:text-gray-200 hover:bg-slate-800/50'
+                    }`}
+                >
+                  ⏰ Clocks
+                </button>
+              </div>
+            </div>
 
 
-              {/* Auto-Scroll Content Area */}
-              <div className="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-thin scrollbar-thumb-slate-700 custom-markdown">
-                {/* Warnings */}
-                {uncuratedTicker && (
-                  <div className="bg-red-900/20 border border-red-500/50 rounded-lg p-4 mb-6">
-                    <h3 className="text-red-400 font-bold text-sm">Uncurated Ticker: {uncuratedTicker}</h3>
-                    <div className="flex gap-2 mt-2">
-                      <GlassButton size="sm" variant="danger" onClick={handleActionOverride}>Override</GlassButton>
-                      <GlassButton size="sm" variant="glass" onClick={() => setUncuratedTicker(null)}>Cancel</GlassButton>
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => setIsProfileOpen(true)}
+                className="p-1.5 hover:bg-slate-800 rounded-full text-gray-400 hover:text-cyan-400 transition-colors border border-transparent hover:border-slate-700"
+                title="User Profile & Settings"
+              >
+                <Icon icon="user" className="w-4 h-4" />
+              </button>
+
+              {!isRightSidebarOpen && (
+                <button onClick={() => setIsRightSidebarOpen(true)} className="hidden md:flex px-2 md:px-3 py-1 bg-amber-900/50 hover:bg-amber-800/80 border border-amber-500/50 text-amber-300 rounded text-[10px] md:text-xs font-bold tracking-wider shadow-[0_0_10px_rgba(245,158,11,0.2)] transition-all z-50 gap-2 items-center whitespace-nowrap">
+                  <Icon icon="chevron-down" className="w-3 h-3 rotate-90" />
+                  <span>CLOCKS</span>
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* LOADING PROGRESS LINE */}
+          {activeJobsCount > 0 && (
+            <div className="absolute top-[60px] left-0 right-0 h-[2px] bg-amber-500/50 overflow-hidden z-30">
+              <div className="absolute inset-0 bg-amber-400 animate-progress origin-left"></div>
+            </div>
+          )}
+
+          {/* MAIN CONTENT AREA */}
+          <div className="flex-1 flex flex-col overflow-hidden relative">
+            {activeTab === 'feature-detail' && activeFeature ? (
+              // <<< FEATURE DETAIL VIEW >>>
+              <FeatureDetailView
+                featureName={activeFeature.name}
+                symbols={activeFeature.symbols}
+                content={activeFeature.content}
+                isLoading={scanningTarget !== null}
+                onBack={() => setActiveTab('command-center')}
+                onRerun={(newSymbols?: string[]) => {
+                  const symbolsToUse = newSymbols && newSymbols.length > 0 ? newSymbols : activeFeature.symbols;
+                  const target = symbolsToUse.join(',');
+
+                  if (newSymbols && newSymbols.length > 0) {
+                    setActiveFeature(prev => prev ? { ...prev, symbols: newSymbols } : null);
+                  }
+
+                  executeAgentScan('TOOL', target, activeFeature.name).then(content => {
+                    setActiveFeature(prev => prev ? { ...prev, content: content || 'Analysis complete.' } : null);
+                  });
+                }}
+              />
+            ) : activeTab === 'entity-detail' ? (
+              // <<< ENTITY DETAIL VIEW >>>
+              <EntityDetailView
+                entity={selectedEntity}
+                freshnessThreshold={dataFreshnessHours * 60 * 60 * 1000}
+                onBack={() => setActiveTab('command-center')}
+                onRunAnalysis={(e) => {
+                  if (e.code.startsWith('CLOCK_')) {
+                    executeAgentScan('TOOL', e.code, e.code);
+                  } else {
+                    // Extract ticker symbol from entity code (e.g., "AMZN_VOL" -> "AMZN")
+                    const ticker = e.code.split('_')[0];
+                    executeAgentScan('TICKER', ticker);
+                  }
+                }}
+                researchContent={selectedEntity ? researchReports[selectedEntity.code.split('_')[0]] : null}
+                isScanning={scanningTarget !== null && selectedEntity !== null && (scanningTarget === selectedEntity.code || scanningTarget === selectedEntity.code.split('_')[0])}
+                researchHistory={selectedEntity ? researchHistory[selectedEntity.code.split('_')[0]] : undefined}
+                onViewHistory={() => {
+                  if (selectedEntity) {
+                    const ticker = selectedEntity.code.split('_')[0];
+                    const history = researchHistory[ticker];
+                    if (history && history.length > 0) {
+                      const historyText = history.map((h, i) =>
+                        `--- Entry ${i + 1} (${new Date(h.timestamp).toLocaleString()}) ---\n${h.content.substring(0, 500)}...`
+                      ).join('\n\n');
+                      alert(`Research History for ${ticker}:\n\n${historyText}`);
+                    }
+                  }
+                }}
+              />
+            ) : activeTab === 'command-center' ? (
+              // <<< COMMAND CENTER VIEW >>>
+              <>
+                {/* Minimal Feed Header */}
+                <div className="flex-none p-6 border-b border-slate-800/50 bg-slate-900/10 backdrop-blur-sm">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="relative">
+                        <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_15px_rgba(16,185,129,0.8)]" />
+                        <div className="absolute inset-0 rounded-full bg-emerald-500 animate-ping opacity-20" />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-sm font-mono text-cyan-500 tracking-[0.2em] uppercase font-bold text-shadow-glow">System Online</span>
+                        <span className="text-[10px] text-gray-500 font-mono">Awaiting directives...</span>
+                      </div>
                     </div>
                   </div>
-                )}
+                </div>
 
-                {/* Combined Feed */}
-                <div className="space-y-6">
-                  {messages.map((msg) => (
-                    <div key={msg.id} className="animate-fadeIn">
-                      {msg.role === 'agent' ? (
-                        <div className="mb-8">
-                          <div className="flex items-center gap-2 mb-2">
-                            <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]" />
-                            <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Latest Intelligence Report</span>
-                          </div>
-                          <div className="prose prose-invert prose-sm max-w-none bg-slate-900/50 p-6 rounded-lg border border-slate-800/50 shadow-inner">
-                            <TextWidget id={`report-${msg.id}`} title="" text={msg.content} />
-                          </div>
-                        </div>
-                      ) : (
-                        <ChatMessage message={{ ...msg, role: msg.role === 'model' ? 'model' : 'user' }} />
-                      )}
+
+
+                {/* Auto-Scroll Content Area */}
+                <div className="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-thin scrollbar-thumb-slate-700 custom-markdown">
+                  {/* Warnings */}
+                  {uncuratedTicker && (
+                    <div className="bg-red-900/20 border border-red-500/50 rounded-lg p-4 mb-6">
+                      <h3 className="text-red-400 font-bold text-sm">Uncurated Ticker: {uncuratedTicker}</h3>
+                      <div className="flex gap-2 mt-2">
+                        <GlassButton size="sm" variant="danger" onClick={handleActionOverride}>Override</GlassButton>
+                        <GlassButton size="sm" variant="glass" onClick={() => setUncuratedTicker(null)}>Cancel</GlassButton>
+                      </div>
                     </div>
+                  )}
+
+                  {/* Combined Feed */}
+                  <div className="space-y-6">
+                    {messages.map((msg) => (
+                      <div key={msg.id} className="animate-fadeIn">
+                        {msg.role === 'agent' ? (
+                          <div className="mb-8">
+                            <div className="flex items-center gap-2 mb-2">
+                              <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]" />
+                              <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Latest Intelligence Report</span>
+                            </div>
+                            <div className="prose prose-invert prose-sm max-w-none bg-slate-900/50 p-6 rounded-lg border border-slate-800/50 shadow-inner">
+                              <TextWidget id={`report-${msg.id}`} title="" text={msg.content} />
+                            </div>
+                          </div>
+                        ) : (
+                          <ChatMessage message={{ ...msg, role: msg.role === 'model' ? 'model' : 'user' }} />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  {isChatLoading && (
+                    <div className="flex justify-start mb-8 animate-fadeIn px-4 md:px-8">
+                      <div className="bg-slate-900/50 p-4 rounded-lg border border-slate-800/50 inline-block shadow-lg">
+                        <TacticalLoader />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Widgets */}
+                  {widgets.filter(w => !w.title.includes('Agent')).map(widget => (
+                    <div key={widget.id} className="animate-fadeIn">{renderWidget(widget)}</div>
                   ))}
                 </div>
 
-                {isChatLoading && (
-                  <div className="flex justify-start mb-8 animate-fadeIn px-4 md:px-8">
-                    <div className="bg-slate-900/50 p-4 rounded-lg border border-slate-800/50 inline-block shadow-lg">
-                      <TacticalLoader />
-                    </div>
+                {/* Chat Input Area - Moved to Bottom */}
+                <div className="p-4 border-t border-slate-800 bg-slate-900/40 backdrop-blur z-20 mb-16 md:mb-0">
+                  <div className="mb-2">
+                    <QuickActions onAction={handleQuickAction} />
                   </div>
-                )}
-
-                {/* Widgets */}
-                {widgets.filter(w => !w.title.includes('Agent')).map(widget => (
-                  <div key={widget.id} className="animate-fadeIn">{renderWidget(widget)}</div>
-                ))}
-              </div>
-
-              {/* Chat Input Area - Moved to Bottom */}
-              <div className="p-4 border-t border-slate-800 bg-slate-900/40 backdrop-blur z-20 mb-16 md:mb-0">
-                <div className="mb-2">
-                  <QuickActions onAction={handleQuickAction} />
+                  <ChatInput
+                    onSendMessage={handleSendMessage}
+                    onStartRecording={handleStartRecording}
+                    onStopRecording={handleStopRecording}
+                    isRecording={isRecording}
+                    isLoading={isChatLoading}
+                    initialInput={initialChatInput}
+                  />
                 </div>
-                <ChatInput
-                  onSendMessage={handleSendMessage}
-                  onStartRecording={handleStartRecording}
-                  onStopRecording={handleStopRecording}
-                  isRecording={isRecording}
-                  isLoading={isChatLoading}
-                  initialInput={initialChatInput}
+
+                <div ref={chatContainerRef} />
+              </>
+            ) : activeTab === 'features' ? (
+              // <<< FEATURES LIBRARY VIEW >>>
+              <div className="flex-1 overflow-y-auto p-8">
+                <div className="mb-8">
+                  <h1 className="text-3xl font-bold text-white mb-2">Analysis Features</h1>
+                  <p className="text-gray-400">Advanced specialized tools for market analysis.</p>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {Object.entries(FEATURE_CONFIG).map(([name, config]) => (
+                    <div key={name} className="bg-slate-800/50 rounded-xl p-6 border border-slate-700/50 hover:border-cyan-500/50 transition-all cursor-pointer group hover:bg-slate-800/80 hover:shadow-lg hover:shadow-cyan-900/10"
+                      onClick={() => {
+                        setActiveFeature({ name, symbols: selectedSymbols.length > 0 ? selectedSymbols : ['SPY'], content: null });
+                        setActiveTab('feature-detail');
+                      }}
+                    >
+                      <div className={`w-12 h-12 rounded-lg bg-gradient-to-br ${config.gradient} mb-4 flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-lg`}>
+                        <Icon icon={config.icon as any} className="w-6 h-6 text-white" />
+                      </div>
+                      <h3 className="text-xl font-bold text-white mb-2 group-hover:text-cyan-400 transition-colors">{name}</h3>
+                      <p className="text-gray-400 text-sm mb-4 leading-relaxed">{config.description}</p>
+                      <div className="flex flex-wrap gap-2 mt-auto">
+                        {config.sections.slice(0, 3).map(s => (
+                          <span key={s} className="text-[10px] uppercase tracking-wider px-2 py-1 rounded bg-slate-950/50 text-gray-500 font-bold border border-slate-800">{s}</span>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : activeTab === 'competitions' ? (
+              // <<< COMPETITIONS VIEW >>>
+              <CompetitionsView
+                clocks={marketClocks}
+                onSubmitPortfolio={() => {
+                  // Create submit portfolio message in chat
+                  const submitMessage: ChatMessageType = {
+                    id: `submit-${Date.now()}`,
+                    role: 'model',
+                    content: `📤 **Submit Portfolio for Competition**\n\nTo enter a competition, you'll need to:\n1. Have at least 3 tickers in your portfolio\n2. Define your thesis strategy\n3. Set your competition entry\n\nYour current portfolio has ${symbols.length} ticker(s).\n\n${symbols.length >= 3 ? '✅ You meet the minimum requirements!' : '⚠️ Add more tickers to qualify.'}\n\n*Note: Competition features coming soon with full Cloudflare D1 integration.*`,
+                    isLoading: false
+                  };
+                  setMessages(prev => [...prev, submitMessage]);
+                  setActiveTab('command-center');
+                }}
+              />
+            ) : activeTab === 'market-clocks' ? (
+              // <<< MARKET CLOCKS VIEW >>>
+              <IntelligencePanel clocks={marketClocks} onClockClick={handleViewEntityDetail} onCloneStrategy={handleCloneStrategy} />
+            ) : activeTab === 'creator' ? (
+              // <<< CREATOR MODE VIEW >>>
+              <CreatorModeView />
+            ) : (
+              // <<< PORTFOLIO VIEW >>>
+              <PortfolioView
+                sleevesWithStats={sleevesWithStats}
+                onClockClick={handleViewEntityDetail}
+                freshnessThreshold={dataFreshnessHours * 60 * 60 * 1000}
+              />
+            )}
+          </div>
+
+
+        </div>
+
+        {/* RIGHT COLUMN: Intelligence Panel */}
+        <div className={`hidden md:flex flex-col flex-shrink-0 transition-all duration-300 overflow-hidden ${isRightSidebarOpen ? 'w-[320px] xl:w-[360px]' : 'w-0'}`}>
+          {isRightSidebarOpen && (
+            <div className="w-[320px] xl:w-[360px] h-full relative flex flex-col overflow-hidden">
+              {/* Close Button */}
+              <button
+                onClick={() => setIsRightSidebarOpen(false)}
+                className="absolute top-3 left-3 z-20 px-2 py-1 bg-slate-800/80 hover:bg-slate-700 border border-slate-700 rounded text-[10px] text-slate-400 hover:text-white font-bold tracking-wider transition-all"
+              >
+                ✕
+              </button>
+
+              {/* Scrollable content with radar, feed, and clocks */}
+              <div className="flex-1 overflow-y-auto p-3 space-y-4 scrollbar-thin scrollbar-thumb-slate-700">
+                {/* Market Radar - Central Visualization */}
+                <MarketRadar isScanning={scanningTarget !== null} size={260} />
+
+                {/* Activity Feed - Live Events */}
+                <ActivityFeed maxEvents={25} />
+
+                {/* Intelligence Panel - Market Clocks */}
+                <IntelligencePanel
+                  clocks={marketClocks}
+                  onClockClick={handleViewEntityDetail}
+                  onCloneStrategy={handleCloneStrategy}
                 />
               </div>
-
-              <div ref={chatContainerRef} />
-            </>
-          ) : activeTab === 'features' ? (
-            // <<< FEATURES LIBRARY VIEW >>>
-            <div className="flex-1 overflow-y-auto p-8">
-              <div className="mb-8">
-                <h1 className="text-3xl font-bold text-white mb-2">Analysis Features</h1>
-                <p className="text-gray-400">Advanced specialized tools for market analysis.</p>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {Object.entries(FEATURE_CONFIG).map(([name, config]) => (
-                  <div key={name} className="bg-slate-800/50 rounded-xl p-6 border border-slate-700/50 hover:border-cyan-500/50 transition-all cursor-pointer group hover:bg-slate-800/80 hover:shadow-lg hover:shadow-cyan-900/10"
-                    onClick={() => {
-                      setActiveFeature({ name, symbols: selectedSymbols.length > 0 ? selectedSymbols : ['SPY'], content: null });
-                      setActiveTab('feature-detail');
-                    }}
-                  >
-                    <div className={`w-12 h-12 rounded-lg bg-gradient-to-br ${config.gradient} mb-4 flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-lg`}>
-                      <Icon icon={config.icon as any} className="w-6 h-6 text-white" />
-                    </div>
-                    <h3 className="text-xl font-bold text-white mb-2 group-hover:text-cyan-400 transition-colors">{name}</h3>
-                    <p className="text-gray-400 text-sm mb-4 leading-relaxed">{config.description}</p>
-                    <div className="flex flex-wrap gap-2 mt-auto">
-                      {config.sections.slice(0, 3).map(s => (
-                        <span key={s} className="text-[10px] uppercase tracking-wider px-2 py-1 rounded bg-slate-950/50 text-gray-500 font-bold border border-slate-800">{s}</span>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
             </div>
-          ) : activeTab === 'competitions' ? (
-            // <<< COMPETITIONS VIEW >>>
-            <CompetitionsView
-              clocks={marketClocks}
-              onSubmitPortfolio={() => {
-                // Create submit portfolio message in chat
-                const submitMessage: ChatMessageType = {
-                  id: `submit-${Date.now()}`,
-                  role: 'model',
-                  content: `📤 **Submit Portfolio for Competition**\n\nTo enter a competition, you'll need to:\n1. Have at least 3 tickers in your portfolio\n2. Define your thesis strategy\n3. Set your competition entry\n\nYour current portfolio has ${symbols.length} ticker(s).\n\n${symbols.length >= 3 ? '✅ You meet the minimum requirements!' : '⚠️ Add more tickers to qualify.'}\n\n*Note: Competition features coming soon with full Cloudflare D1 integration.*`,
-                  isLoading: false
-                };
-                setMessages(prev => [...prev, submitMessage]);
-                setActiveTab('command-center');
-              }}
-            />
-          ) : activeTab === 'market-clocks' ? (
-            // <<< MARKET CLOCKS VIEW >>>
-            <IntelligencePanel clocks={marketClocks} onClockClick={handleViewEntityDetail} onCloneStrategy={handleCloneStrategy} />
-          ) : activeTab === 'creator' ? (
-            // <<< CREATOR MODE VIEW >>>
-            <CreatorModeView />
-          ) : (
-            // <<< PORTFOLIO VIEW >>>
-            <PortfolioView
-              sleevesWithStats={sleevesWithStats}
-              onClockClick={handleViewEntityDetail}
-              freshnessThreshold={dataFreshnessHours * 60 * 60 * 1000}
-            />
           )}
         </div>
 
 
-      </div>
+        <PortfolioReportModal
+          isOpen={isPortfolioModalOpen}
+          symbols={symbols}
+          activeSymbol={selectedSymbols[0] || null}
+          isGenerating={isPortfolioGenerating}
+          onClose={() => setIsPortfolioModalOpen(false)}
+          onSubmit={handleGeneratePortfolioReport}
+        />
 
-      {/* RIGHT COLUMN: Intelligence Panel */}
-      <div className={`hidden md:flex flex-col flex-shrink-0 transition-all duration-300 overflow-hidden ${isRightSidebarOpen ? 'w-[320px] xl:w-[360px]' : 'w-0'}`}>
-        {isRightSidebarOpen && (
-          <div className="w-[320px] xl:w-[360px] h-full relative flex flex-col overflow-hidden">
-            {/* Close Button */}
-            <button
-              onClick={() => setIsRightSidebarOpen(false)}
-              className="absolute top-3 left-3 z-20 px-2 py-1 bg-slate-800/80 hover:bg-slate-700 border border-slate-700 rounded text-[10px] text-slate-400 hover:text-white font-bold tracking-wider transition-all"
-            >
-              ✕
-            </button>
-
-            {/* Scrollable content with radar, feed, and clocks */}
-            <div className="flex-1 overflow-y-auto p-3 space-y-4 scrollbar-thin scrollbar-thumb-slate-700">
-              {/* Market Radar - Central Visualization */}
-              <MarketRadar isScanning={scanningTarget !== null} size={260} />
-
-              {/* Activity Feed - Live Events */}
-              <ActivityFeed maxEvents={25} />
-
-              {/* Intelligence Panel - Market Clocks */}
-              <IntelligencePanel
-                clocks={marketClocks}
-                onClockClick={handleViewEntityDetail}
-                onCloneStrategy={handleCloneStrategy}
-              />
-            </div>
-          </div>
-        )}
-      </div>
+        <ProfileModal
+          isOpen={isProfileOpen}
+          onClose={() => setIsProfileOpen(false)}
+        />
 
 
-      <PortfolioReportModal
-        isOpen={isPortfolioModalOpen}
-        symbols={symbols}
-        activeSymbol={selectedSymbols[0] || null}
-        isGenerating={isPortfolioGenerating}
-        onClose={() => setIsPortfolioModalOpen(false)}
-        onSubmit={handleGeneratePortfolioReport}
-      />
+        <MobileNav activeTab={activeTab} setActiveTab={setActiveTab} />
 
-      <ProfileModal
-        isOpen={isProfileOpen}
-        onClose={() => setIsProfileOpen(false)}
-      />
+        {/* Command Palette (⌘K) */}
+        <CommandPalette
+          isOpen={isCommandPaletteOpen}
+          onClose={() => setIsCommandPaletteOpen(false)}
+          onNavigate={(tab) => {
+            setActiveTab(tab as typeof activeTab);
+            setIsCommandPaletteOpen(false);
+          }}
+          onSearch={(query) => {
+            setInitialChatInput(query);
+            setActiveTab('command-center');
+          }}
+        />
 
-
-      <MobileNav activeTab={activeTab} setActiveTab={setActiveTab} />
-
-      {/* Command Palette (⌘K) */}
-      <CommandPalette
-        isOpen={isCommandPaletteOpen}
-        onClose={() => setIsCommandPaletteOpen(false)}
-        onNavigate={(tab) => {
-          setActiveTab(tab as typeof activeTab);
-          setIsCommandPaletteOpen(false);
-        }}
-        onSearch={(query) => {
-          setInitialChatInput(query);
-          setActiveTab('command-center');
-        }}
-      />
-
-      {/* Action Bar (Bottom Taskbar) */}
-      <ActionBar
-        onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
-        onNavigate={(tab) => setActiveTab(tab as typeof activeTab)}
-        onRunScan={() => {
-          // Trigger scan via chat input
-          setInitialChatInput('Run full portfolio scan');
-          setActiveTab('command-center');
-        }}
-        isScanning={isChatLoading}
-      />
-    </div >
+        {/* Action Bar (Bottom Taskbar) */}
+        <ActionBar
+          onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
+          onNavigate={(tab) => setActiveTab(tab as typeof activeTab)}
+          onRunScan={() => {
+            // Trigger scan via chat input
+            setInitialChatInput('Run full portfolio scan');
+            setActiveTab('command-center');
+          }}
+          isScanning={isChatLoading}
+        />
+      </div>  {/* Close Main Content wrapper */}
+    </div>  {/* Close outer container */ }
   );
 };
 
