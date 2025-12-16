@@ -12,26 +12,22 @@ const SourceLink: React.FC<{ source: Source, index: number }> = ({ source, index
     href={source.web.uri}
     target="_blank"
     rel="noopener noreferrer"
-    className="text-xs bg-slate-800/50 hover:bg-slate-700/50 text-cyan-400 hover:text-cyan-300 px-3 py-1.5 rounded-lg transition-all inline-flex items-center gap-2 border border-slate-700/50 hover:border-cyan-500/30 shadow-sm"
+    className="text-[10px] bg-slate-800/50 hover:bg-slate-700/50 text-cyan-400 hover:text-cyan-300 px-2 py-1 rounded transition-all inline-flex items-center gap-1.5 border border-slate-700/50 hover:border-cyan-500/30"
   >
     <span className="text-cyan-500 font-bold">#{index + 1}</span>
-    <span className="truncate max-w-[200px]">{source.web.title}</span>
+    <span className="truncate max-w-[150px]">{source.web.title}</span>
   </a>
 );
 
-
-const MicroWidget: React.FC<{ type: string, value: number, context?: string }> = ({ type, value, context }) => {
+const MicroWidget: React.FC<{ type: string, value: number }> = ({ type, value }) => {
   if (type === 'RSI') {
-    // RSI Bar: 0-100
     const color = value > 70 ? 'bg-red-500' : value < 30 ? 'bg-emerald-500' : 'bg-slate-500';
-    const label = value > 70 ? 'Overbought' : value < 30 ? 'Oversold' : 'Neutral';
     return (
       <span className="inline-flex items-center gap-2 px-2 py-0.5 mx-1 bg-slate-900/50 rounded border border-slate-700 align-middle">
         <span className="text-[10px] text-gray-400 font-mono">RSI {value.toFixed(1)}</span>
-        <div className="w-12 h-1.5 bg-slate-700 rounded-full overflow-hidden flex">
+        <div className="w-10 h-1.5 bg-slate-700 rounded-full overflow-hidden flex">
           <div className={`h-full ${color} transition-all`} style={{ width: `${value}%` }} />
         </div>
-        {/* <span className={`text-[9px] ${value > 70 ? 'text-red-400' : value < 30 ? 'text-emerald-400' : 'text-gray-500'}`}>{label}</span> */}
       </span>
     );
   }
@@ -48,30 +44,19 @@ const MicroWidget: React.FC<{ type: string, value: number, context?: string }> =
 };
 
 const renderContentWithWidgets = (content: string) => {
-  // Regex to split by interesting data points
-  // Pattern: RSI: 12.34
-  // Pattern: MACD: -0.123
   const regex = /(RSI:?\s*(\d+(?:\.\d+)?))|(MACD:?\s*(-?\d+(?:\.\d+)?))/g;
-
-  // We can't easily map regex match to component in a single pass of raw string with HTML logic
-  // Simplified approach: Split by regex, keep delimiters.
-
-  const parts = content.split(regex);
-  // split(regex) with capturing groups returns: [pre, match, rsi_group, rsi_val, macd_group, macd_val, post, ...]
-
   const elements: React.ReactNode[] = [];
   let lastIndex = 0;
-
   let match;
-  // We need to iterate matches to reconstructing properly
+
   while ((match = regex.exec(content)) !== null) {
     const pre = content.substring(lastIndex, match.index);
     if (pre) elements.push(<span key={lastIndex} dangerouslySetInnerHTML={{ __html: pre.replace(/\n/g, '<br />').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }} />);
 
-    if (match[1]) { // RSI
+    if (match[1]) {
       const val = parseFloat(match[2]);
       elements.push(<MicroWidget key={match.index} type="RSI" value={val} />);
-    } else if (match[3]) { // MACD
+    } else if (match[3]) {
       const val = parseFloat(match[4]);
       elements.push(<MicroWidget key={match.index} type="MACD" value={val} />);
     }
@@ -85,53 +70,63 @@ const renderContentWithWidgets = (content: string) => {
   return elements;
 };
 
+// Format timestamp for terminal style
+const formatTimestamp = (id: string) => {
+  // Extract timestamp from message id if available, otherwise use current time
+  const now = new Date();
+  return now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+};
+
 export const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
-  const { role, content, isLoading, sources } = message;
+  const { role, content, isLoading, sources, id } = message;
   const isUser = role === 'user';
+  const timestamp = formatTimestamp(id);
 
   return (
-    <div className={`flex items-start gap-3 animate-fadeIn ${isUser ? 'justify-end' : ''}`}>
-      {!isUser && (
-        <div className="flex-shrink-0 relative group">
-          <div className="absolute inset-0 bg-gradient-to-br from-cyan-500 to-purple-600 rounded-lg blur-sm opacity-50 group-hover:opacity-75 transition-opacity" />
-          <div className="relative w-8 h-8 bg-gradient-to-br from-cyan-600 to-purple-700 rounded-lg flex items-center justify-center shadow-lg">
-            <Icon icon="bot" className="w-4 h-4 text-white" />
+    <div className={`terminal-entry animate-fadeIn ${isUser ? 'border-l-purple-500/50' : 'border-l-cyan-500/50'}`}>
+      {/* Terminal Header Line */}
+      <div className="flex items-center gap-2 mb-1.5">
+        <span className="text-[10px] font-mono text-slate-600">{timestamp}</span>
+        <span className={`text-[10px] font-bold tracking-wider ${isUser ? 'text-purple-400' : 'text-cyan-400'}`}>
+          {isUser ? '[USER]' : '[AEGIS]'}
+        </span>
+        {!isUser && !isLoading && (
+          <div className="flex items-center gap-1 ml-auto">
+            <div className="w-1 h-1 rounded-full bg-emerald-500" />
+            <span className="text-[9px] text-slate-600 font-mono">OK</span>
           </div>
-        </div>
-      )}
-
-      <div className={`max-w-2xl flex-1 ${isUser ? 'text-right' : ''}`}>
-        <div className={`px-4 py-3 inline-block text-sm rounded-2xl shadow-lg ${isUser
-            ? 'bg-gradient-to-br from-cyan-600 to-cyan-500 text-white rounded-tr-sm'
-            : 'bg-slate-800/50 backdrop-blur-sm text-gray-100 border border-slate-700/50 rounded-tl-sm'
-          }`}>
-          {isLoading ? (
-            <div className="flex items-center gap-3">
-              <LoadingSpinner className="w-4 h-4" />
-              <span className="text-cyan-400 animate-pulse">Analyzing...</span>
-            </div>
-          ) : (
-            <div className="leading-relaxed">
-              {renderContentWithWidgets(content)}
-            </div>
-          )}
-        </div>
-
-        {!isUser && !isLoading && sources && sources.length > 0 && (
-          <div className="mt-3 pl-1">
-            <h4 className="text-xs font-semibold mb-2 text-gray-500 tracking-wider uppercase">Sources</h4>
-            <div className="flex flex-wrap gap-2">
-              {sources.map((source, index) => (
-                <SourceLink key={index} source={source} index={index} />
-              ))}
-            </div>
+        )}
+        {isLoading && (
+          <div className="flex items-center gap-1 ml-auto">
+            <div className="w-1 h-1 rounded-full bg-amber-500 animate-pulse" />
+            <span className="text-[9px] text-amber-500 font-mono">PROCESSING</span>
           </div>
         )}
       </div>
 
-      {isUser && (
-        <div className="flex-shrink-0 w-8 h-8 bg-gradient-to-br from-slate-700 to-slate-600 rounded-lg flex items-center justify-center text-white font-bold text-sm shadow-lg">
-          U
+      {/* Message Content */}
+      <div className="text-sm text-slate-300 leading-relaxed pl-4">
+        {isLoading ? (
+          <div className="flex items-center gap-2">
+            <LoadingSpinner className="w-3 h-3" />
+            <span className="text-slate-500 animate-pulse font-mono text-xs">Analyzing market data...</span>
+          </div>
+        ) : (
+          <div className="font-mono text-[13px]">
+            {renderContentWithWidgets(content)}
+          </div>
+        )}
+      </div>
+
+      {/* Sources */}
+      {!isUser && !isLoading && sources && sources.length > 0 && (
+        <div className="mt-2 pl-4">
+          <span className="text-[9px] text-slate-600 font-mono mr-2">SOURCES:</span>
+          <div className="inline-flex flex-wrap gap-1.5">
+            {sources.map((source, index) => (
+              <SourceLink key={index} source={source} index={index} />
+            ))}
+          </div>
         </div>
       )}
     </div>
