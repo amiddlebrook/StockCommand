@@ -37,6 +37,7 @@ import { EntityDetailView } from './components/EntityDetailView';
 import { StorageService } from './lib/storage';
 import { MarketClocksView } from './components/MarketClocksView';
 import { QuickActions } from './components/QuickActions';
+import { TacticalLoader } from './components/TacticalLoader';
 
 type MobileView = 'toolbox' | 'dashboard' | 'chat';
 
@@ -726,38 +727,20 @@ const AppContent: React.FC = () => {
   // Inside the main return block...
 
 
+  // Auto-Run Vitals on Mount
   useEffect(() => {
-    const loadPersistedRun = async () => {
-      try {
-        const res = await (window.fetch as any)('/api/agent/latest');
-        if (res.ok) {
-          const data = await res.json();
-          if (data && data.analysis) {
-            setAgentOutput(data.analysis);
-            if (data.clocks) {
-              setMarketClocks(prev => {
-                if (!prev) return data.clocks;
-                const newClocks = data.clocks as MarketClock[];
-                const updated = [...prev];
-                newClocks.forEach(nc => {
-                  const idx = updated.findIndex(oc => oc.code === nc.code);
-                  if (idx >= 0) updated[idx] = nc;
-                  else updated.push(nc);
-                });
-                return updated;
-              });
-            }
-          }
-        }
-      } catch (e) {
-        console.error("Failed to load persisted run", e);
+    const timer = setTimeout(() => {
+      if (messages.length <= 1 && typeof window !== 'undefined') { // Only Welcome message
+        handleRunAgentScan('TOOL', 'MARKET_VITALS_SCAN', 'MARKET_VITALS');
       }
-    };
-    loadPersistedRun();
+    }, 1500);
+    return () => clearTimeout(timer);
   }, []);
 
   return (
     <div className="h-screen w-screen bg-slate-950 text-gray-100 flex overflow-hidden font-sans border-b-4 border-slate-900">
+
+
 
       {/* LEFT COLUMN: Portfolio & Actions */}
       <div className={`hidden md:flex flex-col flex-shrink-0 border-slate-800 bg-slate-900/40 transition-all duration-300 overflow-hidden ${isLeftSidebarOpen ? 'w-[300px] xl:w-[350px] border-r' : 'w-0 border-none'}`}>
@@ -1029,6 +1012,14 @@ const AppContent: React.FC = () => {
                     </div>
                   ))}
                 </div>
+
+                {isChatLoading && (
+                  <div className="flex justify-start mb-8 animate-fadeIn px-4 md:px-8">
+                    <div className="bg-slate-900/50 p-4 rounded-lg border border-slate-800/50 inline-block shadow-lg">
+                      <TacticalLoader />
+                    </div>
+                  </div>
+                )}
 
                 {/* Widgets */}
                 {widgets.filter(w => !w.title.includes('Agent')).map(widget => (
