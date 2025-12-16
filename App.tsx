@@ -1163,70 +1163,63 @@ const AppContent: React.FC = () => {
                 ✕
               </button>
 
-              {/* Scrollable content with radar, feed, and clocks */}
-              <div className="flex-1 overflow-y-auto p-3 space-y-4 scrollbar-thin scrollbar-thumb-slate-700">
-                {/* Market Radar - Central Visualization */}
-                <MarketRadar isScanning={scanningTarget !== null} size={260} />
 
-                {/* Activity Feed - Live Events */}
-                <ActivityFeed maxEvents={25} />
-
-                {/* Intelligence Panel - Market Clocks */}
-                <IntelligencePanel
-                  clocks={marketClocks}
-                  onClockClick={handleViewEntityDetail}
-                  onCloneStrategy={handleCloneStrategy}
-                />
-              </div>
+              {/* Intelligence Panel - Market Clocks */}
+              <IntelligencePanel
+                clocks={marketClocks}
+                onClockClick={handleViewEntityDetail}
+                onCloneStrategy={handleCloneStrategy}
+              />
+            </div>
             </div>
           )}
-        </div>
-
-
-        <PortfolioReportModal
-          isOpen={isPortfolioModalOpen}
-          symbols={symbols}
-          activeSymbol={selectedSymbols[0] || null}
-          isGenerating={isPortfolioGenerating}
-          onClose={() => setIsPortfolioModalOpen(false)}
-          onSubmit={handleGeneratePortfolioReport}
-        />
-
-        <ProfileModal
-          isOpen={isProfileOpen}
-          onClose={() => setIsProfileOpen(false)}
-        />
-
-
-        <MobileNav activeTab={activeTab} setActiveTab={setActiveTab} />
-
-        {/* Command Palette (⌘K) */}
-        <CommandPalette
-          isOpen={isCommandPaletteOpen}
-          onClose={() => setIsCommandPaletteOpen(false)}
-          onNavigate={(tab) => {
-            setActiveTab(tab as typeof activeTab);
-            setIsCommandPaletteOpen(false);
-          }}
-          onSearch={(query) => {
-            setInitialChatInput(query);
-            setActiveTab('command-center');
-          }}
-        />
-
-        {/* Action Bar (Bottom Taskbar) */}
-        <ActionBar
-          onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
-          onNavigate={(tab) => setActiveTab(tab as typeof activeTab)}
-          onRunScan={() => {
-            // Trigger scan via chat input
-            setInitialChatInput('Run full portfolio scan');
-            setActiveTab('command-center');
-          }}
-          isScanning={isChatLoading}
-        />
       </div>
+
+
+      <PortfolioReportModal
+        isOpen={isPortfolioModalOpen}
+        symbols={symbols}
+        activeSymbol={selectedSymbols[0] || null}
+        isGenerating={isPortfolioGenerating}
+        onClose={() => setIsPortfolioModalOpen(false)}
+        onSubmit={handleGeneratePortfolioReport}
+      />
+
+      <ProfileModal
+        isOpen={isProfileOpen}
+        onClose={() => setIsProfileOpen(false)}
+      />
+
+
+      <MobileNav activeTab={activeTab} setActiveTab={setActiveTab} />
+
+      {/* Command Palette (⌘K) */}
+      <CommandPalette
+        isOpen={isCommandPaletteOpen}
+        onClose={() => setIsCommandPaletteOpen(false)}
+        onNavigate={(tab) => {
+          setActiveTab(tab as typeof activeTab);
+          setIsCommandPaletteOpen(false);
+        }}
+        onSearch={(query) => {
+          setInitialChatInput(query);
+          setActiveTab('command-center');
+        }}
+      />
+
+      {/* Action Bar (Bottom Taskbar) */}
+      <ActionBar
+        onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
+        onNavigate={(tab) => setActiveTab(tab as typeof activeTab)}
+        onRunScan={() => {
+          // Trigger scan via chat input
+          setInitialChatInput('Run full portfolio scan');
+          setActiveTab('command-center');
+        }}
+        isScanning={isChatLoading}
+      />
     </div>
+    </div >
   );
 };
 
