@@ -18,6 +18,7 @@ import { Icon } from './components/Icon';
 import { MarketClocksView } from './components/MarketClocksView';
 import { SocialView } from './components/SocialView';
 import { NewsSynthesisView } from './components/NewsSynthesisView';
+import { SettingsView } from './components/SettingsView';
 
 import type { ChatMessage as ChatMessageType, Source } from './types';
 import {
@@ -438,6 +439,8 @@ const AppContent: React.FC = () => {
             <div className="h-full overflow-hidden"><SocialView /></div>
           ) : activeTab === 'news' ? (
             <div className="h-full overflow-hidden"><NewsSynthesisView /></div>
+          ) : activeTab === 'settings' ? (
+            <div className="h-full overflow-hidden"><SettingsView /></div>
           ) : activeTab === 'market-clocks' ? (
             <div className="h-full overflow-y-auto"><MarketClocksView clocks={marketClocks} onClockClick={() => { }} onPinClock={() => { }} /></div>
           ) : activeTab === 'competitions' ? (

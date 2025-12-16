@@ -23,6 +23,7 @@ const NAV_ITEMS: NavItem[] = [
     { id: 'comms', label: 'COMMS', icon: 'message', shortcut: '5' },
     { id: 'news', label: 'NEWS', icon: 'activity', shortcut: '6' },
     { id: 'creator', label: 'CREATOR', icon: 'code', shortcut: '7' },
+    { id: 'settings', label: 'SYSTEM', icon: 'settings', shortcut: '8' },
 ];
 
 export const HUDNav: React.FC<HUDNavProps> = ({
@@ -36,7 +37,11 @@ export const HUDNav: React.FC<HUDNavProps> = ({
     return (
         <div className="fixed left-0 top-0 h-screen w-16 z-50 flex flex-col items-center py-4 bg-slate-950 border-r border-slate-800/80">
             {/* Logo / Status Indicator */}
-            <div className="w-10 h-10 border border-cyan-500/30 flex items-center justify-center mb-6 relative group">
+            <div
+                className="w-10 h-10 border border-cyan-500/30 flex items-center justify-center mb-6 relative group cursor-pointer"
+                onClick={() => onNavigate('command-center')}
+                title="Return to Dashboard"
+            >
                 <div className="absolute inset-0 bg-cyan-500/10 group-hover:bg-cyan-500/20 transition-colors"></div>
                 <Icon icon="bot" className="w-5 h-5 text-cyan-400" />
 
