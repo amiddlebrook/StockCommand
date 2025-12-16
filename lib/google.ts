@@ -8,9 +8,11 @@ export function getGoogleAuthUrl(env: any): string {
         throw new Error("Missing Google Auth Configuration");
     }
 
+    const baseUrl = env.APP_URL.endsWith('/') ? env.APP_URL.slice(0, -1) : env.APP_URL;
+
     const params = new URLSearchParams({
         client_id: env.GOOGLE_CLIENT_ID,
-        redirect_uri: `${env.APP_URL}/api/auth/google/callback`,
+        redirect_uri: `${baseUrl}/api/auth/google/callback`,
         response_type: "code",
         scope: "email profile",
         access_type: "online",
@@ -22,12 +24,13 @@ export function getGoogleAuthUrl(env: any): string {
 
 export async function getGoogleUser(env: any, code: string): Promise<any> {
     // 1. Exchange code for token
+    const baseUrl = env.APP_URL.endsWith('/') ? env.APP_URL.slice(0, -1) : env.APP_URL;
     const tokenParams = new URLSearchParams({
         client_id: env.GOOGLE_CLIENT_ID,
         client_secret: env.GOOGLE_CLIENT_SECRET,
         code,
         grant_type: "authorization_code",
-        redirect_uri: `${env.APP_URL}/api/auth/google/callback`,
+        redirect_uri: `${baseUrl}/api/auth/google/callback`,
     });
 
     const tokenResponse = await fetch(GOOGLE_TOKEN_ENDPOINT, {
