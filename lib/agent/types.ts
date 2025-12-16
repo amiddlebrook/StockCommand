@@ -63,3 +63,34 @@ export interface PortfolioState {
   holdings: Record<string, { quantity: number; costBasis: number }>;
   lastUpdated: string;
 }
+
+// System 2: Strategy Forge Types
+export type TriggerMetric = 'PRICE' | 'RSI' | 'VIX' | 'CHANGE_PCT' | 'DEFCON' | 'MA_50' | 'MA_200';
+export type TriggerOperator = '>' | '<' | '=' | 'CROSSES_ABOVE' | 'CROSSES_BELOW';
+export type ActionType = 'ALERT' | 'BUY' | 'SELL' | 'REBALANCE' | 'SCAN';
+
+export interface StrategyTrigger {
+  id: string;
+  metric: TriggerMetric;
+  operator: TriggerOperator;
+  value: number;
+  symbol?: string; // If specific ticker
+}
+
+export interface StrategyAction {
+  id: string;
+  type: ActionType;
+  target: string; // Ticker, Sleeve, or "ALL"
+  param?: string; // e.g., "5%" or "High Priority"
+}
+
+export interface UserStrategy {
+  id: string;
+  name: string;
+  description?: string;
+  triggers: StrategyTrigger[];
+  actions: StrategyAction[];
+  active: boolean;
+  lastExecuted?: number;
+  createdAt: number;
+}

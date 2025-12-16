@@ -1,12 +1,13 @@
 import { AnalysisWidget } from '../services/geminiService';
-import { MarketClock } from './agent/types';
+import { MarketClock, UserStrategy } from './agent/types';
 
 const STORAGE_KEYS = {
     WIDGETS: 'stockcommand_widgets_v2',
     REPORTS: 'stockcommand_reports_v2',
     CLOCKS: 'stockcommand_clocks_v2',
     SETTINGS: 'stockcommand_settings_v2',
-    RESEARCH_HISTORY: 'stockcommand_research_history_v1'
+    RESEARCH_HISTORY: 'stockcommand_research_history_v1',
+    STRATEGIES: 'stockcommand_strategies_v1'
 };
 
 export interface ResearchEntry {
@@ -16,6 +17,7 @@ export interface ResearchEntry {
 }
 
 export const StorageService = {
+    // ... Existing methods ...
     saveWidgets: (widgets: AnalysisWidget[]) => {
         try {
             localStorage.setItem(STORAGE_KEYS.WIDGETS, JSON.stringify(widgets));
@@ -103,9 +105,26 @@ export const StorageService = {
 
     addResearchEntry: (ticker: string, entry: ResearchEntry, history: Record<string, ResearchEntry[]>): Record<string, ResearchEntry[]> => {
         const entries = history[ticker] || [];
-        // Add new entry at the beginning, limit to 10 entries
         const updated = [entry, ...entries].slice(0, 10);
         return { ...history, [ticker]: updated };
+    },
+
+    // Strategies
+    saveStrategies: (strategies: UserStrategy[]) => {
+        try {
+            localStorage.setItem(STORAGE_KEYS.STRATEGIES, JSON.stringify(strategies));
+        } catch (e) {
+            console.error("Failed to save strategies", e);
+        }
+    },
+
+    loadStrategies: (): UserStrategy[] => {
+        try {
+            const saved = localStorage.getItem(STORAGE_KEYS.STRATEGIES);
+            return saved ? JSON.parse(saved) : [];
+        } catch (e) {
+            return [];
+        }
     },
 
     resetToDefaults: () => {
