@@ -179,8 +179,101 @@
 </head>
 
 <body class="bg-slate-950 text-gray-100">
-  <div id="root"></div>
+  <!-- Particle Background Canvas -->
+  <canvas id="particle-bg"
+    style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0;"></canvas>
+
+  <div id="root" style="position: relative; z-index: 1;"></div>
+
   <script type="module" src="/index.tsx"></script>
+
+  <!-- Particle Animation Script -->
+  <script>
+      (function () {
+        const canvas = document.getElementById('particle-bg');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+        const PARTICLE_COUNT = 50;
+
+        function resize() {
+          canvas.width = window.innerWidth;
+          canvas.height = window.innerHeight;
+        }
+
+        function createParticle() {
+          return {
+            x: Math.random() * canvas.width,
+            y: Math.random() * canvas.height,
+            vx: (Math.random() - 0.5) * 0.3,
+            vy: (Math.random() - 0.5) * 0.3,
+            size: Math.random() * 2 + 0.5,
+            opacity: Math.random() * 0.4 + 0.1,
+            hue: 180 + Math.random() * 20, // Cyan range
+          };
+        }
+
+        function init() {
+          resize();
+          particles = [];
+          for (let i = 0; i < PARTICLE_COUNT; i++) {
+            particles.push(createParticle());
+          }
+        }
+
+        function animate() {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+          particles.forEach(p => {
+            // Update position
+            p.x += p.vx;
+            p.y += p.vy;
+
+            // Wrap around edges
+            if (p.x < 0) p.x = canvas.width;
+            if (p.x > canvas.width) p.x = 0;
+            if (p.y < 0) p.y = canvas.height;
+            if (p.y > canvas.height) p.y = 0;
+
+            // Draw particle with glow
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+            ctx.fillStyle = `hsla(${p.hue}, 80%, 60%, ${p.opacity})`;
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = `hsla(${p.hue}, 80%, 60%, 0.5)`;
+            ctx.fill();
+            ctx.shadowBlur = 0;
+          });
+
+          // Draw subtle connection lines between nearby particles
+          particles.forEach((p1, i) => {
+            particles.slice(i + 1).forEach(p2 => {
+              const dx = p1.x - p2.x;
+              const dy = p1.y - p2.y;
+              const dist = Math.sqrt(dx * dx + dy * dy);
+
+              if (dist < 100) {
+                ctx.beginPath();
+                ctx.moveTo(p1.x, p1.y);
+                ctx.lineTo(p2.x, p2.y);
+                ctx.strokeStyle = `rgba(6, 182, 212, ${0.1 * (1 - dist / 100)})`;
+                ctx.lineWidth = 0.5;
+                ctx.stroke();
+              }
+            });
+          });
+
+          requestAnimationFrame(animate);
+        }
+
+        window.addEventListener('resize', resize);
+
+        // Respect reduced motion preference
+        if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+          init();
+          animate();
+        }
+      })();
+  </script>
 </body>
 
 </html>

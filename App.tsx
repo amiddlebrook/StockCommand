@@ -41,6 +41,8 @@ import { TacticalLoader } from './components/TacticalLoader';
 import { UserStrategy } from './lib/agent/types';
 import { CommandPalette } from './components/CommandPalette';
 import { ActionBar } from './components/ActionBar';
+import { MarketRadar } from './components/MarketRadar';
+import { ActivityFeed } from './components/ActivityFeed';
 
 type MobileView = 'toolbox' | 'dashboard' | 'chat';
 
@@ -1143,7 +1145,7 @@ const AppContent: React.FC = () => {
       {/* RIGHT COLUMN: Intelligence Panel */}
       <div className={`hidden md:flex flex-col flex-shrink-0 transition-all duration-300 overflow-hidden ${isRightSidebarOpen ? 'w-[320px] xl:w-[360px]' : 'w-0'}`}>
         {isRightSidebarOpen && (
-          <div className="w-[320px] xl:w-[360px] h-full relative">
+          <div className="w-[320px] xl:w-[360px] h-full relative flex flex-col overflow-hidden">
             {/* Close Button */}
             <button
               onClick={() => setIsRightSidebarOpen(false)}
@@ -1151,14 +1153,26 @@ const AppContent: React.FC = () => {
             >
               ✕
             </button>
-            <IntelligencePanel
-              clocks={marketClocks}
-              onClockClick={handleViewEntityDetail}
-              onCloneStrategy={handleCloneStrategy}
-            />
+
+            {/* Scrollable content with radar, feed, and clocks */}
+            <div className="flex-1 overflow-y-auto p-3 space-y-4 scrollbar-thin scrollbar-thumb-slate-700">
+              {/* Market Radar - Central Visualization */}
+              <MarketRadar isScanning={scanningTarget !== null} size={260} />
+
+              {/* Activity Feed - Live Events */}
+              <ActivityFeed maxEvents={25} />
+
+              {/* Intelligence Panel - Market Clocks */}
+              <IntelligencePanel
+                clocks={marketClocks}
+                onClockClick={handleViewEntityDetail}
+                onCloneStrategy={handleCloneStrategy}
+              />
+            </div>
           </div>
         )}
       </div>
+
 
       <PortfolioReportModal
         isOpen={isPortfolioModalOpen}
