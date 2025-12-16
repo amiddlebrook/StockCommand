@@ -912,9 +912,13 @@ const AppContent: React.FC = () => {
               freshnessThreshold={dataFreshnessHours * 60 * 60 * 1000}
               onBack={() => setActiveTab('command-center')}
               onRunAnalysis={(e) => {
-                // Extract ticker symbol from entity code (e.g., "AMZN_VOL" -> "AMZN")
-                const ticker = e.code.split('_')[0];
-                executeAgentScan('TICKER', ticker);
+                if (e.code.startsWith('CLOCK_')) {
+                  executeAgentScan('TOOL', e.code, e.code);
+                } else {
+                  // Extract ticker symbol from entity code (e.g., "AMZN_VOL" -> "AMZN")
+                  const ticker = e.code.split('_')[0];
+                  executeAgentScan('TICKER', ticker);
+                }
               }}
               researchContent={selectedEntity ? researchReports[selectedEntity.code.split('_')[0]] : null}
               isScanning={scanningTarget !== null && selectedEntity !== null && (scanningTarget === selectedEntity.code || scanningTarget === selectedEntity.code.split('_')[0])}
