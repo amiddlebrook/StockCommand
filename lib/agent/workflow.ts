@@ -96,9 +96,11 @@ export async function runAgentWorkflow(
     }
 
     // 1. Refresh Data
-    // 1. Refresh Data
-    const marketData = await fetchMarketData(AV_KEY, scope, target);
-    const portfolio = await fetchPortfolioState();
+    // 1. Refresh Data (Parallelized)
+    const [marketData, portfolio] = await Promise.all([
+        fetchMarketData(AV_KEY, scope, target),
+        fetchPortfolioState()
+    ]);
 
     // 2. Research & Analyze (Engine with LLM)
     const engine = new AgentEngine(DEEPSEEK_KEY);

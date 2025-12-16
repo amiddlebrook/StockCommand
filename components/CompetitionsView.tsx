@@ -2,23 +2,22 @@ import React, { useState } from 'react';
 import { Icon } from './Icon';
 import { GlassButton } from './ui/GlassButton';
 
-interface Competition {
-    id: string;
+interface Player {
+    rank: number;
     name: string;
-    type: 'public' | 'private';
-    participants: number;
-    startDate: string;
-    endDate: string;
-    status: 'active' | 'upcoming' | 'completed';
-    prize?: string;
+    org: string;
+    pnl: number;
+    delta: number;
+    isUser?: boolean;
+    isAi?: boolean;
 }
 
-// Mock data for competitions
-const MOCK_COMPETITIONS: Competition[] = [
-    { id: '1', name: 'Q1 2025 Alpha Challenge', type: 'public', participants: 1247, startDate: '2025-01-01', endDate: '2025-03-31', status: 'upcoming', prize: '$10,000' },
-    { id: '2', name: 'Tech Sector Showdown', type: 'public', participants: 823, startDate: '2024-12-01', endDate: '2024-12-31', status: 'active', prize: '$5,000' },
-    { id: '3', name: 'Private League: Hedgies', type: 'private', participants: 24, startDate: '2024-11-01', endDate: '2025-02-28', status: 'active' },
-    { id: '4', name: 'Macro Masters Cup', type: 'public', participants: 2156, startDate: '2024-10-01', endDate: '2024-12-15', status: 'active', prize: '$15,000' },
+const LEADERBOARD: Player[] = [
+    { rank: 1, name: 'HIVE_MIND_CORE', org: 'SYSTEM', pnl: 42.8, delta: 1.2, isAi: true },
+    { rank: 2, name: 'Citadel_Alpha', org: 'HF', pnl: 38.5, delta: 0.8 },
+    { rank: 3, name: 'Vanguard_Quant', org: 'HF', pnl: 35.1, delta: -0.2 },
+    { rank: 4, name: 'COMMANDER (YOU)', org: 'USER', pnl: 28.4, delta: 2.1, isUser: true },
+    { rank: 5, name: 'Retail_Whale', org: 'IND', pnl: 12.2, delta: -1.5 },
 ];
 
 interface CompetitionsViewProps {
@@ -26,129 +25,126 @@ interface CompetitionsViewProps {
 }
 
 export const CompetitionsView: React.FC<CompetitionsViewProps> = ({ onSubmitPortfolio }) => {
-    const [filter, setFilter] = useState<'all' | 'public' | 'private'>('all');
-    const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'upcoming' | 'completed'>('all');
-
-    const filteredCompetitions = MOCK_COMPETITIONS.filter(comp => {
-        if (filter !== 'all' && comp.type !== filter) return false;
-        if (statusFilter !== 'all' && comp.status !== statusFilter) return false;
-        return true;
-    });
-
     return (
-        <div className="h-full flex flex-col bg-slate-900/50">
-            {/* Header */}
-            <div className="p-6 border-b border-slate-700/50 bg-slate-800/20">
-                <div className="flex justify-between items-start mb-4">
-                    <div>
-                        <h2 className="text-2xl font-bold text-white mb-1 flex items-center gap-2">
-                            🏆 Thesis Competitions
-                        </h2>
-                        <p className="text-gray-400 text-sm">Submit your portfolio strategy and compete with others</p>
-                    </div>
-                    <GlassButton variant="primary" onClick={onSubmitPortfolio}>
-                        <div className="flex items-center gap-2">
-                            <Icon icon="upload" className="w-4 h-4" />
-                            Submit Portfolio
-                        </div>
-                    </GlassButton>
-                </div>
+        <div className="h-full flex flex-col bg-slate-950 overflow-hidden relative">
+            {/* Background Map Overlay */}
+            <div className="absolute inset-0 bg-[url('https://upload.wikimedia.org/wikipedia/commons/e/ec/World_map_blank_without_borders.svg')] opacity-5 bg-no-repeat bg-center bg-cover pointer-events-none mix-blend-overlay" />
 
-                {/* Filters */}
-                <div className="flex gap-4">
-                    <div className="flex items-center gap-2">
-                        <span className="text-xs text-gray-500 uppercase">Type:</span>
-                        <div className="flex bg-slate-800 rounded p-1 border border-slate-700">
-                            {['all', 'public', 'private'].map(f => (
-                                <button
-                                    key={f}
-                                    onClick={() => setFilter(f as any)}
-                                    className={`px-3 py-1 text-xs font-mono rounded transition-colors ${filter === f ? 'bg-slate-700 text-white' : 'text-gray-500 hover:text-gray-300'}`}
-                                >
-                                    {f.charAt(0).toUpperCase() + f.slice(1)}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <span className="text-xs text-gray-500 uppercase">Status:</span>
-                        <div className="flex bg-slate-800 rounded p-1 border border-slate-700">
-                            {['all', 'active', 'upcoming', 'completed'].map(s => (
-                                <button
-                                    key={s}
-                                    onClick={() => setStatusFilter(s as any)}
-                                    className={`px-3 py-1 text-xs font-mono rounded transition-colors ${statusFilter === s ? 'bg-slate-700 text-white' : 'text-gray-500 hover:text-gray-300'}`}
-                                >
-                                    {s.charAt(0).toUpperCase() + s.slice(1)}
-                                </button>
-                            ))}
-                        </div>
+            {/* Header */}
+            <div className="p-6 border-b border-slate-800 bg-slate-900/80 backdrop-blur shrink-0 flex justify-between items-center relative z-10">
+                <div>
+                    <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-red-500 to-orange-600 flex items-center gap-3">
+                        <Icon icon="crosshair" className="text-red-500 w-8 h-8 animate-pulse" />
+                        WAR GAMES
+                    </h1>
+                    <p className="text-red-400/60 text-sm mt-1 font-mono tracking-widest">GLOBAL ALPHA CONFLICT ACTIVE</p>
+                </div>
+                <div className="flex items-center gap-4">
+                    <div className="bg-red-900/20 border border-red-900/50 px-4 py-2 rounded flex flex-col items-center">
+                        <span className="text-[10px] text-red-500 font-bold uppercase tracking-widest">DEFCON</span>
+                        <span className="text-2xl font-black text-red-500 leading-none">3</span>
                     </div>
                 </div>
             </div>
 
-            {/* Competitions List */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-4">
-                {filteredCompetitions.map(comp => (
-                    <div
-                        key={comp.id}
-                        className={`bg-slate-800/40 rounded-lg p-5 border transition-all hover:border-purple-500/50 cursor-pointer ${comp.status === 'active' ? 'border-green-500/30' :
-                                comp.status === 'upcoming' ? 'border-yellow-500/30' : 'border-slate-700/50'
-                            }`}
-                    >
-                        <div className="flex justify-between items-start mb-3">
-                            <div>
-                                <div className="flex items-center gap-2 mb-1">
-                                    <h3 className="text-lg font-bold text-white">{comp.name}</h3>
-                                    <span className={`px-2 py-0.5 rounded text-xs font-bold ${comp.type === 'public' ? 'bg-blue-500/20 text-blue-400' : 'bg-purple-500/20 text-purple-400'
-                                        }`}>
-                                        {comp.type.toUpperCase()}
-                                    </span>
-                                </div>
-                                <p className="text-xs text-gray-500">
-                                    {comp.startDate} → {comp.endDate}
-                                </p>
+            {/* Main Battle Area */}
+            <div className="flex-1 overflow-y-auto p-6 relative z-10">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+                    {/* Left Col: Leaderboard */}
+                    <div className="lg:col-span-2 space-y-6">
+                        <div className="bg-slate-900/50 border border-slate-800 rounded-xl overflow-hidden backdrop-blur-sm">
+                            <div className="p-4 border-b border-slate-800 bg-slate-900/80 flex justify-between items-center">
+                                <h3 className="font-bold text-white flex items-center gap-2">
+                                    <Icon icon="list" className="text-cyan-500" />
+                                    Global Ranking
+                                </h3>
+                                <span className="text-xs text-emerald-400 animate-pulse">● LIVE UPDATES</span>
                             </div>
-                            <div className="text-right">
-                                <span className={`px-3 py-1 rounded-full text-xs font-bold ${comp.status === 'active' ? 'bg-green-500/20 text-green-400' :
-                                        comp.status === 'upcoming' ? 'bg-yellow-500/20 text-yellow-400' :
-                                            'bg-gray-500/20 text-gray-400'
-                                    }`}>
-                                    {comp.status.toUpperCase()}
-                                </span>
+                            <div className="divide-y divide-slate-800">
+                                {LEADERBOARD.map((player) => (
+                                    <div key={player.rank} className={`flex items-center justify-between p-4 hover:bg-slate-800/50 transition-colors ${player.isUser ? 'bg-cyan-900/10 border-l-2 border-cyan-500' : ''} ${player.isAi ? 'bg-purple-900/10 border-l-2 border-purple-500' : ''}`}>
+                                        <div className="flex items-center gap-4">
+                                            <span className={`font-mono text-xl font-bold w-8 ${player.rank <= 3 ? 'text-yellow-500' : 'text-slate-500'}`}>#{player.rank}</span>
+                                            <div>
+                                                <div className="flex items-center gap-2">
+                                                    <span className={`font-bold ${player.isUser ? 'text-cyan-400' : player.isAi ? 'text-purple-400' : 'text-white'}`}>{player.name}</span>
+                                                    {player.isAi && <span className="text-[10px] bg-purple-500/20 text-purple-400 px-1 rounded border border-purple-500/30">AI</span>}
+                                                    {player.isUser && <span className="text-[10px] bg-cyan-500/20 text-cyan-400 px-1 rounded border border-cyan-500/30">YOU</span>}
+                                                </div>
+                                                <span className="text-xs text-slate-500 font-mono">{player.org} // TIER 1</span>
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            <div className="text-lg font-bold text-white font-mono">{player.pnl}%</div>
+                                            <div className={`text-xs font-mono flex items-center justify-end gap-1 ${player.delta >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                                                {player.delta >= 0 ? '▲' : '▼'} {Math.abs(player.delta)}% 24h
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
                         </div>
-                        <div className="flex justify-between items-center">
-                            <div className="flex items-center gap-4 text-sm">
-                                <span className="text-gray-400">
-                                    <span className="text-white font-bold">{comp.participants.toLocaleString()}</span> participants
-                                </span>
-                                {comp.prize && (
-                                    <span className="text-emerald-400 font-bold">
-                                        💰 {comp.prize}
-                                    </span>
-                                )}
+
+                        {/* Recent Events Log */}
+                        <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4 font-mono text-sm space-y-2 opacity-80">
+                            <div className="text-xs text-slate-500 font-bold uppercase mb-2">Tactical Log</div>
+                            <div className="flex gap-2 text-slate-400"><span className="text-slate-600">[12:04:02]</span> Citadel_Alpha liquidated <span className="text-red-400">SHORT SPY</span> positions.</div>
+                            <div className="flex gap-2 text-slate-400"><span className="text-slate-600">[12:03:45]</span> HIVE_MIND_CORE detected <span className="text-purple-400">Gamma Squeeze</span> in NVDA.</div>
+                            <div className="flex gap-2 text-slate-400"><span className="text-slate-600">[12:01:12]</span> Retail_Whale entered <span className="text-emerald-400">LONG TSLA</span> ($2.4M).</div>
+                        </div>
+                    </div>
+
+                    {/* Right Col: User Status */}
+                    <div className="space-y-6">
+                        <div className="bg-gradient-to-b from-slate-900 to-slate-950 border border-slate-800 rounded-xl p-6 shadow-xl relative overflow-hidden">
+                            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-500 to-blue-600" />
+                            <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">Commander Status</h3>
+
+                            <div className="text-center mb-6">
+                                <div className="text-4xl font-black text-cyan-400 mb-1">28.4%</div>
+                                <div className="text-sm text-cyan-600 font-mono">YTD RETURN</div>
                             </div>
-                            <GlassButton size="sm" variant="glass">
-                                {comp.status === 'active' ? 'Join Now' : comp.status === 'upcoming' ? 'Register' : 'View Results'}
+
+                            <div className="space-y-4 mb-6">
+                                <div>
+                                    <div className="flex justify-between text-xs text-slate-400 mb-1">
+                                        <span>Rank Progress</span>
+                                        <span>RANK #4</span>
+                                    </div>
+                                    <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
+                                        <div className="h-full bg-cyan-600 w-[75%]" />
+                                    </div>
+                                </div>
+                                <div>
+                                    <div className="flex justify-between text-xs text-slate-400 mb-1">
+                                        <span>Win Rate</span>
+                                        <span className="text-emerald-400">62%</span>
+                                    </div>
+                                    <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
+                                        <div className="h-full bg-emerald-600 w-[62%]" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <GlassButton variant="primary" className="w-full justify-center group" onClick={onSubmitPortfolio}>
+                                <span className="group-hover:text-white transition-colors">DEPLOY STRATEGY</span>
                             </GlassButton>
                         </div>
-                    </div>
-                ))}
 
-                {filteredCompetitions.length === 0 && (
-                    <div className="text-center py-12 text-gray-500">
-                        <Icon icon="trophy" className="w-12 h-12 mx-auto mb-4 opacity-30" />
-                        <p>No competitions match your filters</p>
+                        <div className="bg-purple-900/10 border border-purple-500/20 rounded-xl p-6">
+                            <div className="flex items-start gap-4">
+                                <Icon icon="bot" className="w-8 h-8 text-purple-400" />
+                                <div>
+                                    <h4 className="font-bold text-white mb-1">Hive Mind Analysis</h4>
+                                    <p className="text-sm text-purple-200/60 leading-relaxed">
+                                        Your alpha correlation with the Hive Mind is <span className="text-white font-bold">84%</span>. Divergence detected in Energy sector. Recommended Action: Review XLE exposure.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                )}
-            </div>
-
-            {/* Create Competition CTA */}
-            <div className="p-4 border-t border-slate-700/50 bg-slate-800/20">
-                <button className="w-full py-3 border border-dashed border-purple-500/50 rounded-lg text-purple-400 hover:bg-purple-500/10 transition-colors text-sm font-medium">
-                    + Create Private Competition
-                </button>
+                </div>
             </div>
         </div>
     );

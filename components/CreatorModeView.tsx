@@ -2,207 +2,215 @@ import React, { useState } from 'react';
 import { Icon } from './Icon';
 import { GlassButton } from './ui/GlassButton';
 
-type CreatorTab = 'thesis' | 'sleeve' | 'portfolio';
+type ForgeTab = 'builder' | 'deployed' | 'templates';
+
+interface LogicBlock {
+    id: string;
+    type: 'TRIGGER' | 'ACTION';
+    metric?: string;
+    operator?: '>' | '<' | '=' | 'CROSSES';
+    value?: string;
+    actionType?: 'SCAN' | 'ALERT' | 'REBALANCE';
+    target?: string;
+}
 
 export const CreatorModeView: React.FC = () => {
-    const [activeTab, setActiveTab] = useState<CreatorTab>('thesis');
+    const [activeTab, setActiveTab] = useState<ForgeTab>('builder');
+    const [strategyName, setStrategyName] = useState('');
+    const [logicBlocks, setLogicBlocks] = useState<LogicBlock[]>([
+        { id: '1', type: 'TRIGGER', metric: 'VIX', operator: '>', value: '25' },
+        { id: '2', type: 'ACTION', actionType: 'SCAN', target: 'Defensive Tech' }
+    ]);
+
+    const addBlock = (type: 'TRIGGER' | 'ACTION') => {
+        setLogicBlocks([...logicBlocks, {
+            id: Date.now().toString(),
+            type,
+            metric: 'RSI',
+            operator: '<',
+            value: '30',
+            actionType: 'ALERT',
+            target: 'Watchlist'
+        }]);
+    };
+
+    const removeBlock = (id: string) => {
+        setLogicBlocks(logicBlocks.filter(b => b.id !== id));
+    };
 
     return (
-        <div className="flex-1 flex flex-col h-full bg-slate-950 overflow-hidden">
-            {/* Header / Sub-nav */}
-            <div className="p-6 border-b border-slate-800 bg-slate-900/40 backdrop-blur shrink-0">
-                <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400 mb-4">
-                    Creator Studio
-                </h1>
+        <div className="flex-1 flex flex-col h-full bg-slate-950 overflow-hidden relative">
+            {/* Background Grid */}
+            <div className="absolute inset-0 bg-[linear-gradient(rgba(15,23,42,0.9)_1px,transparent_1px),linear-gradient(90deg,rgba(15,23,42,0.9)_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_60%_60%_at_50%_50%,#000_70%,transparent_100%)] pointer-events-none" />
+
+            {/* Header */}
+            <div className="relative z-10 p-6 border-b border-slate-800 bg-slate-900/80 backdrop-blur shrink-0 flex justify-between items-center">
+                <div>
+                    <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-orange-400 to-red-500 flex items-center gap-3">
+                        <Icon icon="zap" className="text-orange-500 w-8 h-8" />
+                        STRATEGY FORGE
+                    </h1>
+                    <p className="text-slate-400 text-sm mt-1">Architect autonomous agent behaviors</p>
+                </div>
                 <div className="flex gap-2">
                     <GlassButton
-                        variant={activeTab === 'thesis' ? 'primary' : 'glass'}
-                        onClick={() => setActiveTab('thesis')}
-                        className="flex items-center gap-2"
+                        variant={activeTab === 'builder' ? 'primary' : 'glass'}
+                        onClick={() => setActiveTab('builder')}
                     >
-                        <Icon icon="file-text" className="w-4 h-4" />
-                        Thesis
+                        Builder
                     </GlassButton>
                     <GlassButton
-                        variant={activeTab === 'sleeve' ? 'primary' : 'glass'}
-                        onClick={() => setActiveTab('sleeve')}
-                        className="flex items-center gap-2"
+                        variant={activeTab === 'deployed' ? 'primary' : 'glass'}
+                        onClick={() => setActiveTab('deployed')}
                     >
-                        <Icon icon="layers" className="w-4 h-4" />
-                        Sleeve
-                    </GlassButton>
-                    <GlassButton
-                        variant={activeTab === 'portfolio' ? 'primary' : 'glass'}
-                        onClick={() => setActiveTab('portfolio')}
-                        className="flex items-center gap-2"
-                    >
-                        <Icon icon="briefcase" className="w-4 h-4" />
-                        Portfolio
+                        Active Agents
                     </GlassButton>
                 </div>
             </div>
 
-            {/* Content Area */}
-            <div className="flex-1 overflow-y-auto p-8">
-                {activeTab === 'thesis' && (
-                    <div className="max-w-4xl mx-auto space-y-6 animate-fadeIn">
-                        <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-8">
-                            <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-                                <Icon icon="book-open" className="text-purple-400" />
-                                Define Your Thesis
-                            </h2>
-                            <p className="text-gray-400 mb-6">
-                                Articulate the core strategy and macroeconomic worldview that will drive your localized agent reasoning.
-                            </p>
+            {/* Builder Area */}
+            {activeTab === 'builder' && (
+                <div className="flex-1 relative z-10 overflow-y-auto p-8">
+                    <div className="max-w-4xl mx-auto space-y-8 animate-fadeIn">
 
-                            <div className="space-y-4">
-                                <div>
-                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Thesis Title</label>
-                                    <input
-                                        type="text"
-                                        placeholder="e.g., The Great Rotation 2026"
-                                        className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-purple-500 transition-colors"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Strategic Vision</label>
-                                    <textarea
-                                        rows={12}
-                                        placeholder="Describe your market outlook, key sectors, and rotation logic..."
-                                        className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-purple-500 transition-colors resize-none font-mono text-sm leading-relaxed"
-                                    />
-                                </div>
-                                <div className="flex justify-end pt-4">
-                                    <GlassButton variant="primary">Save Thesis</GlassButton>
-                                </div>
-                            </div>
+                        {/* Strategy Identity */}
+                        <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6 shadow-xl backdrop-blur-sm">
+                            <label className="text-xs font-bold text-orange-400 uppercase tracking-widest mb-2 block">Strategy Designation</label>
+                            <input
+                                type="text"
+                                value={strategyName}
+                                onChange={(e) => setStrategyName(e.target.value)}
+                                placeholder="e.g. VOLATILITY HUNTER MK-1"
+                                className="w-full bg-transparent border-b-2 border-slate-700 text-2xl font-bold text-white focus:border-orange-500 focus:outline-none py-2 placeholder-slate-600 font-mono"
+                            />
                         </div>
-                    </div>
-                )}
 
-                {activeTab === 'sleeve' && (
-                    <div className="max-w-4xl mx-auto space-y-6 animate-fadeIn">
-                        <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-8">
-                            <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-                                <Icon icon="box" className="text-pink-400" />
-                                Construct a Sleeve
-                            </h2>
-                            <p className="text-gray-400 mb-6">
-                                Group related assets into a thematic sleeve to be managed as a single unit within your portfolio.
-                            </p>
+                        {/* Logic Chain */}
+                        <div className="relative space-y-4">
+                            <div className="absolute left-8 top-0 bottom-0 w-0.5 bg-slate-800 -z-10" />
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                <div className="space-y-4">
-                                    <div>
-                                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Sleeve Name</label>
-                                        <input
-                                            type="text"
-                                            placeholder="e.g., AI Infrastructure"
-                                            className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-pink-500 transition-colors"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Focus Area</label>
-                                        <select className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-pink-500 transition-colors">
-                                            <option>Technology</option>
-                                            <option>Commodities</option>
-                                            <option>Crypto</option>
-                                            <option>Healthcare</option>
-                                            <option>Defensive</option>
-                                        </select>
-                                    </div>
-                                </div>
+                            {logicBlocks.map((block, index) => (
+                                <div key={block.id} className="relative group">
+                                    <div className={`absolute left-[-11px] top-1/2 w-4 h-4 rounded-full border-4 border-slate-950 ${block.type === 'TRIGGER' ? 'bg-blue-500' : 'bg-green-500'}`} />
 
-                                <div className="bg-slate-950 rounded-lg p-4 border border-slate-800">
-                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-4">Constituents</label>
-                                    <div className="flex gap-2 mb-4">
-                                        <input
-                                            type="text"
-                                            placeholder="Ticker"
-                                            className="flex-1 bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm text-white"
-                                        />
-                                        <GlassButton size="sm" variant="glass">Add</GlassButton>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <div className="flex items-center justify-between p-2 bg-slate-900 rounded border border-slate-800/50">
-                                            <span className="font-mono font-bold text-cyan-400">NVDA</span>
-                                            <Icon icon="x" className="w-4 h-4 text-gray-600 cursor-pointer hover:text-red-400" />
+                                    <div className="bg-slate-900 border border-slate-700 rounded-lg p-4 ml-8 hover:border-orange-500/50 transition-colors shadow-lg">
+                                        <div className="flex justify-between items-start mb-4">
+                                            <span className={`text-xs font-bold px-2 py-1 rounded ${block.type === 'TRIGGER' ? 'bg-blue-500/20 text-blue-400' : 'bg-green-500/20 text-green-400'}`}>
+                                                {block.type === 'TRIGGER' ? 'IF CONDITION DETECTED' : 'THEN EXECUTE ACTION'}
+                                            </span>
+                                            <button onClick={() => removeBlock(block.id)} className="text-slate-600 hover:text-red-500 transition-colors">
+                                                <Icon icon="x" className="w-4 h-4" />
+                                            </button>
                                         </div>
-                                        <div className="flex items-center justify-between p-2 bg-slate-900 rounded border border-slate-800/50">
-                                            <span className="font-mono font-bold text-cyan-400">AMD</span>
-                                            <Icon icon="x" className="w-4 h-4 text-gray-600 cursor-pointer hover:text-red-400" />
+
+                                        <div className="grid grid-cols-3 gap-4">
+                                            {block.type === 'TRIGGER' ? (
+                                                <>
+                                                    <select className="bg-slate-950 border border-slate-700 rounded px-3 py-2 text-white font-mono text-sm focus:border-blue-500 outline-none">
+                                                        <option>VIX (Volatility)</option>
+                                                        <option>RSI (Momentum)</option>
+                                                        <option>SPY Price</option>
+                                                        <option>Portfolio Drawdown</option>
+                                                    </select>
+                                                    <select className="bg-slate-950 border border-slate-700 rounded px-3 py-2 text-white font-mono text-sm focus:border-blue-500 outline-none">
+                                                        <option>GREATER THAN</option>
+                                                        <option>LESS THAN</option>
+                                                        <option>CROSSES ABOVE</option>
+                                                        <option>CROSSES BELOW</option>
+                                                    </select>
+                                                    <input
+                                                        type="text"
+                                                        defaultValue={block.value}
+                                                        className="bg-slate-950 border border-slate-700 rounded px-3 py-2 text-white font-mono text-sm focus:border-blue-500 outline-none"
+                                                    />
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <select className="bg-slate-950 border border-slate-700 rounded px-3 py-2 text-white font-mono text-sm focus:border-green-500 outline-none">
+                                                        <option>RUN SCAN</option>
+                                                        <option>SEND ALERT</option>
+                                                        <option>REALLOCATE</option>
+                                                        <option>HEDGE POSITIONS</option>
+                                                    </select>
+                                                    <div className="col-span-2">
+                                                        <input
+                                                            type="text"
+                                                            defaultValue={block.target}
+                                                            placeholder="Target (e.g. Tech Sleeve)"
+                                                            className="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-white font-mono text-sm focus:border-green-500 outline-none"
+                                                        />
+                                                    </div>
+                                                </>
+                                            )}
                                         </div>
                                     </div>
+
+                                    {/* Arrow */}
+                                    {index < logicBlocks.length - 1 && (
+                                        <div className="flex justify-center my-2 ml-8">
+                                            <Icon icon="arrow-down" className="text-slate-600 w-4 h-4" />
+                                        </div>
+                                    )}
                                 </div>
-                            </div>
-                            <div className="flex justify-end pt-6">
-                                <GlassButton variant="primary">Create Sleeve</GlassButton>
-                            </div>
+                            ))}
+                        </div>
+
+                        {/* Controls */}
+                        <div className="flex gap-4 ml-8 pt-4">
+                            <button onClick={() => addBlock('TRIGGER')} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded border border-dashed border-slate-600 text-slate-400 text-sm font-bold flex items-center gap-2 transition-colors">
+                                <Icon icon="plus" className="w-4 h-4" /> ADD CONDITION
+                            </button>
+                            <button onClick={() => addBlock('ACTION')} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded border border-dashed border-slate-600 text-slate-400 text-sm font-bold flex items-center gap-2 transition-colors">
+                                <Icon icon="plus" className="w-4 h-4" /> ADD ACTION
+                            </button>
+                        </div>
+
+                        <div className="pt-8 flex justify-end">
+                            <GlassButton variant="primary" size="lg" className="shadow-orange-900/20 shadow-xl">
+                                <span className="mr-2">INITIALIZE AGENT</span>
+                                <Icon icon="zap" className="w-4 h-4" />
+                            </GlassButton>
                         </div>
                     </div>
-                )}
+                </div>
+            )}
 
-                {activeTab === 'portfolio' && (
-                    <div className="max-w-4xl mx-auto space-y-6 animate-fadeIn">
-                        <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-8">
-                            <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-                                <Icon icon="pie-chart" className="text-emerald-400" />
-                                Assemble Portfolio
-                            </h2>
-                            <p className="text-gray-400 mb-6">
-                                Combine your defined sleeves and attach a thesis to create a complete agent-managed portfolio.
-                            </p>
-
-                            <div className="space-y-6">
-                                <div>
-                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Portfolio Name</label>
-                                    <input
-                                        type="text"
-                                        placeholder="e.g., Total Return 2026"
-                                        className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-emerald-500 transition-colors"
-                                    />
-                                </div>
-
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div>
-                                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Select Thesis</label>
-                                        <div className="p-4 bg-slate-950 border border-slate-800 rounded-lg cursor-pointer hover:border-emerald-500/50 transition-colors">
-                                            <div className="text-sm font-bold text-white">The Great Rotation 2026</div>
-                                            <div className="text-xs text-gray-500 mt-1">Updated 2m ago</div>
+            {activeTab === 'deployed' && (
+                <div className="flex-1 overflow-y-auto p-8 relative z-10">
+                    <div className="max-w-4xl mx-auto">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {[
+                                { name: 'SENTINEL_ALPHA', status: 'ACTIVE', type: 'Defense', triggers: 142 },
+                                { name: 'MOMENTUM_SCALPER', status: 'SLEEPING', type: 'Growth', triggers: 0 },
+                            ].map(agent => (
+                                <div key={agent.name} className="bg-slate-900/50 border border-slate-800 rounded-xl p-6 hover:border-orange-500/50 transition-all cursor-pointer group">
+                                    <div className="flex justify-between items-start mb-4">
+                                        <div>
+                                            <h3 className="font-bold text-white font-mono">{agent.name}</h3>
+                                            <span className="text-xs text-slate-500 font-mono">ID: {Math.random().toString(36).substr(2, 9).toUpperCase()}</span>
+                                        </div>
+                                        <div className={`w-3 h-3 rounded-full ${agent.status === 'ACTIVE' ? 'bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]' : 'bg-slate-600'}`} />
+                                    </div>
+                                    <div className="space-y-3">
+                                        <div className="flex justify-between text-sm">
+                                            <span className="text-gray-400">Class</span>
+                                            <span className="text-orange-400">{agent.type}</span>
+                                        </div>
+                                        <div className="flex justify-between text-sm">
+                                            <span className="text-gray-400">triggers_24h</span>
+                                            <span className="text-white font-mono">{agent.triggers}</span>
                                         </div>
                                     </div>
-                                    <div>
-                                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Allocation Model</label>
-                                        <select className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-emerald-500 transition-colors">
-                                            <option>Equal Weight</option>
-                                            <option>Risk Parity</option>
-                                            <option>Thesis Driven (Dynamic)</option>
-                                        </select>
+                                    <div className="mt-6 pt-4 border-t border-slate-800 flex justify-between items-center opacity-50 group-hover:opacity-100 transition-opacity">
+                                        <span className="text-xs text-gray-500">LAST SYNC: 2m ago</span>
+                                        <button className="text-orange-400 text-xs font-bold hover:text-white transition-colors">CONFIGURE &gt;</button>
                                     </div>
                                 </div>
-
-                                <div>
-                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Include Sleeves</label>
-                                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                                        {['Core Tech', 'Rotatable Tech', 'Energy', 'Precious Metals', 'Cash', 'Options'].map(s => (
-                                            <div key={s} className="flex items-center gap-2 p-3 bg-slate-950 rounded border border-slate-800 hover:bg-slate-900 cursor-pointer">
-                                                <div className="w-4 h-4 rounded border border-gray-600 bg-transparent flex items-center justify-center">
-                                                    {/* Checkbox mocked */}
-                                                </div>
-                                                <span className="text-sm text-gray-300">{s}</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                <div className="flex justify-end pt-4">
-                                    <GlassButton variant="primary">Deploy Portfolio</GlassButton>
-                                </div>
-                            </div>
+                            ))}
                         </div>
                     </div>
-                )}
-            </div>
+                </div>
+            )}
         </div>
     );
 };
