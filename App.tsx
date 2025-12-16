@@ -1076,6 +1076,7 @@ const AppContent: React.FC = () => {
           ) : activeTab === 'competitions' ? (
             // <<< COMPETITIONS VIEW >>>
             <CompetitionsView
+              clocks={marketClocks}
               onSubmitPortfolio={() => {
                 // Create submit portfolio message in chat
                 const submitMessage: ChatMessageType = {

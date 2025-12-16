@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Icon } from './Icon';
 import { GlassButton } from './ui/GlassButton';
+import { MarketClock } from '../lib/agent/types';
 
 interface Player {
     rank: number;
@@ -40,9 +41,33 @@ const MOCK_COMPETITIONS: Competition[] = [
 
 interface CompetitionsViewProps {
     onSubmitPortfolio: () => void;
+    clocks: MarketClock[];
 }
 
-export const CompetitionsView: React.FC<CompetitionsViewProps> = ({ onSubmitPortfolio }) => {
+export const CompetitionsView: React.FC<CompetitionsViewProps> = ({ onSubmitPortfolio, clocks }) => {
+
+    // Calculate DEFCON based on Market Stress
+    const defconLevel = useMemo(() => {
+        // Default to 4 (Guarded)
+        let level = 4;
+
+        const redClocks = clocks.filter(c => c.status === 'red').length;
+        const yellowClocks = clocks.filter(c => c.status === 'yellow').length;
+
+        if (redClocks >= 2) return 1; // Critical
+        if (redClocks === 1) return 2; // Severe
+        if (yellowClocks >= 2) return 3; // Elevated
+
+        return level;
+    }, [clocks]);
+
+    const getDefconColor = (level: number) => {
+        if (level === 1) return 'text-red-600 animate-pulse';
+        if (level === 2) return 'text-red-500';
+        if (level === 3) return 'text-amber-500';
+        return 'text-emerald-500';
+    };
+
     return (
         <div className="h-full flex flex-col bg-slate-950 overflow-hidden relative">
             {/* Background Map Overlay */}
@@ -58,9 +83,9 @@ export const CompetitionsView: React.FC<CompetitionsViewProps> = ({ onSubmitPort
                     <p className="text-red-400/60 text-sm mt-1 font-mono tracking-widest">GLOBAL ALPHA CONFLICT ACTIVE</p>
                 </div>
                 <div className="flex items-center gap-4">
-                    <div className="bg-red-900/20 border border-red-900/50 px-4 py-2 rounded flex flex-col items-center">
-                        <span className="text-[10px] text-red-500 font-bold uppercase tracking-widest">DEFCON</span>
-                        <span className="text-2xl font-black text-red-500 leading-none">3</span>
+                    <div className={`bg-slate-900 border px-4 py-2 rounded flex flex-col items-center shadow-lg transition-colors duration-500 ${defconLevel <= 2 ? 'border-red-500/50 bg-red-900/20' : 'border-slate-700'}`}>
+                        <span className={`text-[10px] font-bold uppercase tracking-widest ${getDefconColor(defconLevel)}`}>DEFCON</span>
+                        <span className={`text-2xl font-black leading-none ${getDefconColor(defconLevel)}`}>{defconLevel}</span>
                     </div>
                 </div>
             </div>
