@@ -23,7 +23,7 @@
 /* The Root Grid Container - REPLACES Body/App Flex */
 .hud-grid {
   display: grid;
-  grid-template-columns: 64px 1fr 320px;
+  grid-template-columns: 64px 1fr;
   /* Nav | Main | Side */
   grid-template-rows: 48px 1fr 32px;
   /* Header | Content | Footer */
