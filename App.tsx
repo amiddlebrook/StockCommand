@@ -39,6 +39,8 @@ import { IntelligencePanel } from './components/IntelligencePanel';
 import { QuickActions } from './components/QuickActions';
 import { TacticalLoader } from './components/TacticalLoader';
 import { UserStrategy } from './lib/agent/types';
+import { CommandPalette } from './components/CommandPalette';
+import { ActionBar } from './components/ActionBar';
 
 type MobileView = 'toolbox' | 'dashboard' | 'chat';
 
@@ -65,7 +67,6 @@ const AppContent: React.FC = () => {
   // Clone Strategy Handler
   const handleCloneStrategy = useCallback((strategy: UserStrategy) => {
     StorageService.saveCloneStrategy(strategy);
-    // Add success message to chat
     const cloneMessage: ChatMessageType = {
       id: `clone-${Date.now()}`,
       role: 'model',
@@ -73,6 +74,21 @@ const AppContent: React.FC = () => {
       isLoading: false
     };
     setMessages(prev => [...prev, cloneMessage]);
+  }, []);
+
+  // Command Palette State
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+
+  // Global ⌘K Handler
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setIsCommandPaletteOpen(prev => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
   // Chat/Navigation State
@@ -1160,6 +1176,32 @@ const AppContent: React.FC = () => {
 
 
       <MobileNav activeTab={activeTab} setActiveTab={setActiveTab} />
+
+      {/* Command Palette (⌘K) */}
+      <CommandPalette
+        isOpen={isCommandPaletteOpen}
+        onClose={() => setIsCommandPaletteOpen(false)}
+        onNavigate={(tab) => {
+          setActiveTab(tab as typeof activeTab);
+          setIsCommandPaletteOpen(false);
+        }}
+        onSearch={(query) => {
+          setInitialChatInput(query);
+          setActiveTab('command-center');
+        }}
+      />
+
+      {/* Action Bar (Bottom Taskbar) */}
+      <ActionBar
+        onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
+        onNavigate={(tab) => setActiveTab(tab as typeof activeTab)}
+        onRunScan={() => {
+          // Trigger scan via chat input
+          setInitialChatInput('Run full portfolio scan');
+          setActiveTab('command-center');
+        }}
+        isScanning={isChatLoading}
+      />
     </div >
   );
 };
