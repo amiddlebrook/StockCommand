@@ -1,9 +1,8 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Icon } from './Icon';
 import { GlassButton } from './ui/GlassButton';
 import { MarketClock, UserStrategy } from '../lib/agent/types';
 import { StorageService } from '../lib/storage';
-import { simulateWarGame, BattleResult } from '../lib/wargame';
 
 interface Player {
     rank: number;
@@ -13,6 +12,7 @@ interface Player {
     delta: number;
     isUser?: boolean;
     isAi?: boolean;
+    strategyId?: string;
 }
 
 interface Competition {
@@ -22,40 +22,68 @@ interface Competition {
     participants: number;
     startDate: string;
     endDate: string;
+    endDateDisplay: string;
     status: 'active' | 'upcoming' | 'completed';
     prize?: string;
 }
 
 const INITIAL_LEADERBOARD: Player[] = [
-    { rank: 1, name: 'HIVE_MIND_CORE', org: 'SYSTEM', pnl: 42.8, delta: 1.2, isAi: true },
-    { rank: 2, name: 'Citadel_Alpha', org: 'HF', pnl: 38.5, delta: 0.8 },
+    { rank: 1, name: 'HIVE_MIND_CORE', org: 'SYSTEM', pnl: 42.8, delta: 1.2, isAi: true, strategyId: 'COMM_1' },
+    { rank: 2, name: 'Citadel_Alpha', org: 'HF', pnl: 38.5, delta: 0.8, strategyId: 'COMM_2' },
     { rank: 3, name: 'Vanguard_Quant', org: 'HF', pnl: 35.1, delta: -0.2 },
     { rank: 4, name: 'COMMANDER (YOU)', org: 'USER', pnl: 28.4, delta: 2.1, isUser: true },
-    { rank: 5, name: 'Retail_Whale', org: 'IND', pnl: 12.2, delta: -1.5 },
+    { rank: 5, name: 'Retail_Whale', org: 'IND', pnl: 12.2, delta: -1.5, strategyId: 'COMM_3' },
 ];
 
+const MOCK_COMMUNITY_STRATEGIES: Record<string, UserStrategy> = {
+    'COMM_1': {
+        id: 'COMM_1',
+        name: 'Hive Mind Alpha V1',
+        triggers: [{ id: 't1', metric: 'VIX', operator: '>', value: 30 }],
+        actions: [{ id: 'a1', type: 'REBALANCE', target: 'Defensive Tech' }],
+        active: true,
+        createdAt: Date.now(),
+        author: 'HIVE_MIND_CORE',
+        performance: 42.8
+    },
+    'COMM_2': {
+        id: 'COMM_2',
+        name: 'Citadel HFT Logic',
+        triggers: [{ id: 't2', metric: 'RSI', operator: '<', value: 20 }],
+        actions: [{ id: 'a2', type: 'BUY', target: 'Growth' }],
+        active: true,
+        createdAt: Date.now(),
+        author: 'Citadel_Alpha',
+        performance: 38.5
+    },
+    'COMM_3': {
+        id: 'COMM_3',
+        name: 'YOLO Momentum',
+        triggers: [{ id: 't3', metric: 'CHANGE_PCT', operator: '>', value: 5 }],
+        actions: [{ id: 'a3', type: 'BUY', target: 'Options' }],
+        active: true,
+        createdAt: Date.now(),
+        author: 'Retail_Whale',
+        performance: 12.2
+    }
+};
+
 const MOCK_COMPETITIONS: Competition[] = [
-    { id: '1', name: 'Q1 2025 Alpha Challenge', type: 'public', participants: 1247, startDate: '2025-01-01', endDate: '2025-03-31', status: 'upcoming', prize: '$10,000' },
-    { id: '2', name: 'Tech Sector Showdown', type: 'public', participants: 823, startDate: '2024-12-01', endDate: '2024-12-31', status: 'active', prize: '$5,000' },
-    { id: '3', name: 'Private League: Hedgies', type: 'private', participants: 24, startDate: '2024-11-01', endDate: '2025-02-28', status: 'active' },
-    { id: '4', name: 'Macro Masters Cup', type: 'public', participants: 2156, startDate: '2024-10-01', endDate: '2024-12-15', status: 'active', prize: '$15,000' },
+    { id: '1', name: 'Q1 2025 Alpha Challenge', type: 'public', participants: 1247, startDate: '2025-01-01', endDate: '2025-03-31', endDateDisplay: 'Mar 31', status: 'upcoming', prize: '$10,000' },
+    { id: '2', name: 'Tech Sector Showdown', type: 'public', participants: 823, startDate: '2024-12-01', endDate: '2024-12-31', endDateDisplay: 'Dec 31', status: 'active', prize: '$5,000' },
+    { id: '3', name: 'Private League: Hedgies', type: 'private', participants: 24, startDate: '2024-11-01', endDate: '2025-02-28', endDateDisplay: 'Feb 28', status: 'active' },
+    { id: '4', name: 'Macro Masters Cup', type: 'public', participants: 2156, startDate: '2024-10-01', endDate: '2024-12-15', endDateDisplay: 'Dec 15', status: 'active', prize: '$15,000' },
 ];
 
 interface CompetitionsViewProps {
-    onSubmitPortfolio: () => void;
     clocks: MarketClock[];
 }
 
-export const CompetitionsView: React.FC<CompetitionsViewProps> = ({ onSubmitPortfolio, clocks }) => {
+export const CompetitionsView: React.FC<CompetitionsViewProps> = ({ clocks }) => {
 
     // State
     const [leaderboard, setLeaderboard] = useState<Player[]>(INITIAL_LEADERBOARD);
-    const [isDeploying, setIsDeploying] = useState(false);
-    const [userStrategies, setUserStrategies] = useState<UserStrategy[]>([]);
-    const [selectedStrategyId, setSelectedStrategyId] = useState<string | null>(null);
-    const [battleLog, setBattleLog] = useState<string[]>([]);
-    const [battleResult, setBattleResult] = useState<BattleResult | null>(null);
-    const [isSimulating, setIsSimulating] = useState(false);
+    const [inspectingStrategy, setInspectingStrategy] = useState<UserStrategy | null>(null);
 
     // Calculate DEFCON based on Market Stress (kept logic)
     const defconLevel = useMemo(() => {
@@ -68,56 +96,25 @@ export const CompetitionsView: React.FC<CompetitionsViewProps> = ({ onSubmitPort
         return level;
     }, [clocks]);
 
-    // Load strategies on mount
-    useEffect(() => {
-        setUserStrategies(StorageService.loadStrategies());
-    }, []);
-
-    const handleDeployClick = () => {
-        setIsDeploying(true);
-        setBattleResult(null);
-        setBattleLog([]);
-    };
-
-    const handleRunSimulation = async () => {
-        if (!selectedStrategyId) return;
-        const strategy = userStrategies.find(s => s.id === selectedStrategyId);
-        if (!strategy) return;
-
-        setIsSimulating(true);
-        setBattleLog([`Initializing uplink to War Games server...`, `Authenticating strategy: ${strategy.name}...`]);
-
-        // Mock delay for dramatic effect
-        await new Promise(r => setTimeout(r, 800));
-        setBattleLog(prev => [...prev, `Syncing with global market clocks...`]);
-        await new Promise(r => setTimeout(r, 800));
-
-        // Actual Simulation
-        const result = simulateWarGame(strategy, clocks);
-
-        // Stream the result logs
-        for (const log of result.log) {
-            setBattleLog(prev => [...prev, log]);
-            await new Promise(r => setTimeout(r, 400));
-        }
-
-        setBattleResult(result);
-        setIsSimulating(false);
-
-        // Update Leaderboard Mock
-        setLeaderboard(prev => prev.map(p => {
-            if (p.isUser) {
-                return { ...p, pnl: p.pnl + result.pnlPercent, delta: result.pnlPercent };
-            }
-            return p;
-        }).sort((a, b) => b.pnl - a.pnl).map((p, i) => ({ ...p, rank: i + 1 })));
-    };
-
     const getDefconColor = (level: number) => {
         if (level === 1) return 'text-red-600 animate-pulse';
         if (level === 2) return 'text-red-500';
         if (level === 3) return 'text-amber-500';
         return 'text-emerald-500';
+    };
+
+    const handleInspect = (player: Player) => {
+        if (player.strategyId && MOCK_COMMUNITY_STRATEGIES[player.strategyId]) {
+            setInspectingStrategy(MOCK_COMMUNITY_STRATEGIES[player.strategyId]);
+        }
+    };
+
+    const handleClone = () => {
+        if (inspectingStrategy) {
+            StorageService.saveCloneStrategy(inspectingStrategy);
+            alert(`Strategy "${inspectingStrategy.name}" cloned to Strategy Forge!`);
+            setInspectingStrategy(null);
+        }
     };
 
     return (
@@ -130,9 +127,9 @@ export const CompetitionsView: React.FC<CompetitionsViewProps> = ({ onSubmitPort
                 <div>
                     <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-red-500 to-orange-600 flex items-center gap-3">
                         <Icon icon="crosshair" className="text-red-500 w-8 h-8 animate-pulse" />
-                        WAR GAMES
+                        WAR ZONE
                     </h1>
-                    <p className="text-red-400/60 text-sm mt-1 font-mono tracking-widest">GLOBAL ALPHA CONFLICT ACTIVE</p>
+                    <p className="text-red-400/60 text-sm mt-1 font-mono tracking-widest">GLOBAL LEADERBOARD ACTIVE</p>
                 </div>
                 <div className="flex items-center gap-4">
                     <div className={`bg-slate-900 border px-4 py-2 rounded flex flex-col items-center shadow-lg transition-colors duration-500 ${defconLevel <= 2 ? 'border-red-500/50 bg-red-900/20' : 'border-slate-700'}`}>
@@ -148,8 +145,7 @@ export const CompetitionsView: React.FC<CompetitionsViewProps> = ({ onSubmitPort
 
                     {/* Left Col: Operations Center */}
                     <div className="lg:col-span-2 space-y-8">
-                        {/* 1. Official / Major Events (Existing) */}
-                        {/* Simplified for brevity in this view, keeping full layout logic */}
+                        {/* 1. Official / Major Events */}
                         <div>
                             <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
                                 <Icon icon="star" className="text-amber-400 w-4 h-4" />
@@ -165,14 +161,21 @@ export const CompetitionsView: React.FC<CompetitionsViewProps> = ({ onSubmitPort
                                                 <span className="text-amber-400 font-bold font-mono text-sm">{comp.prize}</span>
                                             </div>
                                             <h4 className="text-lg font-bold text-white mb-1 group-hover:text-amber-100 transition-colors">{comp.name}</h4>
-                                            <GlassButton size="sm" variant="primary" className="w-full justify-center mt-4 bg-amber-600/20 hover:bg-amber-600/40 text-amber-200">ENTER WARZONE</GlassButton>
+                                            <div className="flex items-center gap-3 text-xs text-slate-400 mb-4">
+                                                <span className="flex items-center gap-1"><Icon icon="users" className="w-3 h-3" /> {comp.participants.toLocaleString()}</span>
+                                                <span className="w-1 h-1 bg-slate-700 rounded-full" />
+                                                <span>{comp.endDateDisplay}</span>
+                                            </div>
+                                            <GlassButton size="sm" variant="glass" className="w-full justify-center">
+                                                VIEW STANDINGS
+                                            </GlassButton>
                                         </div>
                                     </div>
                                 ))}
                             </div>
                         </div>
 
-                        {/* Recent Events Log (Mock) */}
+                        {/* Recent Events Log */}
                         <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4 font-mono text-sm space-y-2 opacity-80">
                             <div className="text-xs text-slate-500 font-bold uppercase mb-2">Tactical Log</div>
                             <div className="flex gap-2 text-slate-400"><span className="text-slate-600">[12:04:02]</span> Citadel_Alpha liquidated <span className="text-red-400">SHORT SPY</span> positions.</div>
@@ -182,127 +185,101 @@ export const CompetitionsView: React.FC<CompetitionsViewProps> = ({ onSubmitPort
 
                     {/* Right Col: User Status & Leaderboard */}
                     <div className="space-y-6">
-                        <div className="bg-gradient-to-b from-slate-900 to-slate-950 border border-slate-800 rounded-xl p-6 shadow-xl relative overflow-hidden">
-                            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-500 to-blue-600" />
-                            <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">Commander Status</h3>
-
-                            {/* Dynamic Leaderboard for User */}
-                            {leaderboard.filter(p => p.isUser).map(user => (
-                                <div key={user.name} className="text-center mb-6">
-                                    <div className={`text-4xl font-black mb-1 ${user.pnl >= 0 ? 'text-cyan-400' : 'text-red-400'}`}>
-                                        {user.pnl > 0 ? '+' : ''}{user.pnl.toFixed(1)}%
-                                    </div>
-                                    <div className="text-sm text-cyan-600 font-mono">YTD RETURN</div>
-                                    <div className="mt-2 text-xs font-bold text-slate-500 uppercase tracking-widest">Global Rank #{user.rank}</div>
-                                </div>
-                            ))}
-
-                            <GlassButton variant="primary" className="w-full justify-center group" onClick={handleDeployClick}>
-                                <span className="group-hover:text-white transition-colors">DEPLOY STRATEGY</span>
-                            </GlassButton>
-                        </div>
-
                         {/* Leaderboard Table */}
                         <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4">
                             <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3">Global Leaderboard</h3>
                             <div className="space-y-2">
                                 {leaderboard.map(p => (
-                                    <div key={p.name} className={`flex justify-between items-center text-sm p-2 rounded ${p.isUser ? 'bg-cyan-900/20 border border-cyan-700/30' : ''}`}>
-                                        <div className="flex items-center gap-2">
-                                            <span className="font-mono text-slate-500 w-4">{p.rank}</span>
-                                            <span className={`font-bold ${p.isUser ? 'text-cyan-400' : 'text-slate-300'}`}>{p.name}</span>
+                                    <div
+                                        key={p.name}
+                                        className={`flex justify-between items-center text-sm p-3 rounded border transition-colors ${p.isUser ? 'bg-cyan-900/20 border-cyan-700/30' : 'bg-slate-900/40 border-slate-800 hover:border-slate-700'}`}
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <span className={`font-mono w-6 text-center text-lg font-bold ${p.rank <= 3 ? 'text-amber-400' : 'text-slate-600'}`}>#{p.rank}</span>
+                                            <div>
+                                                <div className={`font-bold flex items-center gap-2 ${p.isUser ? 'text-cyan-400' : 'text-slate-300'}`}>
+                                                    {p.name}
+                                                    {p.isAi && <Icon icon="bot" className="w-3 h-3 text-purple-400" />}
+                                                </div>
+                                                <div className="text-[10px] text-slate-500 uppercase tracking-wider">{p.org}</div>
+                                            </div>
                                         </div>
-                                        <span className={`font-mono ${p.pnl >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                                            {p.pnl > 0 ? '+' : ''}{p.pnl.toFixed(1)}%
-                                        </span>
+
+                                        <div className="flex items-center gap-4">
+                                            <span className={`font-mono font-bold ${p.pnl >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                                                {p.pnl > 0 ? '+' : ''}{p.pnl.toFixed(1)}%
+                                            </span>
+                                            {p.strategyId && (
+                                                <button onClick={() => handleInspect(p)} className="text-xs bg-slate-800 hover:bg-slate-700 text-slate-400 px-2 py-1 rounded border border-slate-700 transition-colors" title="Inspect Strategy">
+                                                    <Icon icon="search" className="w-3 h-3" />
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
                                 ))}
+                            </div>
+                        </div>
+
+                        <div className="bg-gradient-to-b from-slate-900 to-slate-950 border border-slate-800 rounded-xl p-6 shadow-xl relative overflow-hidden">
+                            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-500 to-blue-600" />
+                            <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">You</h3>
+                            <div className="text-center mb-6">
+                                <div className="text-4xl font-black text-cyan-400 mb-1">28.4%</div>
+                                <div className="text-sm text-cyan-600 font-mono">YTD RETURN</div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            {/* DEPLOY MODAL OVERLAY */}
-            {isDeploying && (
+            {/* INSPECT STRATEGY MODAL */}
+            {inspectingStrategy && (
                 <div className="absolute inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4">
-                    <div className="bg-slate-900 border border-slate-700 rounded-xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
-                        {/* Modal Header */}
+                    <div className="bg-slate-900 border border-slate-700 rounded-xl w-full max-w-lg shadow-2xl flex flex-col">
                         <div className="p-4 border-b border-slate-800 bg-slate-950 flex justify-between items-center">
-                            <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                                <Icon icon="upload" className="text-cyan-500" />
-                                MISSION BRIEFING
+                            <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                                <Icon icon="eye" className="text-purple-400" />
+                                STRATEGY INSPECTOR
                             </h2>
-                            <button onClick={() => setIsDeploying(false)} className="text-slate-500 hover:text-white"><Icon icon="x" /></button>
+                            <button onClick={() => setInspectingStrategy(null)} className="text-slate-500 hover:text-white"><Icon icon="x" /></button>
                         </div>
 
-                        {/* Modal Body */}
-                        <div className="p-6 flex-1 overflow-y-auto">
-                            {!battleResult ? (
-                                <>
-                                    <div className="mb-6">
-                                        <label className="block text-sm font-bold text-slate-400 uppercase tracking-wider mb-2">Select Strategy to Deploy</label>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            {userStrategies.map(s => (
-                                                <div
-                                                    key={s.id}
-                                                    onClick={() => !isSimulating && setSelectedStrategyId(s.id)}
-                                                    className={`p-4 rounded-lg border cursor-pointer transition-all ${selectedStrategyId === s.id ? 'bg-cyan-900/20 border-cyan-500 ring-1 ring-cyan-500' : 'bg-slate-800 border-slate-700 hover:border-slate-500'}`}
-                                                >
-                                                    <div className="font-bold text-white mb-1">{s.name}</div>
-                                                    <div className="text-xs text-slate-400">{s.triggers.length} Triggers • {s.actions.length} Actions</div>
-                                                </div>
-                                            ))}
-                                            {userStrategies.length === 0 && (
-                                                <div className="col-span-2 text-center p-8 border border-dashed border-slate-700 text-slate-500 rounded-lg">
-                                                    No strategies found. Visit Strategy Forge to create one.
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-
-                                    {/* Console Log Area */}
-                                    <div className="bg-black rounded-lg p-4 font-mono text-xs text-emerald-500 h-48 overflow-y-auto border border-slate-800 shadow-inner">
-                                        {battleLog.length === 0 ? (
-                                            <span className="text-slate-600 animate-pulse">Awaiting launch command...</span>
-                                        ) : (
-                                            battleLog.map((log, i) => <div key={i}>{'>'} {log}</div>)
-                                        )}
-                                        {isSimulating && <div className="animate-pulse">{'>'} Processing...</div>}
-                                    </div>
-                                </>
-                            ) : (
-                                <div className="text-center py-8 animate-fadeIn">
-                                    <div className={`text-6xl mb-4 ${battleResult.outcome === 'VICTORY' ? 'text-emerald-500' : battleResult.outcome === 'DEFEAT' ? 'text-red-500' : 'text-amber-500'}`}>
-                                        {battleResult.outcome === 'VICTORY' ? '🏆' : battleResult.outcome === 'DEFEAT' ? '💀' : '⚖️'}
-                                    </div>
-                                    <h2 className={`text-4xl font-black uppercase mb-2 ${battleResult.outcome === 'VICTORY' ? 'text-emerald-500' : battleResult.outcome === 'DEFEAT' ? 'text-red-500' : 'text-amber-500'}`}>
-                                        {battleResult.outcome}
-                                    </h2>
-                                    <div className="text-2xl font-mono text-white mb-6">
-                                        PnL: <span className={battleResult.pnlPercent >= 0 ? 'text-emerald-400' : 'text-red-400'}>{battleResult.pnlPercent > 0 ? '+' : ''}{battleResult.pnlPercent}%</span>
-                                        <span className="mx-4 text-slate-600">|</span>
-                                        Alpha: <span className={battleResult.alpha >= 0 ? 'text-emerald-400' : 'text-red-400'}>{battleResult.alpha > 0 ? '+' : ''}{battleResult.alpha}</span>
-                                    </div>
-                                    <GlassButton to="#" onClick={() => setIsDeploying(false)} variant="primary" className="mx-auto">RETURN TO BASE</GlassButton>
+                        <div className="p-6 space-y-6">
+                            <div>
+                                <div className="text-2xl font-bold text-white mb-1">{inspectingStrategy.name}</div>
+                                <div className="flex gap-2 text-xs">
+                                    <span className="bg-slate-800 px-2 py-0.5 rounded text-slate-400">Author: {inspectingStrategy.author}</span>
+                                    <span className="bg-emerald-900/30 text-emerald-400 px-2 py-0.5 rounded border border-emerald-500/30">Return: +{inspectingStrategy.performance}%</span>
                                 </div>
-                            )}
-                        </div>
-
-                        {/* Modal Footer */}
-                        {!battleResult && (
-                            <div className="p-4 border-t border-slate-800 bg-slate-950 flex justify-end">
-                                <GlassButton
-                                    to="#"
-                                    onClick={handleRunSimulation}
-                                    disabled={!selectedStrategyId || isSimulating}
-                                    variant="primary"
-                                    className={isSimulating ? 'opacity-50 cursor-not-allowed' : ''}
-                                >
-                                    {isSimulating ? 'SIMULATING WARGAME...' : 'INITIATE SIMULATION'}
-                                </GlassButton>
                             </div>
-                        )}
+
+                            <div className="space-y-3">
+                                <div className="p-3 bg-slate-800/50 rounded border border-slate-700">
+                                    <div className="text-xs text-slate-500 uppercase font-bold mb-2">Triggers</div>
+                                    {inspectingStrategy.triggers.map(t => (
+                                        <div key={t.id} className="text-sm text-slate-300 font-mono">
+                                            <span className="text-blue-400">{t.metric}</span> {t.operator} <span className="text-white">{t.value}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                                <div className="p-3 bg-slate-800/50 rounded border border-slate-700">
+                                    <div className="text-xs text-slate-500 uppercase font-bold mb-2">Actions</div>
+                                    {inspectingStrategy.actions.map(a => (
+                                        <div key={a.id} className="text-sm text-slate-300 font-mono">
+                                            <span className="text-green-400">{a.type}</span> on <span className="text-white">{a.target}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <GlassButton variant="primary" className="w-full justify-center" onClick={handleClone}>
+                                <Icon icon="copy" className="mr-2" />
+                                CLONE STRATEGY
+                            </GlassButton>
+                            <p className="text-[10px] text-center text-slate-500 mt-2">
+                                Cloning will add this strategy to your Forge where you can edit, test, and deploy it.
+                            </p>
+                        </div>
                     </div>
                 </div>
             )}

@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Icon } from './Icon';
 import { GlassButton } from './ui/GlassButton';
 import { StorageService } from '../lib/storage';
-import { UserStrategy, StrategyTrigger, StrategyAction, TriggerMetric, TriggerOperator, ActionType } from '../lib/agent/types';
+import { UserStrategy, StrategyTrigger, StrategyAction, TriggerMetric, TriggerOperator, ActionType, MarketClock } from '../lib/agent/types';
+import { simulateWarGame, BattleResult } from '../lib/wargame';
 
 type ForgeTab = 'builder' | 'deployed' | 'templates';
 
@@ -18,7 +19,11 @@ interface LogicBlock {
     target?: string;
 }
 
-export const CreatorModeView: React.FC = () => {
+interface CreatorModeViewProps {
+    clocks: MarketClock[];
+}
+
+export const CreatorModeView: React.FC<CreatorModeViewProps> = ({ clocks }) => {
     const [activeTab, setActiveTab] = useState<ForgeTab>('builder');
     const [strategyName, setStrategyName] = useState('');
     const [logicBlocks, setLogicBlocks] = useState<LogicBlock[]>([
@@ -26,6 +31,13 @@ export const CreatorModeView: React.FC = () => {
         { id: '2', uiType: 'ACTION', actionType: 'SCAN', target: 'Defensive Tech' }
     ]);
     const [savedStrategies, setSavedStrategies] = useState<UserStrategy[]>([]);
+
+    // Simulation State
+    const [isSimulating, setIsSimulating] = useState(false);
+    const [simulatingStrategy, setSimulatingStrategy] = useState<UserStrategy | null>(null);
+    const [battleLog, setBattleLog] = useState<string[]>([]);
+    const [battleResult, setBattleResult] = useState<BattleResult | null>(null);
+    const [isRunning, setIsRunning] = useState(false);
 
     useEffect(() => {
         const loaded = StorageService.loadStrategies();
@@ -102,6 +114,34 @@ export const CreatorModeView: React.FC = () => {
         setSavedStrategies(updated);
         StorageService.saveStrategies(updated);
     }
+
+    // --- SIMULATION LOGIC ---
+    const handleTestStrategy = (strategy: UserStrategy) => {
+        setSimulatingStrategy(strategy);
+        setIsSimulating(true);
+        setBattleResult(null);
+        setBattleLog([]);
+    };
+
+    const runSimulation = async () => {
+        if (!simulatingStrategy) return;
+        setIsRunning(true);
+        setBattleLog([`Initializing War Game Uplink...`, `Loading Strategy: ${simulatingStrategy.name}`]);
+
+        await new Promise(r => setTimeout(r, 600));
+        setBattleLog(prev => [...prev, `Syncing with live Market Clocks...`]);
+        await new Promise(r => setTimeout(r, 600));
+
+        const result = simulateWarGame(simulatingStrategy, clocks);
+
+        for (const log of result.log) {
+            setBattleLog(prev => [...prev, log]);
+            await new Promise(r => setTimeout(r, 300));
+        }
+
+        setBattleResult(result);
+        setIsRunning(false);
+    };
 
     return (
         <div className="flex-1 flex flex-col h-full bg-slate-950 overflow-hidden relative">
@@ -286,11 +326,11 @@ export const CreatorModeView: React.FC = () => {
                                         <Icon icon="x" className="w-4 h-4" />
                                     </button>
 
-                                    <div className="mt-6 pt-4 border-t border-slate-800 flex justify-between items-center opacity-50 group-hover:opacity-100 transition-opacity">
+                                    <div className="mt-6 pt-4 border-t border-slate-800 flex justify-between items-center">
                                         <span className="text-xs text-gray-500">CREATED: {new Date(agent.createdAt).toLocaleDateString()}</span>
-                                        <div className="flex gap-2">
-                                            <button className="text-orange-400 text-xs font-bold hover:text-white transition-colors">EDIT &gt;</button>
-                                        </div>
+                                        <GlassButton size="sm" variant="glass" onClick={(e) => { e.stopPropagation(); handleTestStrategy(agent); }}>
+                                            TEST STRATEGY
+                                        </GlassButton>
                                     </div>
                                 </div>
                             ))}
@@ -300,6 +340,63 @@ export const CreatorModeView: React.FC = () => {
                                     <Icon icon="bot" className="w-12 h-12 mx-auto mb-4 opacity-50" />
                                     <p>No active agents deployed.</p>
                                     <button onClick={() => setActiveTab('builder')} className="text-orange-400 mt-2 font-bold hover:underline">Create New Strategy</button>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* SIMULATION MODAL */}
+            {isSimulating && simulatingStrategy && (
+                <div className="absolute inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4">
+                    <div className="bg-slate-900 border border-slate-700 rounded-xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[90vh]">
+                        <div className="p-4 border-b border-slate-800 bg-slate-950 flex justify-between items-center">
+                            <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                                <Icon icon="activity" className="text-cyan-500" />
+                                WAR GAME SIMULATION
+                            </h2>
+                            <button onClick={() => setIsSimulating(false)} className="text-slate-500 hover:text-white"><Icon icon="x" /></button>
+                        </div>
+
+                        <div className="p-6 flex-1 overflow-y-auto">
+                            {!battleResult ? (
+                                <div className="space-y-4">
+                                    <div className="bg-slate-800/50 p-4 rounded-lg border border-slate-700">
+                                        <div className="text-sm text-slate-400 mb-1">Target Strategy</div>
+                                        <div className="text-xl font-bold text-white">{simulatingStrategy.name}</div>
+                                        <div className="text-xs text-cyan-400 mt-2">Checking logical correlation with live market conditions...</div>
+                                    </div>
+
+                                    <div className="bg-black rounded-lg p-4 font-mono text-xs text-emerald-500 h-64 overflow-y-auto border border-slate-800 shadow-inner">
+                                        {battleLog.length === 0 ? (
+                                            <span className="text-slate-600 animate-pulse">Ready to initialize simulation...</span>
+                                        ) : (
+                                            battleLog.map((log, i) => <div key={i}>{'>'} {log}</div>)
+                                        )}
+                                        {isRunning && <div className="animate-pulse">{'>'} Processing...</div>}
+                                    </div>
+
+                                    <div className="flex justify-end pt-4">
+                                        <GlassButton variant="primary" onClick={runSimulation} disabled={isRunning}>
+                                            {isRunning ? 'RUNNING...' : 'START SIMULATION'}
+                                        </GlassButton>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="text-center py-8 animate-fadeIn">
+                                    <div className={`text-6xl mb-4 ${battleResult.outcome === 'VICTORY' ? 'text-emerald-500' : battleResult.outcome === 'DEFEAT' ? 'text-red-500' : 'text-amber-500'}`}>
+                                        {battleResult.outcome === 'VICTORY' ? '🏆' : battleResult.outcome === 'DEFEAT' ? '💀' : '⚖️'}
+                                    </div>
+                                    <h2 className={`text-4xl font-black uppercase mb-2 ${battleResult.outcome === 'VICTORY' ? 'text-emerald-500' : battleResult.outcome === 'DEFEAT' ? 'text-red-500' : 'text-amber-500'}`}>
+                                        {battleResult.outcome}
+                                    </h2>
+                                    <div className="text-xl font-mono text-white mb-6">
+                                        PnL: <span className={battleResult.pnlPercent >= 0 ? 'text-emerald-400' : 'text-red-400'}>{battleResult.pnlPercent > 0 ? '+' : ''}{battleResult.pnlPercent}%</span>
+                                        <span className="mx-4 text-slate-600">|</span>
+                                        Alpha: <span className={battleResult.alpha >= 0 ? 'text-emerald-400' : 'text-red-400'}>{battleResult.alpha > 0 ? '+' : ''}{battleResult.alpha}</span>
+                                    </div>
+                                    <GlassButton to="#" onClick={() => setIsSimulating(false)} variant="primary" className="mx-auto">CLOSE SIMULATION</GlassButton>
                                 </div>
                             )}
                         </div>

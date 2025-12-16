@@ -93,4 +93,7 @@ export interface UserStrategy {
   active: boolean;
   lastExecuted?: number;
   createdAt: number;
+  author?: string; // "System", "User", or Username
+  isPublic?: boolean;
+  performance?: number; // 30-day return for leaderboard
 }

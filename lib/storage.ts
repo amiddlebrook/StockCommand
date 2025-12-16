@@ -127,6 +127,24 @@ export const StorageService = {
         }
     },
 
+    saveCloneStrategy: (strategy: UserStrategy) => {
+        try {
+            const saved = localStorage.getItem(STORAGE_KEYS.STRATEGIES);
+            const strategies: UserStrategy[] = saved ? JSON.parse(saved) : [];
+            const clone = {
+                ...strategy,
+                id: `clone-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+                name: `[CLONE] ${strategy.name}`,
+                createdAt: Date.now(),
+                active: false
+            };
+            strategies.push(clone);
+            localStorage.setItem(STORAGE_KEYS.STRATEGIES, JSON.stringify(strategies));
+        } catch (e) {
+            console.error("Failed to clone strategy", e);
+        }
+    },
+
     resetToDefaults: () => {
         try {
             Object.values(STORAGE_KEYS).forEach(key => localStorage.removeItem(key));
