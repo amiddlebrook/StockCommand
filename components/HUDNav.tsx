@@ -21,7 +21,8 @@ const NAV_ITEMS: NavItem[] = [
     { id: 'market-clocks', label: 'MARKET DATA', icon: 'clock', shortcut: '3' },
     { id: 'competitions', label: 'COMPETITIONS', icon: 'trophy', shortcut: '4' },
     { id: 'comms', label: 'COMMS', icon: 'message', shortcut: '5' },
-    { id: 'creator', label: 'CREATOR', icon: 'code', shortcut: '6' },
+    { id: 'news', label: 'NEWS', icon: 'activity', shortcut: '6' },
+    { id: 'creator', label: 'CREATOR', icon: 'code', shortcut: '7' },
 ];
 
 export const HUDNav: React.FC<HUDNavProps> = ({

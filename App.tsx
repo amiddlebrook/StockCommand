@@ -17,6 +17,7 @@ import { CommandPalette } from './components/CommandPalette';
 import { Icon } from './components/Icon';
 import { MarketClocksView } from './components/MarketClocksView';
 import { SocialView } from './components/SocialView';
+import { NewsSynthesisView } from './components/NewsSynthesisView';
 
 import type { ChatMessage as ChatMessageType, Source } from './types';
 import {
@@ -279,6 +280,19 @@ const AppContent: React.FC = () => {
             responseText = "Please specify a target to analyze.";
           }
         } else {
+          // DYNAMIC TICKER DETECTION
+          const tickerMatch = message.match(/\$([A-Za-z]{2,5})/);
+          if (tickerMatch) {
+            const detectedTicker = tickerMatch[1].toUpperCase();
+            if (!symbols.includes(detectedTicker)) {
+              setSymbols(prev => [...prev, detectedTicker]);
+              // Auto-add to a "Watchlist" sleeve if not exists (Logic stub)
+              // Trigger immediate Clock Generation for this ticker
+              const newClocks = getClocksForEntity('TICKER', detectedTicker);
+              setMarketClocks(prev => [...prev, ...newClocks]);
+            }
+          }
+
           const context = {
             latestReport: agentOutput,
             activeTickers: selectedSymbols,
@@ -422,6 +436,8 @@ const AppContent: React.FC = () => {
             <div className="h-full overflow-y-auto"><PortfolioView sleevesWithStats={sleevesWithStats} onClockClick={() => { }} freshnessThreshold={0} /></div>
           ) : activeTab === 'comms' ? (
             <div className="h-full overflow-hidden"><SocialView /></div>
+          ) : activeTab === 'news' ? (
+            <div className="h-full overflow-hidden"><NewsSynthesisView /></div>
           ) : activeTab === 'market-clocks' ? (
             <div className="h-full overflow-y-auto"><MarketClocksView clocks={marketClocks} onClockClick={() => { }} onPinClock={() => { }} /></div>
           ) : activeTab === 'competitions' ? (
