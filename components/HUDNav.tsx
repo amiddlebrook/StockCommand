@@ -31,31 +31,20 @@ export const HUDNav: React.FC<HUDNavProps> = ({
 }) => {
     const [hoveredItem, setHoveredItem] = useState<string | null>(null);
 
-    const statusColor = {
-        bullish: 'from-green-500 to-emerald-500',
-        bearish: 'from-red-500 to-rose-500',
-        neutral: 'from-cyan-500 to-blue-500'
-    }[marketStatus];
-
-    const statusGlow = {
-        bullish: 'shadow-[0_0_20px_rgba(34,197,94,0.4)]',
-        bearish: 'shadow-[0_0_20px_rgba(239,68,68,0.4)]',
-        neutral: 'shadow-[0_0_20px_rgba(6,182,212,0.4)]'
-    }[marketStatus];
-
     return (
-        <div className="fixed left-0 top-0 h-screen w-16 z-50 flex flex-col items-center py-4 bg-slate-950/90 backdrop-blur-xl border-r border-slate-800/50">
-
+        <div className="fixed left-0 top-0 h-screen w-16 z-50 flex flex-col items-center py-4 bg-slate-950 border-r border-slate-800/80">
             {/* Logo / Status Indicator */}
-            <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${statusColor} ${statusGlow} flex items-center justify-center mb-6 transition-all duration-500`}>
-                <Icon icon="bot" className="w-5 h-5 text-white" />
+            <div className="w-10 h-10 border border-cyan-500/30 flex items-center justify-center mb-6 relative group">
+                <div className="absolute inset-0 bg-cyan-500/10 group-hover:bg-cyan-500/20 transition-colors"></div>
+                <Icon icon="bot" className="w-5 h-5 text-cyan-400" />
+
+                {/* Corner Accents */}
+                <div className="absolute top-0 left-0 w-2 h-2 border-t border-l border-cyan-500"></div>
+                <div className="absolute bottom-0 right-0 w-2 h-2 border-b border-r border-cyan-500"></div>
             </div>
 
-            {/* Divider */}
-            <div className="w-8 h-px bg-gradient-to-r from-transparent via-slate-700 to-transparent mb-4" />
-
             {/* Nav Items */}
-            <nav className="flex-1 flex flex-col gap-2">
+            <nav className="flex-1 flex flex-col gap-4 w-full px-2">
                 {NAV_ITEMS.map((item) => {
                     const isActive = activeTab === item.id;
                     const isHovered = hoveredItem === item.id;
@@ -67,77 +56,56 @@ export const HUDNav: React.FC<HUDNavProps> = ({
                             onMouseEnter={() => setHoveredItem(item.id)}
                             onMouseLeave={() => setHoveredItem(null)}
                             className={`
-                relative w-12 h-12 rounded-xl flex items-center justify-center
-                transition-all duration-300 group
-                ${isActive
-                                    ? 'bg-cyan-500/20 text-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.3)]'
-                                    : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'
+                                relative w-full aspect-square flex items-center justify-center
+                                transition-all duration-200 group border
+                                ${isActive
+                                    ? 'bg-cyan-900/30 border-cyan-500 text-cyan-400 shadow-[0_0_10px_rgba(6,182,212,0.2)]'
+                                    : 'bg-transparent border-transparent text-slate-500 hover:border-slate-700 hover:text-slate-300'
                                 }
-              `}
+                            `}
                             title={`${item.label} (${item.shortcut})`}
                         >
                             {/* Active indicator bar */}
                             {isActive && (
-                                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-cyan-400 rounded-r-full shadow-[0_0_10px_rgba(6,182,212,0.8)]" />
+                                <div className="absolute -left-2 top-1/2 -translate-y-1/2 w-1 h-8 bg-cyan-500" />
                             )}
 
                             <Icon icon={item.icon as any} className="w-5 h-5" />
 
                             {/* Tooltip */}
                             <div className={`
-                absolute left-full ml-3 px-3 py-2 rounded-lg
-                bg-slate-900/95 backdrop-blur-sm border border-slate-700/50
-                shadow-xl whitespace-nowrap pointer-events-none
-                transition-all duration-200
-                ${isHovered ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-2'}
-              `}>
-                                <div className="flex items-center gap-3">
-                                    <span className="text-sm font-medium text-white">{item.label}</span>
-                                    <kbd className="px-1.5 py-0.5 text-[10px] font-mono bg-slate-800 text-slate-400 rounded border border-slate-700">
-                                        {item.shortcut}
-                                    </kbd>
-                                </div>
+                                absolute left-full ml-4 px-3 py-1
+                                bg-slate-900 border border-slate-700
+                                text-xs font-mono text-cyan-400 whitespace-nowrap pointer-events-none
+                                transition-all duration-200 z-50
+                                ${isHovered ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-2'}
+                            `}>
+                                {item.label}
                             </div>
                         </button>
                     );
                 })}
             </nav>
 
-            {/* Bottom Section */}
-            <div className="flex flex-col items-center gap-3">
-                {/* Active Jobs Indicator */}
+            {/* Bottom Actions */}
+            <div className="flex flex-col items-center gap-3 w-full px-2">
                 {activeJobsCount > 0 && (
-                    <div className="relative">
-                        <div className="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center animate-pulse">
-                            <Icon icon="loader" className="w-5 h-5 text-amber-400 animate-spin" />
-                        </div>
-                        <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-amber-500 text-[10px] font-bold flex items-center justify-center text-black">
+                    <div className="relative w-full aspect-square flex items-center justify-center border border-amber-500/50 bg-amber-900/10">
+                        <Icon icon="loader" className="w-4 h-4 text-amber-500 animate-spin" />
+                        <div className="absolute -top-1 -right-1 w-3 h-3 bg-amber-500 text-[8px] flex items-center justify-center text-black font-bold">
                             {activeJobsCount}
-                        </span>
+                        </div>
                     </div>
                 )}
 
-                {/* Divider */}
-                <div className="w-8 h-px bg-gradient-to-r from-transparent via-slate-700 to-transparent" />
-
-                {/* Command Palette Trigger */}
                 <button
                     onClick={() => {
                         const event = new KeyboardEvent('keydown', { key: 'k', metaKey: true });
                         window.dispatchEvent(event);
                     }}
-                    className="w-10 h-10 rounded-xl bg-slate-800/50 hover:bg-slate-700/50 flex items-center justify-center text-slate-500 hover:text-slate-300 transition-all border border-slate-700/50"
-                    title="Command Palette (⌘K)"
+                    className="w-full aspect-square flex items-center justify-center border border-slate-800 hover:border-cyan-500/30 text-slate-500 hover:text-cyan-400 transition-colors"
                 >
                     <Icon icon="search" className="w-4 h-4" />
-                </button>
-
-                {/* Settings/Profile */}
-                <button
-                    className="w-10 h-10 rounded-xl hover:bg-slate-800/50 flex items-center justify-center text-slate-500 hover:text-slate-300 transition-all"
-                    title="Settings"
-                >
-                    <Icon icon="settings" className="w-5 h-5" />
                 </button>
             </div>
         </div>

@@ -1,21 +1,25 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ChatInput } from './components/ChatInput';
-import { ChatMessage } from './components/ChatMessage';
-import { Toolbox } from './components/Toolbox';
-import { TextWidget } from './components/TextWidget';
-import { StockDivergenceChart } from './components/StockDivergenceChart';
-import { GhostPatternChart } from './components/GhostPatternChart';
-import { OptionsStrategyCard } from './components/OptionsStrategyCard';
-import { Icon } from './components/Icon';
-import { LoadingSpinner } from './components/LoadingSpinner';
-import { MobileNav } from './components/MobileNav';
-import { CompetitionsView } from './components/CompetitionsView';
+import { HUDNav } from './components/HUDNav';
+import { CentralCommand } from './components/CentralCommand';
+import { StatusWidget } from './components/StatusWidget';
+import { LogicPipeline } from './components/LogicPipeline';
+import { NetworkTopology } from './components/NetworkTopology';
+import { MetricsAnalytics } from './components/MetricsAnalytics';
+import { ConsoleWidget } from './components/ConsoleWidget';
 import { FeatureDetailView, FEATURE_CONFIG } from './components/FeatureDetailView';
 import { CreatorModeView } from './components/CreatorModeView';
+import { CompetitionsView } from './components/CompetitionsView';
+import { PortfolioView } from './components/PortfolioView';
+import { EntityDetailView } from './components/EntityDetailView';
+import { PortfolioReportModal } from './components/PortfolioReportModal';
+import { ProfileModal } from './components/ProfileModal';
+import { CommandPalette } from './components/CommandPalette';
+import { LoadingSpinner } from './components/LoadingSpinner';
+import { Icon } from './components/Icon';
+
 import type { ChatMessage as ChatMessageType, Source } from './types';
 import {
   analyzeImage,
-  analyzeStockData,
   searchWithGrounding,
   sendMessage,
   generatePortfolioReport,
@@ -23,66 +27,28 @@ import {
 } from './services/geminiService';
 import { DEFAULT_CHAT_MODEL } from './lib/constants/llmModels';
 import { fetchStockSnapshot } from './services/stockData';
-import { PortfolioReportModal } from './components/PortfolioReportModal';
-import { PortfolioReportWidget } from './components/PortfolioReportWidget';
-import { PortfolioView } from './components/PortfolioView';
 import { UNIVERSE } from './lib/agent/universe';
-import { ProfileModal } from './components/ProfileModal';
-import { MarketClock } from './lib/agent/types';
-import { GlassButton } from './components/ui/GlassButton';
+import { MarketClock, UserStrategy } from './lib/agent/types';
 import { JobProvider, useJobContext } from './contexts/JobContext';
 import { getClocksForEntity, getGlobalClocks } from './lib/clockData';
-import { EntityDetailView } from './components/EntityDetailView';
-
 import { StorageService } from './lib/storage';
-import { IntelligencePanel } from './components/IntelligencePanel';
-import { QuickActions } from './components/QuickActions';
-import { TacticalLoader } from './components/TacticalLoader';
-import { UserStrategy } from './lib/agent/types';
-import { CommandPalette } from './components/CommandPalette';
-import { ActionBar } from './components/ActionBar';
-import { MarketRadar } from './components/MarketRadar';
-import { ActivityFeed } from './components/ActivityFeed';
-import { HUDNav } from './components/HUDNav';
 
-type MobileView = 'toolbox' | 'dashboard' | 'chat';
-
-const DEFAULT_SYMBOLS: string[] = []; // Start empty, user adds tickers
+const DEFAULT_SYMBOLS: string[] = [];
 
 const AppContent: React.FC = () => {
-  const { startJob, confirmAction, activeJobsCount } = useJobContext();
+  const { startJob, activeJobsCount } = useJobContext();
 
   const [messages, setMessages] = useState<ChatMessageType[]>(() => [
-    { id: 'welcome', role: 'model', content: "Commander, dashboard active. Systems are monitoring. Awaiting your orders." },
+    { id: 'welcome', role: 'model', content: "Tactical OS v2.0 initialized. Systems nominal. Awaiting directives." },
   ]);
   const [isChatLoading, setIsChatLoading] = useState(false);
-  const [isDashboardLoading, setIsDashboardLoading] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [widgets, setWidgets] = useState<AnalysisWidget[]>(() => StorageService.loadWidgets());
-  const [mobileView, setMobileView] = useState<MobileView>('toolbox');
   const [activeTab, setActiveTab] = useState<'command-center' | 'portfolio' | 'entity-detail' | 'competitions' | 'feature-detail' | 'features' | 'creator' | 'market-clocks'>('command-center');
   const [activeFeature, setActiveFeature] = useState<{ name: string; symbols: string[]; content: string | null } | null>(null);
 
-  // Sidebar State
-  const [isLeftSidebarOpen, setIsLeftSidebarOpen] = useState(() => typeof window !== 'undefined' ? window.innerWidth >= 768 : true);
-  const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(() => typeof window !== 'undefined' ? window.innerWidth >= 768 : true);
-
-  // Clone Strategy Handler
-  const handleCloneStrategy = useCallback((strategy: UserStrategy) => {
-    StorageService.saveCloneStrategy(strategy);
-    const cloneMessage: ChatMessageType = {
-      id: `clone-${Date.now()}`,
-      role: 'model',
-      content: `✅ Strategy "${strategy.name}" cloned to your Forge. Switch to **Creator Mode** to view and edit it.`,
-      isLoading: false
-    };
-    setMessages(prev => [...prev, cloneMessage]);
-  }, []);
-
   // Command Palette State
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
-
-  // Global ⌘K Handler
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
@@ -94,49 +60,27 @@ const AppContent: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // Chat/Navigation State
-  const [initialChatInput, setInitialChatInput] = useState<string>('');
-
   // Selected Entity State
   const [selectedEntity, setSelectedEntity] = useState<MarketClock | null>(null);
-
-  // Persistent Research Reports
   const [researchReports, setResearchReports] = useState<Record<string, string>>(() => StorageService.loadReports());
-
-  // User Settings
   const [dataFreshnessHours, setDataFreshnessHours] = useState<number>(() => StorageService.loadSettings().freshnessHours);
 
   const analysisModelId = DEFAULT_CHAT_MODEL.id;
   const [symbols, setSymbols] = useState<string[]>(DEFAULT_SYMBOLS);
-
-  // ... (rest of the file)
-
-  const isStale = (timestamp?: number) => {
-    if (!timestamp) return true;
-    return (Date.now() - timestamp) > (dataFreshnessHours * 60 * 60 * 1000);
-  };
-
-  // ...
-
-
-  const [selectedSymbols, setSelectedSymbols] = useState<string[]>([]); // Multi-select support
+  const [selectedSymbols, setSelectedSymbols] = useState<string[]>([]);
   const [isPortfolioModalOpen, setIsPortfolioModalOpen] = useState(false);
   const [isPortfolioGenerating, setIsPortfolioGenerating] = useState(false);
   const [scanningTarget, setScanningTarget] = useState<string | null>(null);
-
-  // Agent State
   const [agentOutput, setAgentOutput] = useState<string | null>(null);
+
   const [marketClocks, setMarketClocks] = useState<MarketClock[]>(() => {
     const saved = StorageService.loadClocks();
     return saved || getGlobalClocks();
   });
 
-  // Research History for tracking changes over time
   const [researchHistory, setResearchHistory] = useState<Record<string, { content: string; timestamp: number; status?: string }[]>>(() => StorageService.loadResearchHistory());
-
   const [uncuratedTicker, setUncuratedTicker] = useState<string | null>(null);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const [expandedSleeves, setExpandedSleeves] = useState<Record<string, boolean>>({ 'Core Tech': true });
 
   // PERSISTENCE EFFECT HOOKS
   useEffect(() => { StorageService.saveWidgets(widgets); }, [widgets]);
@@ -147,87 +91,49 @@ const AppContent: React.FC = () => {
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
-  const chatContainerRef = useRef<HTMLDivElement>(null);
   const loadedSnapshotsRef = useRef<Set<string>>(new Set());
 
-  const toggleSleeve = (sleeve: string) => {
-    setExpandedSleeves(prev => ({ ...prev, [sleeve]: !prev[sleeve] }));
-  };
+  // Logic Pipeline Analysis Steps (Mocked based on activity)
+  const [pipelineSteps, setPipelineSteps] = useState([
+    { id: '01', label: 'INPUT_STREAM', subtext: 'Monitoring...', status: 'complete' as const },
+    { id: '02', label: 'NORMALIZE', subtext: 'Data verified', status: 'complete' as const },
+    { id: '03', label: 'INFERENCE_ENGINE', subtext: 'Idle', status: 'pending' as const },
+    { id: '04', label: 'OUTPUT_BUFFER', subtext: 'Ready', status: 'pending' as const },
+  ]);
 
-  const sleeves = UNIVERSE.reduce((acc, ticker) => {
-    if (!acc[ticker.sleeve]) acc[ticker.sleeve] = [];
-    acc[ticker.sleeve].push(ticker);
-    return acc;
-  }, {} as Record<string, typeof UNIVERSE>);
-
-  const getMockTickerStatus = (symbol: string): 'green' | 'yellow' | 'red' => {
-    const sum = symbol.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    const mod = sum % 3;
-    return mod === 0 ? 'green' : mod === 1 ? 'yellow' : 'red';
-  };
-
-  const sleevesWithStats = Object.entries(sleeves).map(([sleeveName, items]) => {
-    const stats = items.reduce((acc, ticker) => {
-      const status = getMockTickerStatus(ticker.symbol);
-      acc[status]++;
-      return acc;
-    }, { green: 0, yellow: 0, red: 0 });
-    return { sleeveName, items, stats };
-  });
-
-  const handleActionAddUncurated = (symbol: string) => {
-    handleAddSymbol(symbol);
-    setUncuratedTicker(null);
-  };
-
-  const handleActionOverride = () => {
-    setUncuratedTicker(null);
-  };
-
-  const checkCurated = (symbol: string) => {
-    const isCurated = UNIVERSE.some(t => t.symbol === symbol);
-    if (!isCurated) {
-      setUncuratedTicker(symbol);
-    } else {
-      setUncuratedTicker(null);
-    }
-  };
-
-
-
-  // Auto-scroll chat
+  // Update Pipeline when scanning
   useEffect(() => {
-    if (!chatContainerRef.current) return;
-    chatContainerRef.current.scrollTo({
-      top: chatContainerRef.current.scrollHeight,
-      behavior: 'smooth',
-    });
-  }, [messages]);
+    if (isChatLoading) {
+      setPipelineSteps([
+        { id: '01', label: 'INPUT_STREAM', subtext: 'Receiving data...', status: 'complete' },
+        { id: '02', label: 'NORMALIZE', subtext: 'Verifying integrity', status: 'processing' },
+        { id: '03', label: 'INFERENCE_ENGINE', subtext: 'Target acquisition', status: 'pending' },
+        { id: '04', label: 'OUTPUT_BUFFER', subtext: 'Pending', status: 'pending' },
+      ]);
+      setTimeout(() => {
+        setPipelineSteps(prev => prev.map(s => s.id === '02' ? { ...s, status: 'complete' } : s));
+        setPipelineSteps(prev => prev.map(s => s.id === '03' ? { ...s, status: 'processing', subtext: 'Running models...' } : s));
+      }, 1500);
+    } else {
+      setPipelineSteps([
+        { id: '01', label: 'INPUT_STREAM', subtext: 'Monitoring...', status: 'complete' },
+        { id: '02', label: 'NORMALIZE', subtext: 'Data verified', status: 'complete' },
+        { id: '03', label: 'INFERENCE_ENGINE', subtext: 'Analysis complete', status: 'complete' },
+        { id: '04', label: 'OUTPUT_BUFFER', subtext: 'Delivered', status: 'complete' },
+      ]);
+    }
+  }, [isChatLoading]);
 
-  const removeWidget = (id: string) => {
-    setWidgets(prev => prev.filter(widget => widget.id !== id));
-  };
 
   const ensureSnapshotForSymbol = useCallback(async (symbol: string) => {
     const upper = symbol.toUpperCase();
     if (loadedSnapshotsRef.current.has(upper)) return;
     loadedSnapshotsRef.current.add(upper);
-
     try {
       const snapshot = await fetchStockSnapshot(upper);
       const text = `Price: $${snapshot.price.toFixed(2)} (${snapshot.changePercent.toFixed(2)}%)\n` +
-        `Change: ${snapshot.change.toFixed(2)} | Volume: ${snapshot.volume.toLocaleString()}\n` +
-        (snapshot.sector ? `Sector: ${snapshot.sector}\n` : '') +
-        (snapshot.industry ? `Industry: ${snapshot.industry}\n` : '') +
-        (snapshot.description ? `\n${snapshot.description}` : '');
-
-      const widget: AnalysisWidget = {
-        id: `snapshot-${upper}-${Date.now()}`,
-        type: 'profile',
-        title: `${upper} Snapshot`,
-        data: { text, sources: snapshot.sources },
-      };
-      setWidgets(prev => [widget, ...prev]);
+        `Change: ${snapshot.change.toFixed(2)} | Volume: ${snapshot.volume.toLocaleString()}`;
+      setMessages(prev => [...prev, { id: `snap-${Date.now()}`, role: 'model', content: `Stats for ${upper}: ${text}` }]);
     } catch (error) {
       console.error('Failed to load live snapshot:', error);
     }
@@ -237,59 +143,114 @@ const AppContent: React.FC = () => {
     symbols.forEach(symbol => { ensureSnapshotForSymbol(symbol); });
   }, [symbols, ensureSnapshotForSymbol]);
 
-  const renderWidget = (widget: AnalysisWidget) => {
-    switch (widget.type) {
-      case 'divergence': return <StockDivergenceChart id={widget.id} data={widget.data} onRemove={removeWidget} />;
-      case 'ghost': return <GhostPatternChart id={widget.id} data={widget.data} onRemove={removeWidget} />;
-      case 'options': return <OptionsStrategyCard id={widget.id} data={widget.data} onRemove={removeWidget} />;
-      case 'portfolio': return <PortfolioReportWidget id={widget.id} title={widget.title} data={widget.data} onRemove={removeWidget} />;
-      default: return <TextWidget id={widget.id} title={widget.title} text={widget.data?.text ?? ''} sources={widget.data?.sources} onRemove={removeWidget} />;
+  const executeAgentScan = async (scope: 'FULL' | 'SLEEVE' | 'TICKER' | 'TOOL', target?: string, toolName?: string) => {
+    setScanningTarget(target || scope);
+    setAgentOutput(`Initializing ${scope} scan...`);
+
+    let searchContext = "";
+    try {
+      if (target) {
+        setAgentOutput(`Gathering live intelligence for ${target}...`);
+        let query = `Latest financial news and analysis for ${target} market`;
+        if (scope === 'TOOL') {
+          // Enhanced Query for Macro Tools
+          if (target.includes('LIQUIDITY')) query = "Global Liquidity Cycle current status 2024 2025 BTC HYG analysis";
+          else if (target.includes('COMMODITY')) query = "Commodity Supercycle analysis 2025 Oil Copper structural deficit";
+          else if (target.includes('VIX')) query = "VIX volatility regime analysis current market conditions";
+          else if (target.includes('INFLATION')) query = "US Inflation Trend Breakeven Rates TIPS analysis current";
+          else if (target.includes('CREDIT')) query = "Credit Impulse Global Liquidity High Yield Spreads analysis";
+          else if (target.includes('DOLLAR')) query = "US Dollar DXY Index Strength analysis 2024 2025 forecast";
+          else query = `${toolName || target} detailed analysis current market data`;
+        }
+        const searchRes = await searchWithGrounding(query);
+        if (searchRes && searchRes.response) {
+          searchContext = `\n\n### 🌐 Live Market Context (Google Grounding)\n${searchRes.response}\n\n`;
+        }
+      }
+    } catch (e) {
+      console.warn("Live search failed, falling back to cached agent logic", e);
     }
+
+    const strategies = StorageService.loadStrategies();
+    const res = await (window.fetch as any)('/api/agent/scan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        scope,
+        target: scope === 'TOOL' ? target : target,
+        tool: toolName || (scope === 'TOOL' ? target : undefined),
+        context: searchContext,
+        strategies: strategies.filter(s => s.active)
+      })
+    });
+    const data = await res.json();
+    const finalAnalysis = searchContext ? `${data.analysis}\n${searchContext}` : (data.analysis || "Analysis complete.");
+    setAgentOutput(finalAnalysis);
+
+    if (finalAnalysis) {
+      const reportKey = scope === 'TOOL' ? (toolName || target || 'unknown') : (target || scope);
+      setResearchReports(prev => ({ ...prev, [reportKey]: finalAnalysis }));
+      setResearchHistory(prev => {
+        const entries = prev[reportKey] || [];
+        const newEntry = { content: finalAnalysis, timestamp: Date.now() };
+        return { ...prev, [reportKey]: [newEntry, ...entries].slice(0, 10) };
+      });
+    }
+
+    const timestamp = Date.now();
+    if (data.clocks && (data.clocks as MarketClock[]).length > 0) {
+      setMarketClocks((prev: MarketClock[]) => {
+        if (!prev) return data.clocks;
+        const newClocks = data.clocks as MarketClock[];
+        const updated = [...prev];
+        newClocks.forEach((nc: MarketClock) => {
+          const idx = updated.findIndex((oc: MarketClock) => oc.code === nc.code);
+          if (idx >= 0) updated[idx] = { ...nc, lastUpdated: timestamp };
+          else updated.push({ ...nc, lastUpdated: timestamp });
+        });
+        return updated;
+      });
+    }
+    setScanningTarget(null);
+    return finalAnalysis;
   };
 
-  // Handle analysis request for selected symbols (multi-select support)
-  const handleAnalysisRequest = async (featureType: string, symbolsToAnalyze: string[]) => {
-    if (symbolsToAnalyze.length === 0) return;
+  const handleRunAgentScan = async (scope: 'FULL' | 'SLEEVE' | 'TICKER' | 'TOOL', target?: string, toolName?: string) => {
+    const scanLabel = scope === 'TOOL' ? (toolName || target) : (target || scope);
+    const loadingMsgId = `scan-${Date.now()}`;
+    const loadingMessage: ChatMessageType = {
+      id: loadingMsgId,
+      role: 'model',
+      content: `🤖 **Analyzing ${scanLabel}...**\n\nGathering live market data and news.`,
+      isLoading: true
+    };
+    setMessages(prev => [...prev, loadingMessage]);
 
-    // Set up feature view
-    setActiveFeature({
-      name: featureType,
-      symbols: symbolsToAnalyze,
-      content: null
-    });
-    setActiveTab('feature-detail');
-
-    // Run analysis on first symbol (or all - depends on feature)
-    const symbol = symbolsToAnalyze[0].trim().toUpperCase();
-    checkCurated(symbol);
-
-    // Run the agent scan and wait for result
     try {
-      const analysisContent = await executeAgentScan('TOOL', symbol, featureType);
-
-      // Update feature view with content
-      setActiveFeature(prev => prev ? { ...prev, content: analysisContent || 'Analysis complete.' } : null);
-    } catch {
-      setActiveFeature(prev => prev ? { ...prev, content: 'Analysis failed. Please try again.' } : null);
+      const analysisContent = await executeAgentScan(scope, target, toolName);
+      const completionMessage: ChatMessageType = {
+        id: loadingMsgId,
+        role: 'model',
+        content: `✅ **${scanLabel} Analysis Complete**\n\n${analysisContent || 'Analysis complete.'}`,
+        isLoading: false
+      };
+      setMessages(prev => prev.map(msg => msg.id === loadingMsgId ? completionMessage : msg));
+    } catch (error) {
+      const errorMessage: ChatMessageType = {
+        id: loadingMsgId,
+        role: 'model',
+        content: `❌ **Analysis of ${scanLabel} failed.**`,
+        isLoading: false
+      };
+      setMessages(prev => prev.map(msg => msg.id === loadingMsgId ? errorMessage : msg));
     }
   };
 
   const handleSendMessage = async (message: string, image?: File) => {
     if (!message.trim() && !image) return;
-
-    const userMessage: ChatMessageType = {
-      id: `user-${Date.now()}`,
-      role: 'user',
-      content: message,
-    };
-
+    const userMessage: ChatMessageType = { id: `user-${Date.now()}`, role: 'user', content: message };
     const modelMessageId = `model-${Date.now() + 1}`;
-    const loadingMessage: ChatMessageType = {
-      id: modelMessageId,
-      role: 'model',
-      content: '',
-      isLoading: true,
-    };
+    const loadingMessage: ChatMessageType = { id: modelMessageId, role: 'model', content: '', isLoading: true };
 
     setMessages(prev => [...prev, userMessage, loadingMessage]);
     setIsChatLoading(true);
@@ -307,28 +268,14 @@ const AppContent: React.FC = () => {
           const parts = message.split(' ');
           const target = parts.length > 1 ? parts[1].toUpperCase() : null;
           if (target) {
-            const sleeves = ['CORE TECH', 'ROTATABLE TECH', 'ENERGY', 'METALS', 'CASH', 'OPTIONS'];
-            if (sleeves.some(s => target.includes(s) || s.includes(target))) {
-              handleRunAgentScan('SLEEVE', target);
-              responseText = `Initiating Sleeve Scan for ${target}... check the Job Status.`;
-            } else {
-              handleRunAgentScan('TICKER', target);
-              responseText = `Initiating Ticker Analysis for ${target}... check the Job Status.`;
-            }
+            handleRunAgentScan('TICKER', target);
+            responseText = `Initiating Ticker Analysis for ${target}...`;
           } else {
             responseText = "Please specify a target to analyze.";
           }
         } else {
-          const history = messages
-            .filter(m => (m.role === 'user' || m.role === 'model') && !m.isLoading)
-            .map(m => ({
-              role: m.role as 'user' | 'model',
-              parts: [{ text: m.content }],
-            }));
-          const context = {
-            latestReport: agentOutput,
-            activeTickers: selectedSymbols
-          };
+          const context = { latestReport: agentOutput, activeTickers: selectedSymbols };
+          const history = messages.filter(m => !m.isLoading).map(m => ({ role: m.role as 'user' | 'model', parts: [{ text: m.content }] }));
           const response = await sendMessage(message, history, context);
           responseText = response.response ?? '';
         }
@@ -337,23 +284,31 @@ const AppContent: React.FC = () => {
       const newBotMessage: ChatMessageType = {
         id: modelMessageId,
         role: 'model',
-        content: responseText || "Sorry, I couldn't process that request.",
+        content: responseText || "My systems are uncertain.",
         sources,
         isLoading: false,
       };
-
       setMessages(prev => prev.map(msg => (msg.id === modelMessageId ? newBotMessage : msg)));
     } catch (error) {
-      console.error('Error handling message:', error);
-      const errorMessage: ChatMessageType = {
-        id: modelMessageId,
-        role: 'model',
-        content: 'An error occurred. Please try again.',
-        isLoading: false,
-      };
-      setMessages(prev => prev.map(msg => (msg.id === modelMessageId ? errorMessage : msg)));
+      console.error(error);
+      setMessages(prev => prev.map(msg => (msg.id === modelMessageId ? { ...msg, content: 'Error processing request.', isLoading: false } : msg)));
     } finally {
       setIsChatLoading(false);
+    }
+  };
+
+  const handleGeneratePortfolioReport = async (tickers: string[], goal: string) => {
+    setIsPortfolioGenerating(true);
+    try {
+      await startJob("Generating Portfolio Report", async () => {
+        const report = await generatePortfolioReport(tickers, goal);
+        setMessages(prev => [...prev, { id: `rep-${Date.now()}`, role: 'model', content: `📄 **Portfolio Report Generated**\n\n${report}` }]);
+        setIsPortfolioModalOpen(false);
+      }, 'REPORT');
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsPortfolioGenerating(false);
     }
   };
 
@@ -364,14 +319,10 @@ const AppContent: React.FC = () => {
       const recorder = new MediaRecorder(stream);
       mediaRecorderRef.current = recorder;
       audioChunksRef.current = [];
-      recorder.ondataavailable = event => {
-        if (event.data.size > 0) audioChunksRef.current.push(event.data);
-      };
+      recorder.ondataavailable = event => { if (event.data.size > 0) audioChunksRef.current.push(event.data); };
       recorder.start();
       setIsRecording(true);
-    } catch (error) {
-      console.error('Failed to start recording:', error);
-    }
+    } catch (e) { console.error(e); }
   };
 
   const handleStopRecording = () => {
@@ -382,843 +333,114 @@ const AppContent: React.FC = () => {
     setIsRecording(false);
   };
 
-  const handleAddSymbol = (symbol: string) => {
-    const upper = symbol.toUpperCase();
-    setSymbols(prev => (prev.includes(upper) ? prev : [...prev, upper]));
-    // Auto-select newly added symbol
-    setSelectedSymbols(prev => prev.includes(upper) ? prev : [...prev, upper]);
-    ensureSnapshotForSymbol(upper);
-  };
-
-  const handleRemoveSymbol = (symbol: string) => {
-    const upper = symbol.toUpperCase();
-    setSymbols(prev => prev.filter(s => s !== upper));
-    setSelectedSymbols(prev => prev.filter(s => s !== upper));
-    setWidgets(prev => prev.filter(widget => !widget.title?.includes(upper)));
-  };
-
-  // HANDLER: Toggle Symbol Selection (multi-select)
-  const handleToggleSymbol = (symbol: string) => {
-    setSelectedSymbols(prev =>
-      prev.includes(symbol)
-        ? prev.filter(s => s !== symbol)  // Deselect
-        : [...prev, symbol]               // Select
-    );
-  };
-
-  // HANDLER: Symbol Selection (with Routing) - navigates to entity page
-  const handleSelectSymbol = (symbol: string) => {
-    // Contextual Pre-fill
-    setInitialChatInput(`Analysis on ${symbol}: `);
-
-    // UPDATE URL (Native Routing)
-    const url = new URL(window.location.href);
-    url.searchParams.set('symbol', symbol);
-    url.searchParams.set('tab', 'entity-detail');
-    window.history.pushState({}, '', url.toString());
-
-    // Look for persisted data from ticker's VOL clock
-    const tickerVolClock = marketClocks.find(c => c.code === `${symbol}_VOL`);
-    const entity: MarketClock = tickerVolClock ? {
-      code: symbol,
-      label: symbol,
-      status: tickerVolClock.status,
-      lastUpdated: tickerVolClock.lastUpdated,
-      reason: tickerVolClock.reason
-    } : {
-      code: symbol,
-      label: symbol,
-      status: 'gray', // No persisted data - stale
-      lastUpdated: 0,
-      reason: 'Manually selected'
-    };
-    setSelectedEntity(entity);
-    setActiveTab('entity-detail');
-
-    // removed toast to reduce annoyance as per user request
-  };
-
-  // EFFECT: Handle Browser Navigation (PopState) & Initial Load
-  useEffect(() => {
-    const handlePopState = () => {
-      const params = new URLSearchParams(window.location.search);
-      const symbol = params.get('symbol');
-      const tab = params.get('tab') as any;
-
-      if (symbol) {
-        // Restore symbol state, preferring persisted data from ticker clocks
-        // (selectedSymbols is not restored from URL, only selectedEntity for viewing)
-
-        // Look for the ticker's VOL clock to get persisted timestamp/status
-        const tickerVolClock = marketClocks.find(c => c.code === `${symbol}_VOL`);
-        if (tickerVolClock) {
-          // Use persisted data from the VOL clock
-          setSelectedEntity({
-            code: symbol,
-            label: symbol,
-            status: tickerVolClock.status,
-            lastUpdated: tickerVolClock.lastUpdated,
-            reason: tickerVolClock.reason
-          });
-        } else {
-          // No persisted data - create fresh entity
-          setSelectedEntity({
-            code: symbol,
-            label: symbol,
-            status: 'gray',
-            lastUpdated: 0,
-            reason: 'Restored from URL'
-          });
-        }
-        setActiveTab('entity-detail');
-      } else if (tab) {
-        setActiveTab(tab);
-      } else {
-        // Default to dashboard if no params
-        setActiveTab('command-center');
-      }
-    };
-
-    // Listen for back/forward buttons
-    window.addEventListener('popstate', handlePopState);
-
-    // Run once on mount
-    handlePopState();
-
-    return () => window.removeEventListener('popstate', handlePopState);
-  }, []); // Empty dependency array to only run on mount and popstate events. Do NOT depend on marketClocks to avoid resetting tab on scan updates.
-
-  const handleGeneratePortfolioReport = async (tickers: string[], goal: string) => {
-    setIsPortfolioGenerating(true);
-    try {
-      await startJob("Generating Portfolio Report", async () => {
-        const report = await generatePortfolioReport(tickers, goal);
-        const widget: AnalysisWidget = {
-          id: `portfolio-${Date.now()}`,
-          type: 'portfolio',
-          title: `Portfolio Report (${tickers.join(', ')})`,
-          data: report,
-        };
-        setWidgets(prev => [widget, ...prev]);
-        setIsPortfolioModalOpen(false);
-        setMobileView('dashboard');
-      }, 'REPORT');
-    } catch (error) {
-      console.error('Failed to generate portfolio report:', error);
-    } finally {
-      setIsPortfolioGenerating(false);
-    }
-  };
-
-  const executeAgentScan = async (scope: 'FULL' | 'SLEEVE' | 'TICKER' | 'TOOL', target?: string, toolName?: string) => {
-    setScanningTarget(target || scope); // Track which ticker is being scanned
-    setAgentOutput(`Initializing ${scope} scan...`);
-
-    let searchContext = "";
-    try {
-      // FIX: Enable Grounding Search for TOOLS (Macro) as well as TICKERS
-      if (target) {
-        setAgentOutput(`Gathering live intelligence for ${target}...`);
-
-        let query = `Latest financial news and analysis for ${target} market`;
-        if (scope === 'TOOL') {
-          // Enhanced Query for Macro Tools
-          if (target.includes('LIQUIDITY')) query = "Global Liquidity Cycle current status 2024 2025 BTC HYG analysis";
-          else if (target.includes('COMMODITY')) query = "Commodity Supercycle analysis 2025 Oil Copper structural deficit";
-          else if (target.includes('VIX')) query = "VIX volatility regime analysis current market conditions";
-          else if (target.includes('INFLATION')) query = "US Inflation Trend Breakeven Rates TIPS analysis current";
-          else if (target.includes('CREDIT')) query = "Credit Impulse Global Liquidity High Yield Spreads analysis";
-          else if (target.includes('DOLLAR')) query = "US Dollar DXY Index Strength analysis 2024 2025 forecast";
-          else query = `${toolName || target} detailed analysis current market data`;
-        }
-
-        const searchRes = await searchWithGrounding(query);
-        if (searchRes && searchRes.response) {
-          searchContext = `\n\n### 🌐 Live Market Context (Google Grounding)\n${searchRes.response}\n\n`;
-        }
-      }
-    } catch (e) {
-      console.warn("Live search failed, falling back to cached agent logic", e);
-    }
-
-    const strategies = StorageService.loadStrategies();
-
-    const res = await (window.fetch as any)('/api/agent/scan', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        scope,
-        target: scope === 'TOOL' ? target : target,
-        tool: toolName || (scope === 'TOOL' ? target : undefined),
-        context: searchContext,
-        strategies: strategies.filter(s => s.active) // Pass only active strategies
-      })
-    });
-    const data = await res.json();
-
-    // ... rest of function
-    const finalAnalysis = searchContext ? `${data.analysis}\n${searchContext}` : (data.analysis || "Analysis complete.");
-
-    setAgentOutput(finalAnalysis);
-
-    // <<< PERSISTENCE LOGIC >>>
-
-    // 1. Save the report to the persistent store
-    if (finalAnalysis) {
-      const reportKey = scope === 'TOOL' ? (toolName || target || 'unknown') : (target || scope);
-      setResearchReports(prev => ({
-        ...prev,
-        [reportKey]: finalAnalysis
-      }));
-
-      // Also save to research history for tracking changes over time
-      setResearchHistory(prev => {
-        const entries = prev[reportKey] || [];
-        const newEntry = { content: finalAnalysis, timestamp: Date.now() };
-        return { ...prev, [reportKey]: [newEntry, ...entries].slice(0, 10) };
-      });
-    }
-
-    // 2. Refresh Clocks (Timestamps)
-    const timestamp = Date.now();
-    if (data.clocks && (data.clocks as MarketClock[]).length > 0) {
-      // FULL scan or macro tool - update macro clocks from API response
-      setMarketClocks(prev => {
-        if (!prev) return data.clocks;
-        const newClocks = data.clocks as MarketClock[];
-        const updated = [...prev];
-        newClocks.forEach(nc => {
-          const idx = updated.findIndex(oc => oc.code === nc.code);
-          if (idx >= 0) {
-            updated[idx] = { ...nc, lastUpdated: timestamp };
-          } else {
-            updated.push({ ...nc, lastUpdated: timestamp });
-          }
-        });
-        return updated;
-      });
-    } else if (scope === 'TICKER' && target) {
-      // TICKER scan - create/update ticker-specific clocks
-      const tickerClocks = getClocksForEntity('TICKER', target);
-      let updatedClocks: MarketClock[] = [];
-
-      setMarketClocks(prev => {
-        const updated = [...prev];
-        tickerClocks.forEach(nc => {
-          // Get AI-provided status or default to yellow
-          const aiClock = data.clocks ? (data.clocks as MarketClock[]).find((c: any) => c.code === nc.code) : null;
-          const freshClock = aiClock ? {
-            ...aiClock,
-            lastUpdated: timestamp
-          } : {
-            ...nc,
-            lastUpdated: timestamp,
-            status: 'yellow' as const, // Default to neutral if AI didn't analyze
-            reason: 'Analysis pending'
-          };
-          const idx = updated.findIndex(oc => oc.code === nc.code);
-          if (idx >= 0) {
-            updated[idx] = freshClock;
-          } else {
-            updated.push(freshClock);
-          }
-        });
-        updatedClocks = updated;
-        return updated;
-      });
-
-      // Update selected entity if it matches this ticker
-      if (selectedEntity) {
-        const ticker = selectedEntity.code.split('_')[0];
-        if (ticker === target || selectedEntity.code === target) {
-          // Get status from any of the ticker's clocks (e.g., AVGO_VOL, AVGO_MOM)
-          // The selectedEntity.code might be just "AVGO", so we look for AVGO_* clocks
-          const tickerClockCode = `${target}_VOL`; // Use VOL as primary indicator
-          const aiClock = data.clocks ?
-            (data.clocks as MarketClock[]).find((c: any) => c.code === tickerClockCode) :
-            null;
-          const aiStatus = aiClock?.status || 'yellow';
-
-          setSelectedEntity({
-            code: selectedEntity.code,
-            label: selectedEntity.label,
-            lastUpdated: timestamp,
-            status: aiStatus,
-            reason: aiClock?.reason || 'Fresh analysis completed'
-          });
-        }
-      }
-    } else if (scope === 'TOOL' && toolName) {
-      // TOOL scan fallback - update the specific tool clock if it exists
-      setMarketClocks(prev => prev.map(c =>
-        c.code === toolName
-          ? { ...c, lastUpdated: timestamp, status: 'green', reason: 'Fresh analysis: Stable' }
-          : c
-      ));
-
-      // Also update the selected entity live
-      if (selectedEntity && selectedEntity.code === toolName) {
-        setSelectedEntity({
-          ...selectedEntity,
-          lastUpdated: timestamp,
-          status: 'green',
-          reason: 'Fresh analysis: Stable'
-        });
-      }
-    }
-
-    // FINAL SYNC: Ensure selected entity matches one of the updated clocks if possible
-    // Only for FULL scans - ticker scans already updated selectedEntity above
-    if (scope === 'FULL' && data.clocks && selectedEntity) {
-      const updatedClock = (data.clocks as MarketClock[]).find(c => c.code === selectedEntity.code);
-      if (updatedClock) {
-        setSelectedEntity({ ...updatedClock, lastUpdated: timestamp });
-      }
-    }
-
-    const widget: AnalysisWidget = {
-      id: `agent-${Date.now()}`,
-      type: 'profile',
-      title: `Agent Report (${scope === 'TOOL' ? toolName || target : scope})`,
-      data: { text: finalAnalysis, sources: [] }
-    };
-    setWidgets(prev => [widget, ...prev]);
-    setMobileView('dashboard');
-    setScanningTarget(null);
-
-    return finalAnalysis; // Return analysis for use in chat
-  };
-
-  const handleQuickAction = (action: string) => {
-    switch (action) {
-      case 'LIQUIDITY_CHECK':
-        handleRunAgentScan('TOOL', undefined, 'Liquidity Cycle');
-        break;
-      case 'DIVERGENCE_SCAN':
-        setInitialChatInput('Run Divergence Analysis on [TICKER]');
-        break;
-      case 'PORTFOLIO_REPORT':
-        handleGeneratePortfolioReport(symbols, 'Total Return');
-        break;
-      case 'MARKET_VITALS':
-        handleRunAgentScan('FULL');
-        break;
-    }
-  };
-
-  const handleRunAgentScan = async (scope: 'FULL' | 'SLEEVE' | 'TICKER' | 'TOOL', target?: string, toolName?: string) => {
-    // Stay in chat for analysis results
-
-    if (scope === 'TICKER' && target) {
-      checkCurated(target);
-    } else {
-      setUncuratedTicker(null);
-    }
-
-    const scanLabel = scope === 'TOOL' ? (toolName || target) : (target || scope);
-    const loadingMsgId = `scan-${Date.now()}`;
-
-    // Add loading message to chat (Command Center)
-    const loadingMessage: ChatMessageType = {
-      id: loadingMsgId,
+  // Clone Strategy Handler
+  const handleCloneStrategy = useCallback((strategy: UserStrategy) => {
+    StorageService.saveCloneStrategy(strategy);
+    const cloneMessage: ChatMessageType = {
+      id: `clone-${Date.now()}`,
       role: 'model',
-      content: `🤖 **Analyzing ${scanLabel}...**\n\nGathering live market data and news. This may take up to 60 seconds.`,
-      isLoading: true
+      content: `✅ Strategy "${strategy.name}" cloned to your Forge. Switch to **Creator Mode** to view and edit it.`,
+      isLoading: false
     };
-    setMessages(prev => [...prev, loadingMessage]);
-
-    // Run the scan
-    try {
-      const analysisContent = await executeAgentScan(scope, target, toolName);
-
-      // Update chat with actual research content
-      const completionMessage: ChatMessageType = {
-        id: loadingMsgId,
-        role: 'model',
-        content: `✅ **${scanLabel} Analysis Complete**\n\n${analysisContent || 'Analysis complete. Check the research panel for details.'}`,
-        isLoading: false
-      };
-      setMessages(prev => prev.map(msg => msg.id === loadingMsgId ? completionMessage : msg));
-    } catch (error) {
-      // Update chat with error message
-      const errorMessage: ChatMessageType = {
-        id: loadingMsgId,
-        role: 'model',
-        content: `❌ **Analysis of ${scanLabel} failed.**\n\nPlease try again later.`,
-        isLoading: false
-      };
-      setMessages(prev => prev.map(msg => msg.id === loadingMsgId ? errorMessage : msg));
-    }
-  };
-
-  const handleViewEntityDetail = (entity: MarketClock) => {
-    setSelectedEntity(entity);
-    setActiveTab('entity-detail');
-  };
-
-  // ... 
-
-  // FIX: Ensure Sidebar Toggle is Clickable (z-index)
-  // Inside the main return block...
-
-
-  // Auto-Run Vitals on Mount
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (messages.length <= 1 && typeof window !== 'undefined') { // Only Welcome message
-        handleRunAgentScan('TOOL', 'MARKET_VITALS_SCAN', 'MARKET_VITALS');
-      }
-    }, 1500);
-    return () => clearTimeout(timer);
+    setMessages(prev => [...prev, cloneMessage]);
   }, []);
 
-  return (
-    <div className="h-screen w-screen bg-slate-950 text-gray-100 flex overflow-hidden font-sans border-b-4 border-slate-900">
+  const sleevesWithStats = [];
 
-      {/* HUD Navigation - Fixed Left Rail */}
+  return (
+    <div className="flex h-screen bg-slate-950 text-gray-100 overflow-hidden font-sans selection:bg-cyan-500/30">
       <HUDNav
         activeTab={activeTab}
-        onNavigate={(tab) => setActiveTab(tab as typeof activeTab)}
+        onNavigate={(tab) => setActiveTab(tab as any)}
         activeJobsCount={activeJobsCount}
       />
 
-      {/* Main Content - Offset for HUD nav */}
-      <div className="flex-1 flex ml-16">
+      <main className="flex-1 flex overflow-hidden relative">
+        {/* BACKGROUND EFFECT */}
+        <div className="absolute inset-0 z-0 pointer-events-none opacity-20 bg-[url('https://grainy-gradients.vercel.app/noise.svg')]"></div>
 
-        {/* LEFT COLUMN: Portfolio & Actions */}
-        <div className={`hidden md:flex flex-col flex-shrink-0 border-slate-800 bg-slate-900/40 transition-all duration-300 overflow-hidden ${isLeftSidebarOpen ? 'w-[300px] xl:w-[350px] border-r' : 'w-0 border-none'}`}>
-          <div className="min-w-[300px] w-[300px] h-full flex flex-col">
-            <div className="h-[60px] px-4 flex items-center justify-between border-b border-slate-800 bg-slate-950/50 backdrop-blur-sm z-50">
-              <div className="flex items-center gap-3">
-                <div className="p-1.5 bg-gradient-to-br from-cyan-600 to-purple-700 rounded-lg shadow-lg">
-                  <Icon icon="bot" className="w-5 h-5 text-white" />
-                </div>
-                <div className="flex flex-col">
-                  <h1 className="text-lg font-bold bg-gradient-to-r from-cyan-400 via-purple-400 to-cyan-400 bg-clip-text text-transparent tracking-tight leading-none">
-                    StockCommand
-                  </h1>
-                </div>
-              </div>
-
-              <button onClick={() => setIsLeftSidebarOpen(false)} title="Collapse Sidebar" className="px-2 py-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded text-xs text-cyan-400 font-bold tracking-wider transition-colors z-50 whitespace-nowrap">
-                CLOSE &lt;
-              </button>
-            </div>
-
-            <div className="p-3 bg-slate-900 border-b border-slate-800 font-semibold text-xs text-cyan-400 tracking-wider">
-              PORTFOLIO CONTEXT
-            </div>
-            <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin scrollbar-thumb-slate-700">
-              <div className="bg-slate-800/50 rounded p-3 border border-slate-700/50">
-                <div className="flex justify-between items-end mb-2">
-                  <span className="text-gray-400 text-xs">Total Liquidity</span>
-                  <span className="text-xl font-bold font-mono text-emerald-400">$1,240,500</span>
-                </div>
-                <div className="h-1.5 w-full bg-slate-700 rounded-full overflow-hidden">
-                  <div className="h-full bg-gradient-to-r from-cyan-500 to-blue-500 w-[65%]" />
-                </div>
-                <div className="flex justify-between text-[10px] text-gray-500 mt-1">
-                  <span>Core: 65%</span>
-                  <span>Cash: 35%</span>
-                </div>
-              </div>
-
-              <Toolbox
-                symbols={symbols}
-                selectedSymbols={selectedSymbols}
-                onAddSymbol={handleAddSymbol}
-                onRemoveSymbol={handleRemoveSymbol}
-                onToggleSymbol={handleToggleSymbol}
-                onAnalysisRequested={handleAnalysisRequest}
-                onPortfolioReport={() => setIsPortfolioModalOpen(true)}
-                onThesisChange={() => {
-                  // Start thesis change discussion in chat
-                  const thesisMessage: ChatMessageType = {
-                    id: `thesis-${Date.now()}`,
-                    role: 'model',
-                    content: `🎯 **Thesis Change Mode Active**\n\nI'm ready to discuss changes to your portfolio thesis. You have control over all strategic decisions.\n\n**Current framework includes:**\n- Core Tech (structural holdings)\n- Rotatable Tech (cyclical positions)\n- Specialized sleeves (Energy, Defense, AI Infra, etc.)\n- Macro clocks for timing\n\n**What would you like to discuss?**\n1. Add/remove tickers from a sleeve\n2. Create a new specialized sleeve\n3. Adjust allocation weights\n4. Modify rotation triggers\n5. Something else?\n\nTell me what you're thinking and we'll debate IT!`,
-                    isLoading: false
-                  };
-                  setMessages(prev => [...prev, thesisMessage]);
-                  setActiveTab('command-center');
-                }}
-                isLoading={isDashboardLoading}
-              />
-            </div>
-          </div>
+        {/* LEFT HUD PANEL (Fixed) */}
+        <div className="w-80 flex flex-col gap-4 p-4 z-10 hidden xl:flex pointer-events-none border-r border-slate-800/50 bg-slate-950/20 backdrop-blur-sm">
+          <div className="pointer-events-auto h-auto"><StatusWidget /></div>
+          <div className="pointer-events-auto flex-1 h-full"><LogicPipeline steps={pipelineSteps} /></div>
         </div>
 
-        {/* MIDDLE COLUMN: Command Center (Flexible) */}
-        <div className="flex-1 flex flex-col min-w-0 bg-slate-950 relative border-r border-slate-800 transition-all duration-300 pb-16 md:pb-0">
+        {/* CENTER VIEWPORT (Dynamic) */}
+        <div className="flex-1 flex flex-col relative z-20 overflow-hidden">
 
-          {/* TOP BAR: Navigation & Status */}
-          <div className="h-[60px] px-4 flex items-center justify-between border-b border-slate-800 bg-slate-950/50 backdrop-blur-sm z-50 relative">
-            <div className="flex items-center gap-3">
-              {!isLeftSidebarOpen && (
-                <button onClick={() => setIsLeftSidebarOpen(true)} className="hidden md:flex px-2 md:px-3 py-1 bg-cyan-900/50 hover:bg-cyan-800/80 border border-cyan-500/50 text-cyan-300 rounded text-[10px] md:text-xs font-bold tracking-wider shadow-[0_0_10px_rgba(34,211,238,0.2)] transition-all z-50 gap-2 items-center whitespace-nowrap">
-                  <span>TOOLBOX</span>
-                  <Icon icon="chevron-down" className="w-3 h-3 -rotate-90" />
-                </button>
-              )}
-
-              <div className="hidden md:flex items-center bg-slate-900/50 p-1 rounded-lg border border-slate-800/50">
-                <button
-                  onClick={() => setActiveTab('command-center')}
-                  className={`py-2 px-3 rounded-t-lg text-sm font-bold transition-all ${activeTab === 'command-center'
-                    ? 'bg-slate-800 text-cyan-400 border-t border-x border-slate-700 shadow-[0_-5px_15px_-5px_rgba(34,211,238,0.2)]'
-                    : 'text-gray-500 hover:text-gray-300 hover:bg-slate-800/50'
-                    }`}
-                >
-                  COMMAND CENTER
-                </button>
-
-                <button
-                  onClick={() => setActiveTab('creator')}
-                  className={`py-2 px-3 rounded-t-lg text-sm font-bold transition-all ${activeTab === 'creator'
-                    ? 'bg-slate-800 text-purple-400 border-t border-x border-slate-700 shadow-[0_-5px_15px_-5px_rgba(192,132,252,0.2)]'
-                    : 'text-gray-500 hover:text-gray-300 hover:bg-slate-800/50'
-                    }`}
-                >
-                  CREATOR
-                </button>
-
-                <button
-                  onClick={() => setActiveTab('portfolio')}
-                  className={`px-3 py-1 rounded text-xs font-medium transition-all ${activeTab === 'portfolio'
-                    ? 'bg-slate-800 text-cyan-400 shadow-sm'
-                    : 'text-gray-400 hover:text-gray-200 hover:bg-slate-800/50'
-                    }`}
-                >
-                  Portfolio
-                </button>
-                <button
-                  onClick={() => setActiveTab('competitions')}
-                  className={`px-3 py-1 rounded text-xs font-medium transition-all ${activeTab === 'competitions'
-                    ? 'bg-slate-800 text-purple-400 shadow-sm'
-                    : 'text-gray-400 hover:text-gray-200 hover:bg-slate-800/50'
-                    }`}
-                >
-                  🏆 Compete
-                </button>
-                <button
-                  onClick={() => setActiveTab('features')}
-                  className={`px-3 py-1 rounded text-xs font-medium transition-all ${activeTab === 'features'
-                    ? 'bg-slate-800 text-cyan-400 shadow-sm'
-                    : 'text-gray-400 hover:text-gray-200 hover:bg-slate-800/50'
-                    }`}
-                >
-                  ✨ Features
-                </button>
-                <button
-                  onClick={() => setActiveTab('market-clocks')}
-                  className={`px-3 py-1 rounded text-xs font-medium transition-all ${activeTab === 'market-clocks'
-                    ? 'bg-slate-800 text-amber-400 shadow-sm'
-                    : 'text-gray-400 hover:text-gray-200 hover:bg-slate-800/50'
-                    }`}
-                >
-                  ⏰ Clocks
-                </button>
-              </div>
-            </div>
-
-
+          {/* Top Bar / Header */}
+          <div className="h-14 flex items-center justify-between px-6 border-b border-slate-800 bg-slate-950/80 backdrop-blur">
             <div className="flex items-center gap-4">
-              <button
-                onClick={() => setIsProfileOpen(true)}
-                className="p-1.5 hover:bg-slate-800 rounded-full text-gray-400 hover:text-cyan-400 transition-colors border border-transparent hover:border-slate-700"
-                title="User Profile & Settings"
-              >
-                <Icon icon="user" className="w-4 h-4" />
-              </button>
-
-              {!isRightSidebarOpen && (
-                <button onClick={() => setIsRightSidebarOpen(true)} className="hidden md:flex px-2 md:px-3 py-1 bg-amber-900/50 hover:bg-amber-800/80 border border-amber-500/50 text-amber-300 rounded text-[10px] md:text-xs font-bold tracking-wider shadow-[0_0_10px_rgba(245,158,11,0.2)] transition-all z-50 gap-2 items-center whitespace-nowrap">
-                  <Icon icon="chevron-down" className="w-3 h-3 rotate-90" />
-                  <span>CLOCKS</span>
-                </button>
-              )}
+              <h1 className="text-lg font-bold text-cyan-500 tracking-widest font-mono">
+                STOCK_COMMAND <span className="text-slate-600">v2.1</span>
+              </h1>
+              {scanningTarget && <span className="text-xs text-orange-400 animate-pulse">SCANNING: {scanningTarget}</span>}
+            </div>
+            <div className="flex items-center gap-3">
+              <button onClick={() => setIsCommandPaletteOpen(true)} className="p-2 hover:bg-slate-800 rounded text-slate-400 hover:text-white"><Icon icon="search" className="w-4 h-4" /></button>
+              <button onClick={() => setIsProfileOpen(true)} className="p-2 hover:bg-slate-800 rounded text-slate-400 hover:text-white"><Icon icon="user" className="w-4 h-4" /></button>
             </div>
           </div>
 
-          {/* LOADING PROGRESS LINE */}
-          {activeJobsCount > 0 && (
-            <div className="absolute top-[60px] left-0 right-0 h-[2px] bg-amber-500/50 overflow-hidden z-30">
-              <div className="absolute inset-0 bg-amber-400 animate-progress origin-left"></div>
-            </div>
-          )}
-
-          {/* MAIN CONTENT AREA */}
-          <div className="flex-1 flex flex-col overflow-hidden relative">
-            {activeTab === 'feature-detail' && activeFeature ? (
-              // <<< FEATURE DETAIL VIEW >>>
-              <FeatureDetailView
-                featureName={activeFeature.name}
-                symbols={activeFeature.symbols}
-                content={activeFeature.content}
-                isLoading={scanningTarget !== null}
-                onBack={() => setActiveTab('command-center')}
-                onRerun={(newSymbols?: string[]) => {
-                  const symbolsToUse = newSymbols && newSymbols.length > 0 ? newSymbols : activeFeature.symbols;
-                  const target = symbolsToUse.join(',');
-
-                  if (newSymbols && newSymbols.length > 0) {
-                    setActiveFeature(prev => prev ? { ...prev, symbols: newSymbols } : null);
-                  }
-
-                  executeAgentScan('TOOL', target, activeFeature.name).then(content => {
-                    setActiveFeature(prev => prev ? { ...prev, content: content || 'Analysis complete.' } : null);
-                  });
-                }}
-              />
-            ) : activeTab === 'entity-detail' ? (
-              // <<< ENTITY DETAIL VIEW >>>
-              <EntityDetailView
-                entity={selectedEntity}
-                freshnessThreshold={dataFreshnessHours * 60 * 60 * 1000}
-                onBack={() => setActiveTab('command-center')}
-                onRunAnalysis={(e) => {
-                  if (e.code.startsWith('CLOCK_')) {
-                    executeAgentScan('TOOL', e.code, e.code);
-                  } else {
-                    // Extract ticker symbol from entity code (e.g., "AMZN_VOL" -> "AMZN")
-                    const ticker = e.code.split('_')[0];
-                    executeAgentScan('TICKER', ticker);
-                  }
-                }}
-                researchContent={selectedEntity ? researchReports[selectedEntity.code.split('_')[0]] : null}
-                isScanning={scanningTarget !== null && selectedEntity !== null && (scanningTarget === selectedEntity.code || scanningTarget === selectedEntity.code.split('_')[0])}
-                researchHistory={selectedEntity ? researchHistory[selectedEntity.code.split('_')[0]] : undefined}
-                onViewHistory={() => {
-                  if (selectedEntity) {
-                    const ticker = selectedEntity.code.split('_')[0];
-                    const history = researchHistory[ticker];
-                    if (history && history.length > 0) {
-                      const historyText = history.map((h, i) =>
-                        `--- Entry ${i + 1} (${new Date(h.timestamp).toLocaleString()}) ---\n${h.content.substring(0, 500)}...`
-                      ).join('\n\n');
-                      alert(`Research History for ${ticker}:\n\n${historyText}`);
-                    }
-                  }
-                }}
-              />
-            ) : activeTab === 'command-center' ? (
-              // <<< COMMAND CENTER VIEW >>>
+          {/* Content Area */}
+          <div className="flex-1 overflow-hidden relative p-4 flex flex-col">
+            {activeTab === 'command-center' ? (
               <>
-                {/* Minimal Feed Header */}
-                <div className="flex-none p-6 border-b border-slate-800/50 bg-slate-900/10 backdrop-blur-sm">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="relative">
-                        <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_15px_rgba(16,185,129,0.8)]" />
-                        <div className="absolute inset-0 rounded-full bg-emerald-500 animate-ping opacity-20" />
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="text-sm font-mono text-cyan-500 tracking-[0.2em] uppercase font-bold text-shadow-glow">System Online</span>
-                        <span className="text-[10px] text-gray-500 font-mono">Awaiting directives...</span>
-                      </div>
-                    </div>
-                  </div>
+                <div className="flex-none h-64 mb-4 flex items-center justify-center shrink-0">
+                  <CentralCommand activeMode={scanningTarget ? 'SCANNING' : 'READY'} status={scanningTarget ? 'warning' : 'optimal'} />
                 </div>
-
-
-
-                {/* Auto-Scroll Content Area */}
-                <div className="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-thin scrollbar-thumb-slate-700 custom-markdown">
-                  {/* Warnings */}
-                  {uncuratedTicker && (
-                    <div className="bg-red-900/20 border border-red-500/50 rounded-lg p-4 mb-6">
-                      <h3 className="text-red-400 font-bold text-sm">Uncurated Ticker: {uncuratedTicker}</h3>
-                      <div className="flex gap-2 mt-2">
-                        <GlassButton size="sm" variant="danger" onClick={handleActionOverride}>Override</GlassButton>
-                        <GlassButton size="sm" variant="glass" onClick={() => setUncuratedTicker(null)}>Cancel</GlassButton>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Combined Feed */}
-                  <div className="space-y-6">
-                    {messages.map((msg) => (
-                      <div key={msg.id} className="animate-fadeIn">
-                        {msg.role === 'agent' ? (
-                          <div className="mb-8">
-                            <div className="flex items-center gap-2 mb-2">
-                              <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]" />
-                              <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Latest Intelligence Report</span>
-                            </div>
-                            <div className="prose prose-invert prose-sm max-w-none bg-slate-900/50 p-6 rounded-lg border border-slate-800/50 shadow-inner">
-                              <TextWidget id={`report-${msg.id}`} title="" text={msg.content} />
-                            </div>
-                          </div>
-                        ) : (
-                          <ChatMessage message={{ ...msg, role: msg.role === 'model' ? 'model' : 'user' }} />
-                        )}
-                      </div>
-                    ))}
-                  </div>
-
-                  {isChatLoading && (
-                    <div className="flex justify-start mb-8 animate-fadeIn px-4 md:px-8">
-                      <div className="bg-slate-900/50 p-4 rounded-lg border border-slate-800/50 inline-block shadow-lg">
-                        <TacticalLoader />
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Widgets */}
-                  {widgets.filter(w => !w.title.includes('Agent')).map(widget => (
-                    <div key={widget.id} className="animate-fadeIn">{renderWidget(widget)}</div>
-                  ))}
-                </div>
-
-                {/* Chat Input Area - Moved to Bottom */}
-                <div className="p-4 border-t border-slate-800 bg-slate-900/40 backdrop-blur z-20 mb-16 md:mb-0">
-                  <div className="mb-2">
-                    <QuickActions onAction={handleQuickAction} />
-                  </div>
-                  <ChatInput
+                <div className="flex-1 min-h-0">
+                  <ConsoleWidget
+                    messages={messages}
                     onSendMessage={handleSendMessage}
+                    isLoading={isChatLoading}
+                    isRecording={isRecording}
                     onStartRecording={handleStartRecording}
                     onStopRecording={handleStopRecording}
-                    isRecording={isRecording}
-                    isLoading={isChatLoading}
-                    initialInput={initialChatInput}
                   />
                 </div>
-
-                <div ref={chatContainerRef} />
               </>
+            ) : activeTab === 'portfolio' ? (
+              <div className="h-full overflow-y-auto"><PortfolioView sleevesWithStats={sleevesWithStats} onClockClick={() => { }} freshnessThreshold={0} /></div>
+            ) : activeTab === 'market-clocks' ? (
+              <div className="h-full overflow-y-auto"><NetworkTopology nodes={marketClocks} /></div>
+            ) : activeTab === 'competitions' ? (
+              <div className="h-full overflow-y-auto"><CompetitionsView clocks={marketClocks} onSubmitPortfolio={() => { }} /></div>
+            ) : activeTab === 'creator' ? (
+              <div className="h-full overflow-y-auto"><CreatorModeView /></div>
             ) : activeTab === 'features' ? (
-              // <<< FEATURES LIBRARY VIEW >>>
-              <div className="flex-1 overflow-y-auto p-8">
-                <div className="mb-8">
-                  <h1 className="text-3xl font-bold text-white mb-2">Analysis Features</h1>
-                  <p className="text-gray-400">Advanced specialized tools for market analysis.</p>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="h-full overflow-y-auto p-4">
+                <h2 className="text-xl font-bold mb-4">Features</h2>
+                <div className="grid grid-cols-2 gap-4">
                   {Object.entries(FEATURE_CONFIG).map(([name, config]) => (
-                    <div key={name} className="bg-slate-800/50 rounded-xl p-6 border border-slate-700/50 hover:border-cyan-500/50 transition-all cursor-pointer group hover:bg-slate-800/80 hover:shadow-lg hover:shadow-cyan-900/10"
-                      onClick={() => {
-                        setActiveFeature({ name, symbols: selectedSymbols.length > 0 ? selectedSymbols : ['SPY'], content: null });
-                        setActiveTab('feature-detail');
-                      }}
-                    >
-                      <div className={`w-12 h-12 rounded-lg bg-gradient-to-br ${config.gradient} mb-4 flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-lg`}>
-                        <Icon icon={config.icon as any} className="w-6 h-6 text-white" />
-                      </div>
-                      <h3 className="text-xl font-bold text-white mb-2 group-hover:text-cyan-400 transition-colors">{name}</h3>
-                      <p className="text-gray-400 text-sm mb-4 leading-relaxed">{config.description}</p>
-                      <div className="flex flex-wrap gap-2 mt-auto">
-                        {config.sections.slice(0, 3).map(s => (
-                          <span key={s} className="text-[10px] uppercase tracking-wider px-2 py-1 rounded bg-slate-950/50 text-gray-500 font-bold border border-slate-800">{s}</span>
-                        ))}
-                      </div>
+                    <div key={name} className="hud-panel p-4 rounded hover:bg-slate-900 cursor-pointer" onClick={() => { setActiveFeature({ name, symbols: ['SPY'], content: null }); setActiveTab('feature-detail'); }}>
+                      <h3 className="text-cyan-400 font-bold">{name}</h3>
+                      <p className="text-xs text-slate-400">{config.description}</p>
                     </div>
                   ))}
                 </div>
               </div>
-            ) : activeTab === 'competitions' ? (
-              // <<< COMPETITIONS VIEW >>>
-              <CompetitionsView
-                clocks={marketClocks}
-                onSubmitPortfolio={() => {
-                  // Create submit portfolio message in chat
-                  const submitMessage: ChatMessageType = {
-                    id: `submit-${Date.now()}`,
-                    role: 'model',
-                    content: `📤 **Submit Portfolio for Competition**\n\nTo enter a competition, you'll need to:\n1. Have at least 3 tickers in your portfolio\n2. Define your thesis strategy\n3. Set your competition entry\n\nYour current portfolio has ${symbols.length} ticker(s).\n\n${symbols.length >= 3 ? '✅ You meet the minimum requirements!' : '⚠️ Add more tickers to qualify.'}\n\n*Note: Competition features coming soon with full Cloudflare D1 integration.*`,
-                    isLoading: false
-                  };
-                  setMessages(prev => [...prev, submitMessage]);
-                  setActiveTab('command-center');
-                }}
-              />
-            ) : activeTab === 'market-clocks' ? (
-              // <<< MARKET CLOCKS VIEW >>>
-              <IntelligencePanel clocks={marketClocks} onClockClick={handleViewEntityDetail} onCloneStrategy={handleCloneStrategy} />
-            ) : activeTab === 'creator' ? (
-              // <<< CREATOR MODE VIEW >>>
-              <CreatorModeView />
-            ) : (
-              // <<< PORTFOLIO VIEW >>>
-              <PortfolioView
-                sleevesWithStats={sleevesWithStats}
-                onClockClick={handleViewEntityDetail}
-                freshnessThreshold={dataFreshnessHours * 60 * 60 * 1000}
-              />
-            )}
+            ) : activeTab === 'feature-detail' && activeFeature ? (
+              <FeatureDetailView featureName={activeFeature.name} symbols={activeFeature.symbols} content={activeFeature.content} isLoading={false} onBack={() => setActiveTab('features')} onRerun={() => { }} />
+            ) : activeTab === 'entity-detail' && selectedEntity ? (
+              <EntityDetailView entity={selectedEntity} freshnessThreshold={0} onBack={() => setActiveTab('command-center')} onRunAnalysis={() => { }} researchContent={null} />
+            ) : null}
           </div>
-
-
         </div>
 
-        {/* RIGHT COLUMN: Intelligence Panel */}
-        <div className={`hidden md:flex flex-col flex-shrink-0 transition-all duration-300 overflow-hidden ${isRightSidebarOpen ? 'w-[320px] xl:w-[360px]' : 'w-0'}`}>
-          {isRightSidebarOpen && (
-            <div className="w-[320px] xl:w-[360px] h-full relative flex flex-col overflow-hidden">
-              {/* Close Button */}
-              <button
-                onClick={() => setIsRightSidebarOpen(false)}
-                className="absolute top-3 left-3 z-20 px-2 py-1 bg-slate-800/80 hover:bg-slate-700 border border-slate-700 rounded text-[10px] text-slate-400 hover:text-white font-bold tracking-wider transition-all"
-              >
-                ✕
-              </button>
-
-
-              {/* Intelligence Panel - Market Clocks */}
-              <IntelligencePanel
-                clocks={marketClocks}
-                onClockClick={handleViewEntityDetail}
-                onCloneStrategy={handleCloneStrategy}
-              />
-            </div>
-          )}
+        {/* RIGHT HUD PANEL (Fixed) */}
+        <div className="w-80 flex flex-col gap-4 p-4 z-10 hidden lg:flex pointer-events-none border-l border-slate-800/50 bg-slate-950/20 backdrop-blur-sm">
+          <div className="pointer-events-auto h-2/3"><NetworkTopology nodes={marketClocks} /></div>
+          <div className="pointer-events-auto flex-1"><MetricsAnalytics /></div>
         </div>
 
+        {/* Command Palette */}
+        <CommandPalette isOpen={isCommandPaletteOpen} onClose={() => setIsCommandPaletteOpen(false)} onNavigate={(tab) => { setActiveTab(tab as any); setIsCommandPaletteOpen(false); }} onSearch={(q) => { setActiveTab('command-center'); handleSendMessage(q); }} />
+        <PortfolioReportModal isOpen={isPortfolioModalOpen} symbols={symbols} activeSymbol={null} isGenerating={isPortfolioGenerating} onClose={() => setIsPortfolioModalOpen(false)} onSubmit={handleGeneratePortfolioReport} />
+        <ProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
 
-        <PortfolioReportModal
-          isOpen={isPortfolioModalOpen}
-          symbols={symbols}
-          activeSymbol={selectedSymbols[0] || null}
-          isGenerating={isPortfolioGenerating}
-          onClose={() => setIsPortfolioModalOpen(false)}
-          onSubmit={handleGeneratePortfolioReport}
-        />
-
-        <ProfileModal
-          isOpen={isProfileOpen}
-          onClose={() => setIsProfileOpen(false)}
-        />
-
-
-        <MobileNav activeTab={activeTab} setActiveTab={setActiveTab} />
-
-        {/* Command Palette (⌘K) */}
-        <CommandPalette
-          isOpen={isCommandPaletteOpen}
-          onClose={() => setIsCommandPaletteOpen(false)}
-          onNavigate={(tab) => {
-            setActiveTab(tab as typeof activeTab);
-            setIsCommandPaletteOpen(false);
-          }}
-          onSearch={(query) => {
-            setInitialChatInput(query);
-            setActiveTab('command-center');
-          }}
-        />
-
-        {/* Action Bar (Bottom Taskbar) */}
-        <ActionBar
-          onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
-          onNavigate={(tab) => setActiveTab(tab as typeof activeTab)}
-          onRunScan={() => {
-            // Trigger scan via chat input
-            setInitialChatInput('Run full portfolio scan');
-            setActiveTab('command-center');
-          }}
-          isScanning={isChatLoading}
-        />
-      </div>
-    </div >
+      </main>
+    </div>
   );
 };
 
@@ -1229,7 +451,5 @@ const App: React.FC = () => {
     </JobProvider>
   );
 };
-
-
 
 export default App;
