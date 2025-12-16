@@ -1225,8 +1225,8 @@ const AppContent: React.FC = () => {
           }}
           isScanning={isChatLoading}
         />
-      </div>  {/* Close Main Content wrapper */}
-    </div>  {/* Close outer container */ }
+      </div>
+    </div>
   );
 };
 
