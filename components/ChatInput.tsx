@@ -7,24 +7,29 @@ interface ChatInputProps {
   onStopRecording: () => void;
   isRecording: boolean;
   isLoading: boolean;
+  initialInput?: string;
 }
 
-export const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, onStartRecording, onStopRecording, isRecording, isLoading }) => {
-  const [input, setInput] = useState('');
+export const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, onStartRecording, onStopRecording, isRecording, isLoading, initialInput }) => {
+  const [input, setInput] = useState(initialInput || '');
   const [imageFile, setImageFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  React.useEffect(() => {
+    if (initialInput) setInput(initialInput);
+  }, [initialInput]);
 
   const handleSend = () => {
     if ((input.trim() || imageFile) && !isLoading) {
       onSendMessage(input, imageFile ?? undefined);
       setInput('');
       setImageFile(null);
-      if(fileInputRef.current) {
+      if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
     }
   };
-  
+
   const handleKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -65,11 +70,10 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, onStartReco
 
         <button
           onClick={isRecording ? onStopRecording : onStartRecording}
-          className={`p-2 rounded-lg transition-all ${
-            isRecording
+          className={`p-2 rounded-lg transition-all ${isRecording
               ? 'text-red-500 bg-red-500/10 animate-pulse'
               : 'text-gray-400 hover:text-cyan-400 hover:bg-slate-800/50'
-          }`}
+            }`}
           aria-label={isRecording ? 'Stop recording' : 'Start recording'}
         >
           <Icon icon="mic" className="w-5 h-5" />
@@ -91,7 +95,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, onStartReco
           className="bg-gradient-to-r from-cyan-600 to-cyan-500 hover:from-cyan-500 hover:to-cyan-400 text-white p-2 rounded-lg disabled:from-slate-700 disabled:to-slate-700 disabled:cursor-not-allowed transition-all shadow-lg shadow-cyan-500/20 disabled:shadow-none"
           aria-label="Send message"
         >
-          <Icon icon="send" className="w-5 h-5"/>
+          <Icon icon="send" className="w-5 h-5" />
         </button>
       </div>
     </div>

@@ -58,6 +58,9 @@ const AppContent: React.FC = () => {
   const [isLeftSidebarOpen, setIsLeftSidebarOpen] = useState(true);
   const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(true);
 
+  // Chat/Navigation State
+  const [initialChatInput, setInitialChatInput] = useState<string>('');
+
   // Selected Entity State
   const [selectedEntity, setSelectedEntity] = useState<MarketClock | null>(null);
 
@@ -369,6 +372,9 @@ const AppContent: React.FC = () => {
 
   // HANDLER: Symbol Selection (with Routing) - navigates to entity page
   const handleSelectSymbol = (symbol: string) => {
+    // Contextual Pre-fill
+    setInitialChatInput(`Analysis on ${symbol}: `);
+
     // UPDATE URL (Native Routing)
     const url = new URL(window.location.href);
     url.searchParams.set('symbol', symbol);
@@ -645,6 +651,12 @@ const AppContent: React.FC = () => {
   };
 
   const handleRunAgentScan = async (scope: 'FULL' | 'SLEEVE' | 'TICKER' | 'TOOL', target?: string, toolName?: string) => {
+    if (scope === 'TOOL' && toolName) {
+      // Auto-open Feature View for tools
+      setActiveTab('feature-detail');
+      setActiveFeature({ name: toolName, symbols: target ? [target] : symbols.slice(0, 3), content: null });
+    }
+
     if (scope === 'TICKER' && target) {
       checkCurated(target);
     } else {
@@ -731,9 +743,20 @@ const AppContent: React.FC = () => {
   return (
     <div className="h-screen w-screen bg-slate-950 text-gray-100 flex overflow-hidden font-sans border-b-4 border-slate-900">
 
+      {/* MOBILE BACKDROP */}
+      {(isLeftSidebarOpen || isRightSidebarOpen) && (
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 md:hidden animate-fadeIn"
+          onClick={() => {
+            setIsLeftSidebarOpen(false);
+            setIsRightSidebarOpen(false);
+          }}
+        />
+      )}
+
       {/* LEFT COLUMN: Portfolio & Actions */}
       {/* LEFT COLUMN: Portfolio & Actions */}
-      <div className={`${isLeftSidebarOpen ? 'w-[300px] xl:w-[350px] border-r min-w-[300px]' : 'w-0 border-none min-w-0'} flex-shrink-0 flex flex-col border-slate-800 bg-slate-900/40 transition-all duration-300 overflow-hidden relative`}>
+      <div className={`${isLeftSidebarOpen ? 'w-[300px] xl:w-[350px] border-r min-w-[300px] translate-x-0' : 'w-0 border-none min-w-0 -translate-x-full md:translate-x-0 md:w-0'} fixed inset-y-0 left-0 z-50 md:relative md:inset-auto md:translate-x-0 flex-shrink-0 flex flex-col border-slate-800 bg-slate-900/95 md:bg-slate-900/40 backdrop-blur-md md:backdrop-blur-none transition-all duration-300 overflow-hidden shadow-2xl md:shadow-none`}>
         <div className="min-w-[300px] w-[300px] h-full flex flex-col">
           <div className="h-[60px] px-4 flex items-center justify-between border-b border-slate-800 bg-slate-950/50 backdrop-blur-sm z-50">
             <div className="flex items-center gap-3">
@@ -802,8 +825,8 @@ const AppContent: React.FC = () => {
         <div className="h-[60px] px-4 flex items-center justify-between border-b border-slate-800 bg-slate-950/50 backdrop-blur-sm z-50 relative">
           <div className="flex items-center gap-3">
             {!isLeftSidebarOpen && (
-              <button onClick={() => setIsLeftSidebarOpen(true)} className="px-3 py-1 bg-cyan-900/50 hover:bg-cyan-800/80 border border-cyan-500/50 text-cyan-300 rounded text-xs font-bold tracking-wider shadow-[0_0_10px_rgba(34,211,238,0.2)] transition-all z-50 flex gap-2 items-center whitespace-nowrap">
-                <span>OPEN TOOLBOX</span>
+              <button onClick={() => setIsLeftSidebarOpen(true)} className="px-2 md:px-3 py-1 bg-cyan-900/50 hover:bg-cyan-800/80 border border-cyan-500/50 text-cyan-300 rounded text-[10px] md:text-xs font-bold tracking-wider shadow-[0_0_10px_rgba(34,211,238,0.2)] transition-all z-50 flex gap-2 items-center whitespace-nowrap">
+                <span>TOOLBOX</span>
                 <Icon icon="chevron-down" className="w-3 h-3 -rotate-90" />
               </button>
             )}
@@ -873,9 +896,9 @@ const AppContent: React.FC = () => {
               <span>AGENT COMMAND</span>
             </div>
             {!isRightSidebarOpen && (
-              <button onClick={() => setIsRightSidebarOpen(true)} className="px-3 py-1 bg-amber-900/50 hover:bg-amber-800/80 border border-amber-500/50 text-amber-300 rounded text-xs font-bold tracking-wider shadow-[0_0_10px_rgba(245,158,11,0.2)] transition-all z-50 flex gap-2 items-center whitespace-nowrap">
+              <button onClick={() => setIsRightSidebarOpen(true)} className="px-2 md:px-3 py-1 bg-amber-900/50 hover:bg-amber-800/80 border border-amber-500/50 text-amber-300 rounded text-[10px] md:text-xs font-bold tracking-wider shadow-[0_0_10px_rgba(245,158,11,0.2)] transition-all z-50 flex gap-2 items-center whitespace-nowrap">
                 <Icon icon="chevron-down" className="w-3 h-3 rotate-90" />
-                <span>OPEN CLOCKS</span>
+                <span>CLOCKS</span>
               </button>
             )}
           </div>
@@ -1084,6 +1107,7 @@ const AppContent: React.FC = () => {
                   onStopRecording={handleStopRecording}
                   isRecording={isRecording}
                   isLoading={isChatLoading}
+                  initialInput={initialChatInput}
                 />
               </div>
 
@@ -1150,7 +1174,7 @@ const AppContent: React.FC = () => {
       </div>
 
       {/* RIGHT COLUMN: Market Data & Clocks */}
-      <div className={`${isRightSidebarOpen ? 'w-[300px] xl:w-[350px] border-l min-w-[300px]' : 'w-0 border-none min-w-0'} flex-shrink-0 flex flex-col bg-slate-900/40 border-slate-800 transition-all duration-300 overflow-hidden relative`}>
+      <div className={`${isRightSidebarOpen ? 'w-[300px] xl:w-[350px] border-l min-w-[300px] translate-x-0' : 'w-0 border-none min-w-0 translate-x-full md:translate-x-0 md:w-0'} fixed inset-y-0 right-0 z-50 md:relative md:inset-auto md:translate-x-0 flex-shrink-0 flex flex-col bg-slate-900/95 md:bg-slate-900/40 border-slate-800 backdrop-blur-md md:backdrop-blur-none transition-all duration-300 overflow-hidden shadow-2xl md:shadow-none`}>
         <div className="min-w-[300px] w-[300px] h-full flex flex-col">
           <div className="h-[60px] px-4 flex items-center justify-between border-b border-slate-800 bg-slate-950/50 backdrop-blur-sm z-50">
             <div className="flex items-center gap-2">
