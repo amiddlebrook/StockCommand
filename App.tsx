@@ -15,6 +15,7 @@ import { PortfolioReportModal } from './components/PortfolioReportModal';
 import { ProfileModal } from './components/ProfileModal';
 import { CommandPalette } from './components/CommandPalette';
 import { Icon } from './components/Icon';
+import { MarketClocksView } from './components/MarketClocksView';
 
 import type { ChatMessage as ChatMessageType, Source } from './types';
 import {
@@ -43,7 +44,7 @@ const AppContent: React.FC = () => {
   const [isChatLoading, setIsChatLoading] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [widgets, setWidgets] = useState<AnalysisWidget[]>(() => StorageService.loadWidgets());
-  const [activeTab, setActiveTab] = useState<'command-center' | 'portfolio' | 'entity-detail' | 'competitions' | 'feature-detail' | 'features' | 'creator' | 'market-clocks'>('command-center');
+  const [activeTab, setActiveTab] = useState<'command-center' | 'portfolio' | 'entity-detail' | 'competitions' | 'feature-detail' | 'features' | 'creator' | 'market-clocks'>('portfolio');
   const [activeFeature, setActiveFeature] = useState<{ name: string; symbols: string[]; content: string | null } | null>(null);
 
   // Command Palette State
@@ -392,9 +393,52 @@ const AppContent: React.FC = () => {
         </div>
       </div>
 
-      {/* 3. MAIN VIEWPORT */}
-      <div className="hud-cell-main">
-        {activeTab === 'command-center' ? (
+      {/* 3. MAIN VIEWPORT (SPLIT: CONTENT TOP / CONSOLE BOTTOM) */}
+      <div className="hud-cell-main flex flex-col">
+        {/* TOP: Dynamic Content */}
+        <div className="flex-1 overflow-hidden relative">
+          {activeTab === 'command-center' ? (
+            // Home View - maybe show high level status or empty state urging user to use console
+            <div className="h-full flex items-center justify-center text-slate-500 flex-col gap-4">
+              <div className="w-16 h-16 rounded-full bg-slate-900/50 flex items-center justify-center border border-slate-800">
+                <Icon icon="terminal" className="w-8 h-8 text-cyan-500/50" />
+              </div>
+              <p className="font-mono text-sm max-w-md text-center">
+                Command Console Active.<br />
+                Select a module from the left rail or execute a query below.
+              </p>
+            </div>
+          ) : activeTab === 'portfolio' ? (
+            <div className="h-full overflow-y-auto"><PortfolioView sleevesWithStats={sleevesWithStats} onClockClick={() => { }} freshnessThreshold={0} /></div>
+          ) : activeTab === 'market-clocks' ? (
+            // Use MarketClocksView instead of Topology if user wants simple grid
+            <div className="h-full overflow-y-auto"><MarketClocksView clocks={marketClocks} onClockClick={() => { }} onPinClock={() => { }} /></div>
+          ) : activeTab === 'competitions' ? (
+            <div className="h-full overflow-y-auto"><CompetitionsView clocks={marketClocks} onSubmitPortfolio={() => { }} /></div>
+          ) : activeTab === 'creator' ? (
+            <div className="h-full overflow-y-auto"><CreatorModeView clocks={marketClocks} /></div>
+          ) : activeTab === 'features' ? (
+            <div className="h-full overflow-y-auto p-4">
+              <h2 className="text-xl font-bold mb-4 font-mono text-cyan-400">AVAILABLE_MODULES</h2>
+              <div className="grid grid-cols-2 gap-4">
+                {Object.entries(FEATURE_CONFIG).map(([name, config]) => (
+                  <div key={name} className="bg-slate-900/40 border border-cyan-900/30 p-4 hover:border-cyan-500 hover:bg-cyan-900/10 cursor-pointer transition-all" onClick={() => { setActiveFeature({ name, symbols: ['SPY'], content: null }); setActiveTab('feature-detail'); }}>
+                    <h3 className="text-cyan-400 font-bold font-mono text-sm mb-1">{name}</h3>
+                    <p className="text-[10px] text-slate-500">{config.description}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : activeTab === 'feature-detail' && activeFeature ? (
+            <FeatureDetailView featureName={activeFeature.name} symbols={activeFeature.symbols} content={activeFeature.content} isLoading={false} onBack={() => setActiveTab('features')} onRerun={() => { }} />
+          ) : activeTab === 'entity-detail' && selectedEntity ? (
+            <EntityDetailView entity={selectedEntity} freshnessThreshold={0} onBack={() => setActiveTab('command-center')} onRunAnalysis={() => { }} researchContent={null} />
+          ) : null}
+        </div>
+
+        {/* BOTTOM: Persistent Console */}
+        <div className="h-[300px] border-t border-slate-800 bg-slate-950 flex-shrink-0 relative z-20 shadow-[0_-5px_20px_rgba(0,0,0,0.5)]">
+          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-900 via-cyan-500 to-cyan-900 opacity-20"></div>
           <ConsoleWidget
             messages={messages}
             onSendMessage={handleSendMessage}
@@ -403,43 +447,34 @@ const AppContent: React.FC = () => {
             onStartRecording={handleStartRecording}
             onStopRecording={handleStopRecording}
           />
-        ) : activeTab === 'portfolio' ? (
-          <div className="h-full overflow-y-auto"><PortfolioView sleevesWithStats={sleevesWithStats} onClockClick={() => { }} freshnessThreshold={0} /></div>
-        ) : activeTab === 'market-clocks' ? (
-          <div className="h-full overflow-y-auto"><NetworkTopology nodes={marketClocks} /></div>
-        ) : activeTab === 'competitions' ? (
-          <div className="h-full overflow-y-auto"><CompetitionsView clocks={marketClocks} onSubmitPortfolio={() => { }} /></div>
-        ) : activeTab === 'creator' ? (
-          <div className="h-full overflow-y-auto"><CreatorModeView /></div>
-        ) : activeTab === 'features' ? (
-          <div className="h-full overflow-y-auto p-4">
-            <h2 className="text-xl font-bold mb-4 font-mono text-cyan-400">AVAILABLE_MODULES</h2>
-            <div className="grid grid-cols-2 gap-4">
-              {Object.entries(FEATURE_CONFIG).map(([name, config]) => (
-                <div key={name} className="bg-slate-900/40 border border-cyan-900/30 p-4 hover:border-cyan-500 hover:bg-cyan-900/10 cursor-pointer transition-all" onClick={() => { setActiveFeature({ name, symbols: ['SPY'], content: null }); setActiveTab('feature-detail'); }}>
-                  <h3 className="text-cyan-400 font-bold font-mono text-sm mb-1">{name}</h3>
-                  <p className="text-[10px] text-slate-500">{config.description}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        ) : activeTab === 'feature-detail' && activeFeature ? (
-          <FeatureDetailView featureName={activeFeature.name} symbols={activeFeature.symbols} content={activeFeature.content} isLoading={false} onBack={() => setActiveTab('features')} onRerun={() => { }} />
-        ) : activeTab === 'entity-detail' && selectedEntity ? (
-          <EntityDetailView entity={selectedEntity} freshnessThreshold={0} onBack={() => setActiveTab('command-center')} onRunAnalysis={() => { }} researchContent={null} />
-        ) : null}
+        </div>
       </div>
 
-      {/* 4. RIGHT SIDEBAR (ANCILLARY) */}
+      {/* 4. RIGHT SIDEBAR (ANCILLARY) - Simplified */}
       <div className="hud-cell-right flex flex-col">
-        <div className="h-1/3 border-b border-cyan-900/30">
-          <StatusWidget />
-        </div>
-        <div className="flex-1 overflow-hidden relative">
-          <div className="absolute top-0 left-0 w-full z-10 p-2 bg-slate-950/80 border-b border-slate-800 text-[10px] font-mono text-cyan-600">
-            MARKET CLOCKS
+        <div className="h-full border-l border-slate-800/50 bg-slate-950/30">
+          <div className="p-3 border-b border-slate-800/50 font-mono text-[10px] text-slate-500 uppercase tracking-wider">
+            System Status
           </div>
-          <NetworkTopology nodes={marketClocks} />
+          <div className="p-4">
+            <StatusWidget />
+          </div>
+
+          {/* Simplified List instead of Topology */}
+          <div className="p-3 border-t border-b border-slate-800/50 font-mono text-[10px] text-slate-500 uppercase tracking-wider mt-4">
+            Active Nodes
+          </div>
+          <div className="flex-1 overflow-y-auto p-0">
+            {marketClocks.slice(0, 10).map(clock => (
+              <div key={clock.code} className="flex items-center justify-between px-4 py-3 border-b border-slate-800/30 hover:bg-slate-900/50 transition-colors cursor-pointer">
+                <div className="flex items-center gap-3">
+                  <div className={`w-2 h-2 rounded-full ${clock.status === 'green' ? 'bg-emerald-500' : clock.status === 'red' ? 'bg-red-500' : 'bg-amber-500'}`}></div>
+                  <span className="font-mono text-xs text-slate-300">{clock.code}</span>
+                </div>
+                <span className="text-[10px] text-slate-600 font-mono">{clock.label.substring(0, 12)}...</span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 

@@ -5,7 +5,7 @@ import { StorageService } from '../lib/storage';
 import { UserStrategy, StrategyTrigger, StrategyAction, TriggerMetric, TriggerOperator, ActionType, MarketClock } from '../lib/agent/types';
 import { simulateWarGame, BattleResult } from '../lib/wargame';
 
-type ForgeTab = 'builder' | 'deployed' | 'templates';
+type ForgeTab = 'builder' | 'deployed' | 'thesis';
 
 interface LogicBlock {
     id: string;
@@ -20,17 +20,18 @@ interface LogicBlock {
 }
 
 interface CreatorModeViewProps {
-    clocks: MarketClock[];
+    clocks?: MarketClock[];
 }
 
-export const CreatorModeView: React.FC<CreatorModeViewProps> = ({ clocks }) => {
-    const [activeTab, setActiveTab] = useState<ForgeTab>('builder');
+export const CreatorModeView: React.FC<CreatorModeViewProps> = ({ clocks = [] }) => {
+    const [activeTab, setActiveTab] = useState<ForgeTab>('thesis');
     const [strategyName, setStrategyName] = useState('');
     const [logicBlocks, setLogicBlocks] = useState<LogicBlock[]>([
         { id: '1', uiType: 'TRIGGER', metric: 'VIX', operator: '>', value: '25' },
         { id: '2', uiType: 'ACTION', actionType: 'SCAN', target: 'Defensive Tech' }
     ]);
     const [savedStrategies, setSavedStrategies] = useState<UserStrategy[]>([]);
+    const [thesis, setThesis] = useState("Market is in a structural liquidity cycle driven by central bank balance sheet expansion. \n\nFocus on:\n1. Hard Assets (Gold, Bitcoin)\n2. AI Infrastructure (Pick & Shovel)\n3. Energy Transition");
 
     // Simulation State
     const [isSimulating, setIsSimulating] = useState(false);
@@ -115,6 +116,11 @@ export const CreatorModeView: React.FC<CreatorModeViewProps> = ({ clocks }) => {
         StorageService.saveStrategies(updated);
     }
 
+    const handleSaveThesis = () => {
+        // Mock save - in real app would go to StorageService
+        alert("Thesis updated.");
+    };
+
     // --- SIMULATION LOGIC ---
     const handleTestStrategy = (strategy: UserStrategy) => {
         setSimulatingStrategy(strategy);
@@ -152,17 +158,23 @@ export const CreatorModeView: React.FC<CreatorModeViewProps> = ({ clocks }) => {
             <div className="relative z-10 p-6 border-b border-slate-800 bg-slate-900/80 backdrop-blur shrink-0 flex justify-between items-center">
                 <div>
                     <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-orange-400 to-red-500 flex items-center gap-3">
-                        <Icon icon="zap" className="text-orange-500 w-8 h-8" />
-                        STRATEGY FORGE
+                        <Icon icon="code" className="text-orange-500 w-8 h-8" />
+                        CREATOR MODE
                     </h1>
-                    <p className="text-slate-400 text-sm mt-1">Architect autonomous agent behaviors</p>
+                    <p className="text-slate-400 text-sm mt-1">Design Strategies & Core Thesis</p>
                 </div>
                 <div className="flex gap-2">
+                    <GlassButton
+                        variant={activeTab === 'thesis' ? 'primary' : 'glass'}
+                        onClick={() => setActiveTab('thesis')}
+                    >
+                        Master Thesis
+                    </GlassButton>
                     <GlassButton
                         variant={activeTab === 'builder' ? 'primary' : 'glass'}
                         onClick={() => setActiveTab('builder')}
                     >
-                        Builder
+                        Strategy Builder
                     </GlassButton>
                     <GlassButton
                         variant={activeTab === 'deployed' ? 'primary' : 'glass'}
@@ -172,6 +184,28 @@ export const CreatorModeView: React.FC<CreatorModeViewProps> = ({ clocks }) => {
                     </GlassButton>
                 </div>
             </div>
+
+            {/* Thesis Tab */}
+            {activeTab === 'thesis' && (
+                <div className="flex-1 relative z-10 overflow-y-auto p-8">
+                    <div className="max-w-4xl mx-auto space-y-6">
+                        <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-8 backdrop-blur-sm shadow-xl">
+                            <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                                <Icon icon="strategy" className="w-5 h-5 text-orange-400" />
+                                CORE INVESTMENT THESIS (2025-2030)
+                            </h2>
+                            <textarea
+                                value={thesis}
+                                onChange={(e) => setThesis(e.target.value)}
+                                className="w-full h-96 bg-slate-950 border border-slate-700 rounded-lg p-6 text-slate-300 font-mono text-sm focus:border-orange-500 focus:outline-none leading-relaxed resize-none"
+                            />
+                            <div className="flex justify-end mt-4">
+                                <GlassButton variant="primary" onClick={handleSaveThesis}>SAVE THESIS</GlassButton>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Builder Area */}
             {activeTab === 'builder' && (
@@ -204,7 +238,7 @@ export const CreatorModeView: React.FC<CreatorModeViewProps> = ({ clocks }) => {
                                                 {block.uiType === 'TRIGGER' ? 'IF CONDITION DETECTED' : 'THEN EXECUTE ACTION'}
                                             </span>
                                             <button onClick={() => removeBlock(block.id)} className="text-slate-600 hover:text-red-500 transition-colors">
-                                                <Icon icon="x" className="w-4 h-4" />
+                                                <Icon icon="close" className="w-4 h-4" />
                                             </button>
                                         </div>
 
@@ -268,7 +302,7 @@ export const CreatorModeView: React.FC<CreatorModeViewProps> = ({ clocks }) => {
                                     {/* Arrow */}
                                     {index < logicBlocks.length - 1 && (
                                         <div className="flex justify-center my-2 ml-8">
-                                            <Icon icon="arrow-down" className="text-slate-600 w-4 h-4" />
+                                            <Icon icon="chevron-down" className="text-slate-600 w-4 h-4" />
                                         </div>
                                     )}
                                 </div>
@@ -278,17 +312,17 @@ export const CreatorModeView: React.FC<CreatorModeViewProps> = ({ clocks }) => {
                         {/* Controls */}
                         <div className="flex gap-4 ml-8 pt-4">
                             <button onClick={() => addBlock('TRIGGER')} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded border border-dashed border-slate-600 text-slate-400 text-sm font-bold flex items-center gap-2 transition-colors">
-                                <Icon icon="plus" className="w-4 h-4" /> ADD CONDITION
+                                <Icon icon="check" className="w-4 h-4" /> ADD CONDITION
                             </button>
                             <button onClick={() => addBlock('ACTION')} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded border border-dashed border-slate-600 text-slate-400 text-sm font-bold flex items-center gap-2 transition-colors">
-                                <Icon icon="plus" className="w-4 h-4" /> ADD ACTION
+                                <Icon icon="check" className="w-4 h-4" /> ADD ACTION
                             </button>
                         </div>
 
                         <div className="pt-8 flex justify-end">
                             <GlassButton variant="primary" size="lg" className="shadow-orange-900/20 shadow-xl" onClick={handleSaveStrategy}>
                                 <span className="mr-2">INITIALIZE AGENT</span>
-                                <Icon icon="zap" className="w-4 h-4" />
+                                <Icon icon="bot" className="w-4 h-4" />
                             </GlassButton>
                         </div>
                     </div>
@@ -323,7 +357,7 @@ export const CreatorModeView: React.FC<CreatorModeViewProps> = ({ clocks }) => {
                                         onClick={(e) => handleDeleteStrategy(agent.id, e)}
                                         className="absolute top-2 right-2 p-2 text-slate-600 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
                                     >
-                                        <Icon icon="x" className="w-4 h-4" />
+                                        <Icon icon="close" className="w-4 h-4" />
                                     </button>
 
                                     <div className="mt-6 pt-4 border-t border-slate-800 flex justify-between items-center">
@@ -356,7 +390,7 @@ export const CreatorModeView: React.FC<CreatorModeViewProps> = ({ clocks }) => {
                                 <Icon icon="activity" className="text-cyan-500" />
                                 WAR GAME SIMULATION
                             </h2>
-                            <button onClick={() => setIsSimulating(false)} className="text-slate-500 hover:text-white"><Icon icon="x" /></button>
+                            <button onClick={() => setIsSimulating(false)} className="text-slate-500 hover:text-white"><Icon icon="close" /></button>
                         </div>
 
                         <div className="p-6 flex-1 overflow-y-auto">
