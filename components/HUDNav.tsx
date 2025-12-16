@@ -16,11 +16,11 @@ interface HUDNavProps {
 }
 
 const NAV_ITEMS: NavItem[] = [
-    { id: 'command-center', label: 'COMMAND', icon: 'terminal', shortcut: '1' },
+    { id: 'command-center', label: 'DASHBOARD', icon: 'terminal', shortcut: '1' },
     { id: 'portfolio', label: 'PORTFOLIO', icon: 'briefcase', shortcut: '2' },
-    { id: 'market-clocks', label: 'CLOCKS', icon: 'clock', shortcut: '3' },
-    { id: 'competitions', label: 'ARENA', icon: 'trophy', shortcut: '4' },
-    { id: 'creator', label: 'FORGE', icon: 'code', shortcut: '5' },
+    { id: 'market-clocks', label: 'MARKET DATA', icon: 'clock', shortcut: '3' },
+    { id: 'competitions', label: 'COMPETITIONS', icon: 'trophy', shortcut: '4' },
+    { id: 'creator', label: 'STRATEGY', icon: 'strategy', shortcut: '5' },
 ];
 
 export const HUDNav: React.FC<HUDNavProps> = ({

@@ -2,7 +2,7 @@
 import React from 'react';
 
 interface IconProps {
-  icon: 'send' | 'upload' | 'mic' | 'search' | 'chart' | 'strategy' | 'ghost' | 'close' | 'bot' | 'portfolio' | 'user' | 'chevron-down' | 'check' | 'message' | 'terminal';
+  icon: 'send' | 'upload' | 'mic' | 'search' | 'chart' | 'strategy' | 'ghost' | 'close' | 'bot' | 'portfolio' | 'user' | 'chevron-down' | 'check' | 'message' | 'terminal' | 'briefcase' | 'clock' | 'trophy' | 'code' | 'activity' | 'loader';
   className?: string;
 }
 
@@ -82,6 +82,36 @@ export const Icon: React.FC<IconProps> = ({ icon, className = 'w-6 h-6' }) => {
     terminal: (
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 7.5l3 2.25-3 2.25m4.5 0h3m-9 8.25h13.5A2.25 2.25 0 0021 18V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v12a2.25 2.25 0 002.25 2.25z" />
+      </svg>
+    ),
+    briefcase: (
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 14.15v4.25c0 1.094-.787 2.036-1.872 2.18-2.087.277-4.216.42-6.378.42s-4.291-.143-6.378-.42c-1.085-.144-1.872-1.086-1.872-2.18v-4.25m16.5 0a2.18 2.18 0 0 0 .75-1.661V8.706c0-1.081-.768-2.015-1.837-2.175a48.111 48.111 0 0 0-3.413-.387m4.5 8.022c-.255-.019-.527-.027-.796-.027m0 0a24.225 24.225 0 0 0-3.931.328m3.931-.328a9.489 9.489 0 0 1-1.391-.019m-4.5 0a24.225 24.225 0 0 1-3.931.328m3.931-.328a9.49 9.49 0 0 0-1.391-.019m-4.5 0c-.27.001-.54.008-.796.027m0 0a24.227 24.227 0 0 1-3.931-.328m3.931.328a9.492 9.492 0 0 1-1.391.019m-4.5 0a24.228 24.228 0 0 0-3.931-.328m3.931.328c.553.007 1.02.01 1.391.019m0 0a2.18 2.18 0 0 1-.75 1.661v.568c0 1.081.768 2.015 1.837 2.175a48.114 48.114 0 0 1 3.413.387m4.5-8.022A48.243 48.243 0 0 0 12 6a48.243 48.243 0 0 0-3.413-.387m4.5 8.022-7.5.001M12 12v6" />
+      </svg>
+    ),
+    clock: (
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+      </svg>
+    ),
+    trophy: (
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 18.75h-9m9 0a3 3 0 0 1 3 3h-15a3 3 0 0 1 3-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-5.918 .30-3.375c0-.621.504-1.125 1.125-1.125v-3.375m9 0h1.5A2.25 2.25 0 0 0 21 9V6a2.25 2.25 0 0 0-2.25-2.25H5.25A2.25 2.25 0 0 0 3 6v3a2.25 2.25 0 0 0 2.25 2.25h1.5M12 3v3.375" />
+      </svg>
+    ),
+    code: (
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M17.25 6.75 22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3-1.5 18" />
+      </svg>
+    ),
+    activity: (
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941" />
+      </svg>
+    ),
+    loader: (
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
       </svg>
     )
   };

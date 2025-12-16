@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import { HUDNav } from './components/HUDNav';
 import { CentralCommand } from './components/CentralCommand';
 import { StatusWidget } from './components/StatusWidget';
@@ -38,7 +38,7 @@ const AppContent: React.FC = () => {
   const { startJob, activeJobsCount } = useJobContext();
 
   const [messages, setMessages] = useState<ChatMessageType[]>(() => [
-    { id: 'welcome', role: 'model', content: "Tactical OS v2.0 initialized. Systems nominal. Awaiting directives." },
+    { id: 'welcome', role: 'model', content: "StockCommand V2.1 online. Monitoring active markets. Awaiting input." },
   ]);
   const [isChatLoading, setIsChatLoading] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
@@ -344,7 +344,27 @@ const AppContent: React.FC = () => {
     setMessages(prev => [...prev, cloneMessage]);
   }, []);
 
-  const sleevesWithStats = [];
+
+  // --- REAL DATA INTEGRATION FOR PORTFOLIO VIEW ---
+  const sleevesWithStats = useMemo(() => {
+    const sleeves = new Set(UNIVERSE.map(t => t.sleeve));
+    return Array.from(sleeves).map(sleeveName => {
+      const items = UNIVERSE.filter(t => t.sleeve === sleeveName).map(t => ({
+        symbol: t.symbol,
+        name: t.role, // Mapping role to name for now, or could be empty
+        allocation: 0
+      }));
+
+      // Mock stats or derive from real marketClocks
+      // In a real app we'd aggregate signal data per sleeve
+      return {
+        sleeveName,
+        items,
+        stats: { green: 0, yellow: 0, red: 0 }
+      };
+    });
+  }, []);
+  // ------------------------------------------------
 
   return (
     <div className="hud-grid">
@@ -360,9 +380,9 @@ const AppContent: React.FC = () => {
       {/* 2. HEADER (SYSTEM STATUS) */}
       <div className="hud-cell-header justify-between">
         <div className="flex items-center gap-4">
-          <span className="text-cyan-500 font-bold tracking-[0.2em] text-sm">OS // V2.1</span>
+          <span className="text-cyan-500 font-bold tracking-[0.2em] text-sm">STOCK_COMMAND // V2.1</span>
           <div className="h-4 w-[1px] bg-cyan-900"></div>
-          <span className="text-slate-500 text-xs text-shadow-glow">SYS_NOMINAL</span>
+          <span className="text-slate-500 text-xs text-shadow-glow">SYSTEM ONLINE</span>
         </div>
         <div className="flex items-center gap-4">
           {scanningTarget && <span className="text-orange-500 text-xs animate-pulse font-mono">SCANNING_TARGET: {scanningTarget}</span>}
@@ -417,7 +437,7 @@ const AppContent: React.FC = () => {
         </div>
         <div className="flex-1 overflow-hidden relative">
           <div className="absolute top-0 left-0 w-full z-10 p-2 bg-slate-950/80 border-b border-slate-800 text-[10px] font-mono text-cyan-600">
-            MARKET_TOPOLOGY // VISUALIZER
+            MARKET CLOCKS
           </div>
           <NetworkTopology nodes={marketClocks} />
         </div>
