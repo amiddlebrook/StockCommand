@@ -12,12 +12,30 @@ interface Player {
     isAi?: boolean;
 }
 
+interface Competition {
+    id: string;
+    name: string;
+    type: 'public' | 'private';
+    participants: number;
+    startDate: string;
+    endDate: string;
+    status: 'active' | 'upcoming' | 'completed';
+    prize?: string;
+}
+
 const LEADERBOARD: Player[] = [
     { rank: 1, name: 'HIVE_MIND_CORE', org: 'SYSTEM', pnl: 42.8, delta: 1.2, isAi: true },
     { rank: 2, name: 'Citadel_Alpha', org: 'HF', pnl: 38.5, delta: 0.8 },
     { rank: 3, name: 'Vanguard_Quant', org: 'HF', pnl: 35.1, delta: -0.2 },
     { rank: 4, name: 'COMMANDER (YOU)', org: 'USER', pnl: 28.4, delta: 2.1, isUser: true },
     { rank: 5, name: 'Retail_Whale', org: 'IND', pnl: 12.2, delta: -1.5 },
+];
+
+const MOCK_COMPETITIONS: Competition[] = [
+    { id: '1', name: 'Q1 2025 Alpha Challenge', type: 'public', participants: 1247, startDate: '2025-01-01', endDate: '2025-03-31', status: 'upcoming', prize: '$10,000' },
+    { id: '2', name: 'Tech Sector Showdown', type: 'public', participants: 823, startDate: '2024-12-01', endDate: '2024-12-31', status: 'active', prize: '$5,000' },
+    { id: '3', name: 'Private League: Hedgies', type: 'private', participants: 24, startDate: '2024-11-01', endDate: '2025-02-28', status: 'active' },
+    { id: '4', name: 'Macro Masters Cup', type: 'public', participants: 2156, startDate: '2024-10-01', endDate: '2024-12-15', status: 'active', prize: '$15,000' },
 ];
 
 interface CompetitionsViewProps {
@@ -51,35 +69,82 @@ export const CompetitionsView: React.FC<CompetitionsViewProps> = ({ onSubmitPort
             <div className="flex-1 overflow-y-auto p-6 relative z-10">
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-                    {/* Left Col: Leaderboard */}
-                    <div className="lg:col-span-2 space-y-6">
-                        <div className="bg-slate-900/50 border border-slate-800 rounded-xl overflow-hidden backdrop-blur-sm">
-                            <div className="p-4 border-b border-slate-800 bg-slate-900/80 flex justify-between items-center">
-                                <h3 className="font-bold text-white flex items-center gap-2">
-                                    <Icon icon="list" className="text-cyan-500" />
-                                    Global Ranking
-                                </h3>
-                                <span className="text-xs text-emerald-400 animate-pulse">● LIVE UPDATES</span>
+                    {/* Left Col: Operations Center */}
+                    <div className="lg:col-span-2 space-y-8">
+
+                        {/* 1. Official / Major Events */}
+                        <div>
+                            <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                                <Icon icon="star" className="text-amber-400 w-4 h-4" />
+                                SANCTIONED OPERATIONS (PRIZE POOLS)
+                            </h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {MOCK_COMPETITIONS.filter(c => c.prize).map(comp => (
+                                    <div key={comp.id} className="bg-gradient-to-br from-amber-900/10 to-slate-900 border border-amber-500/30 rounded-xl p-5 relative overflow-hidden group cursor-pointer hover:border-amber-500/60 transition-all">
+                                        <div className="absolute top-0 right-0 p-2 opacity-50">
+                                            <Icon icon="award" className="w-12 h-12 text-amber-500/10 transform rotate-12" />
+                                        </div>
+                                        <div className="relative z-10">
+                                            <div className="flex justify-between items-start mb-2">
+                                                <span className="text-[10px] font-bold bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded border border-amber-500/30 uppercase tracking-widest">
+                                                    OFFICIAL
+                                                </span>
+                                                <span className="text-amber-400 font-bold font-mono text-sm">{comp.prize}</span>
+                                            </div>
+                                            <h4 className="text-lg font-bold text-white mb-1 group-hover:text-amber-100 transition-colors">{comp.name}</h4>
+                                            <div className="flex items-center gap-3 text-xs text-slate-400 mb-4">
+                                                <span className="flex items-center gap-1"><Icon icon="users" className="w-3 h-3" /> {comp.participants.toLocaleString()}</span>
+                                                <span>•</span>
+                                                <span>{comp.endDate} (Ending Soon)</span>
+                                            </div>
+                                            <GlassButton size="sm" variant="primary" className="w-full justify-center bg-amber-600/20 hover:bg-amber-600/40 border-amber-500/50 text-amber-200">
+                                                ENTER WARZONE
+                                            </GlassButton>
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
-                            <div className="divide-y divide-slate-800">
-                                {LEADERBOARD.map((player) => (
-                                    <div key={player.rank} className={`flex items-center justify-between p-4 hover:bg-slate-800/50 transition-colors ${player.isUser ? 'bg-cyan-900/10 border-l-2 border-cyan-500' : ''} ${player.isAi ? 'bg-purple-900/10 border-l-2 border-purple-500' : ''}`}>
+                        </div>
+
+                        {/* 2. Community / User Generated */}
+                        <div>
+                            <div className="flex justify-between items-end mb-4">
+                                <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                                    <Icon icon="globe" className="text-blue-400 w-4 h-4" />
+                                    COMMUNITY SKIRMISHES
+                                </h3>
+                                <div className="flex gap-2 text-xs">
+                                    <button className="text-white font-bold bg-slate-800 px-2 py-1 rounded">TRENDING</button>
+                                    <button className="text-slate-500 hover:text-white px-2 py-1 transition-colors">NEW</button>
+                                    <button className="text-slate-500 hover:text-white px-2 py-1 transition-colors">FRIENDS</button>
+                                </div>
+                            </div>
+
+                            <div className="space-y-3">
+                                {MOCK_COMPETITIONS.filter(c => !c.prize).concat([
+                                    { id: '101', name: 'WSB Degens Only', type: 'public', participants: 42069, startDate: '2024-12-01', endDate: '2024-12-31', status: 'active', prize: undefined },
+                                    { id: '102', name: 'Theta Gang Strategies', type: 'public', participants: 405, startDate: '2024-12-01', endDate: '2024-12-31', status: 'active', prize: undefined }
+                                ]).map(comp => (
+                                    <div key={comp.id} className="bg-slate-900/40 border border-slate-800 rounded-lg p-4 flex items-center justify-between hover:bg-slate-800/60 transition-colors cursor-pointer group">
                                         <div className="flex items-center gap-4">
-                                            <span className={`font-mono text-xl font-bold w-8 ${player.rank <= 3 ? 'text-yellow-500' : 'text-slate-500'}`}>#{player.rank}</span>
+                                            <div className={`p-2 rounded bg-slate-800 ${comp.type === 'private' ? 'text-purple-400' : 'text-blue-400'}`}>
+                                                <Icon icon={comp.type === 'private' ? 'lock' : 'users'} className="w-5 h-5" />
+                                            </div>
                                             <div>
-                                                <div className="flex items-center gap-2">
-                                                    <span className={`font-bold ${player.isUser ? 'text-cyan-400' : player.isAi ? 'text-purple-400' : 'text-white'}`}>{player.name}</span>
-                                                    {player.isAi && <span className="text-[10px] bg-purple-500/20 text-purple-400 px-1 rounded border border-purple-500/30">AI</span>}
-                                                    {player.isUser && <span className="text-[10px] bg-cyan-500/20 text-cyan-400 px-1 rounded border border-cyan-500/30">YOU</span>}
+                                                <h4 className="font-bold text-sm text-white group-hover:text-blue-400 transition-colors">{comp.name}</h4>
+                                                <div className="flex gap-2 text-[10px] text-slate-500 uppercase font-bold mt-1">
+                                                    <span>{comp.type}</span>
+                                                    <span>•</span>
+                                                    <span>{comp.participants.toLocaleString()} Fighters</span>
                                                 </div>
-                                                <span className="text-xs text-slate-500 font-mono">{player.org} // TIER 1</span>
                                             </div>
                                         </div>
-                                        <div className="text-right">
-                                            <div className="text-lg font-bold text-white font-mono">{player.pnl}%</div>
-                                            <div className={`text-xs font-mono flex items-center justify-end gap-1 ${player.delta >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                                                {player.delta >= 0 ? '▲' : '▼'} {Math.abs(player.delta)}% 24h
+                                        <div className="flex items-center gap-3">
+                                            <div className="text-right hidden sm:block">
+                                                <div className="text-[10px] text-emerald-400 font-bold">AVG RTRN</div>
+                                                <div className="text-sm font-mono text-white">+12.4%</div>
                                             </div>
+                                            <GlassButton size="sm" variant="glass">Join</GlassButton>
                                         </div>
                                     </div>
                                 ))}
@@ -142,6 +207,13 @@ export const CompetitionsView: React.FC<CompetitionsViewProps> = ({ onSubmitPort
                                     </p>
                                 </div>
                             </div>
+                        </div>
+
+                        {/* Host Action */}
+                        <div className="pt-4 border-t border-slate-800">
+                            <GlassButton variant="glass" className="w-full border-dashed border-slate-600 text-slate-400 hover:text-white hover:border-white">
+                                + HOST WARGAME
+                            </GlassButton>
                         </div>
                     </div>
                 </div>
