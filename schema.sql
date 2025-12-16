@@ -6,6 +6,8 @@ CREATE TABLE IF NOT EXISTS users (
   id TEXT PRIMARY KEY,
   email TEXT UNIQUE,
   name TEXT,
+  password_hash TEXT, -- New: For email/password auth
+  google_id TEXT,     -- New: For Google OAuth
   created_at INTEGER NOT NULL,
   last_login INTEGER,
   preferences TEXT -- JSON string for user preferences

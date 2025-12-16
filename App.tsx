@@ -859,7 +859,15 @@ const AppContent: React.FC = () => {
             </div>
           </div>
 
+
           <div className="flex items-center gap-4">
+            <button
+              onClick={() => setIsProfileOpen(true)}
+              className="p-1.5 hover:bg-slate-800 rounded-full text-gray-400 hover:text-cyan-400 transition-colors border border-transparent hover:border-slate-700"
+              title="User Profile & Settings"
+            >
+              <Icon icon="user" className="w-4 h-4" />
+            </button>
             <div className="flex items-center gap-2 text-xs font-mono text-cyan-500/50 bg-slate-900/30 px-2 py-1 rounded border border-slate-800/30">
               <Icon icon="terminal" className="w-3 h-3" />
               <span>AGENT COMMAND</span>

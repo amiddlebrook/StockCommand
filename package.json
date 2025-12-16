@@ -10,6 +10,10 @@
     "check-config": "node check-api-config.js"
   },
   "dependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/cookie": "^0.6.0",
+    "bcryptjs": "^3.0.3",
+    "cookie": "^1.1.1",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "recharts": "^3.3.0"
