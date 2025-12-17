@@ -491,10 +491,18 @@ const AppContent: React.FC = () => {
 
             {/* Toggle Handle */}
             <div
-              className="absolute -top-3 left-1/2 -translate-x-1/2 w-16 h-4 bg-slate-900 border border-slate-700 rounded-t-lg flex items-center justify-center cursor-pointer hover:bg-slate-800 z-30"
+              className={`
+                absolute -top-5 left-1/2 -translate-x-1/2 w-48 h-8 rounded-t-xl flex items-center justify-center cursor-pointer z-30 transition-all
+                ${isConsoleOpen
+                  ? 'bg-slate-900 border-t border-x border-slate-700 shadow-[0_-4px_10px_rgba(0,0,0,0.5)]'
+                  : 'bg-cyan-900/80 border-t border-x border-cyan-500/50 shadow-[0_-4px_10px_rgba(6,182,212,0.3)] hover:bg-cyan-600 animate-pulse'}
+              `}
               onClick={() => setIsConsoleOpen(!isConsoleOpen)}
             >
-              <Icon icon="chevron-down" className={`w-3 h-3 text-cyan-500 transition-transform duration-300 ${isConsoleOpen ? '' : 'rotate-180'}`} />
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-bold text-white tracking-widest uppercase">{isConsoleOpen ? 'Minimize' : 'Terminal'}</span>
+                <Icon icon="chevron-down" className={`w-4 h-4 text-white transition-transform duration-300 ${isConsoleOpen ? '' : 'rotate-180'}`} />
+              </div>
             </div>
 
             {isConsoleOpen ? (
