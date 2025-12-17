@@ -76,7 +76,7 @@ const AppContent: React.FC = () => {
   const [dataFreshnessHours, setDataFreshnessHours] = useState<number>(() => StorageService.loadSettings().freshnessHours);
 
   const analysisModelId = DEFAULT_CHAT_MODEL.id;
-  const [symbols, setSymbols] = useState<string[]>(DEFAULT_SYMBOLS);
+  const [symbols, setSymbols] = useState<string[]>(() => StorageService.loadWatchlist());
   const [selectedSymbols, setSelectedSymbols] = useState<string[]>([]);
   const [isPortfolioModalOpen, setIsPortfolioModalOpen] = useState(false);
   const [isPortfolioGenerating, setIsPortfolioGenerating] = useState(false);
@@ -105,6 +105,7 @@ const AppContent: React.FC = () => {
   useEffect(() => { StorageService.saveClocks(marketClocks); }, [marketClocks]);
   useEffect(() => { StorageService.saveSettings({ freshnessHours: dataFreshnessHours, viewMode }); }, [dataFreshnessHours, viewMode]);
   useEffect(() => { StorageService.saveResearchHistory(researchHistory); }, [researchHistory]);
+  useEffect(() => { StorageService.saveWatchlist(symbols); }, [symbols]);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);

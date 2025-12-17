@@ -7,7 +7,8 @@ const STORAGE_KEYS = {
     CLOCKS: 'stockcommand_clocks_v2',
     SETTINGS: 'stockcommand_settings_v2',
     RESEARCH_HISTORY: 'stockcommand_research_history_v1',
-    STRATEGIES: 'stockcommand_strategies_v1'
+    STRATEGIES: 'stockcommand_strategies_v1',
+    USER_WATCHLIST: 'stockcommand_user_watchlist_v1'
 };
 
 export interface ResearchEntry {
@@ -142,6 +143,49 @@ export const StorageService = {
             localStorage.setItem(STORAGE_KEYS.STRATEGIES, JSON.stringify(strategies));
         } catch (e) {
             console.error("Failed to clone strategy", e);
+        }
+    },
+
+    // User Watchlist (custom tickers added by user)
+    saveWatchlist: (tickers: string[]) => {
+        try {
+            localStorage.setItem(STORAGE_KEYS.USER_WATCHLIST, JSON.stringify(tickers));
+        } catch (e) {
+            console.error("Failed to save watchlist", e);
+        }
+    },
+
+    loadWatchlist: (): string[] => {
+        try {
+            const saved = localStorage.getItem(STORAGE_KEYS.USER_WATCHLIST);
+            return saved ? JSON.parse(saved) : [];
+        } catch (e) {
+            return [];
+        }
+    },
+
+    addToWatchlist: (ticker: string) => {
+        try {
+            const saved = localStorage.getItem(STORAGE_KEYS.USER_WATCHLIST);
+            const tickers: string[] = saved ? JSON.parse(saved) : [];
+            const upper = ticker.toUpperCase();
+            if (!tickers.includes(upper)) {
+                tickers.push(upper);
+                localStorage.setItem(STORAGE_KEYS.USER_WATCHLIST, JSON.stringify(tickers));
+            }
+        } catch (e) {
+            console.error("Failed to add to watchlist", e);
+        }
+    },
+
+    removeFromWatchlist: (ticker: string) => {
+        try {
+            const saved = localStorage.getItem(STORAGE_KEYS.USER_WATCHLIST);
+            const tickers: string[] = saved ? JSON.parse(saved) : [];
+            const filtered = tickers.filter(t => t !== ticker.toUpperCase());
+            localStorage.setItem(STORAGE_KEYS.USER_WATCHLIST, JSON.stringify(filtered));
+        } catch (e) {
+            console.error("Failed to remove from watchlist", e);
         }
     },
 
