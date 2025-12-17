@@ -14,7 +14,6 @@ export const LLM_MODEL_OPTIONS: LlmModelOption[] = [
     name: 'GPT-4o',
     provider: 'openai',
     apiModelId: 'gpt-4o',
-    isDefault: true,
   },
   {
     id: 'gpt-4-turbo',
@@ -57,6 +56,7 @@ export const LLM_MODEL_OPTIONS: LlmModelOption[] = [
     name: 'DeepSeek Chat',
     provider: 'openrouter-deepseek-chat',
     apiModelId: 'deepseek/deepseek-chat',
+    isDefault: true,
   },
   {
     id: 'openrouter-minimax-m2',

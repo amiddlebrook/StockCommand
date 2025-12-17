@@ -121,7 +121,8 @@ export const sendMessage = async (message: string, history: any[], context?: Rec
   });
 
   if (!response.ok) {
-    throw new Error('Failed to send message.');
+    const errorData = await response.json().catch(() => ({})) as any;
+    throw new Error(errorData.error || `Failed to send message: ${response.statusText}`);
   }
 
   return response.json();

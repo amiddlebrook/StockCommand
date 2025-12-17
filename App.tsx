@@ -314,9 +314,10 @@ const AppContent: React.FC = () => {
         isLoading: false,
       };
       setMessages(prev => prev.map(msg => (msg.id === modelMessageId ? newBotMessage : msg)));
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      setMessages(prev => prev.map(msg => (msg.id === modelMessageId ? { ...msg, content: 'Error processing request.', isLoading: false } : msg)));
+      const errorMessageText = error.message || 'Error processing request.';
+      setMessages(prev => prev.map(msg => (msg.id === modelMessageId ? { ...msg, content: `❌ **System Error**\n\n${errorMessageText}`, isLoading: false } : msg)));
     } finally {
       setIsChatLoading(false);
     }
