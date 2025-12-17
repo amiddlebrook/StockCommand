@@ -359,6 +359,107 @@ export default {
             }
         }
 
+        // GET /api/brokers/:name/positions - Get positions from a specific broker
+        if (url.pathname.match(/^\/api\/brokers\/[\w]+\/positions$/) && request.method === "GET") {
+            try {
+                const user = await getSession(env, request);
+                if (!user) {
+                    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+                        status: 401, headers: corsHeaders
+                    });
+                }
+
+                const brokerName = url.pathname.split('/')[3];
+
+                // Get user's broker connection
+                if (!env.DB) {
+                    return new Response(JSON.stringify([]), {
+                        headers: { ...corsHeaders, "Content-Type": "application/json" }
+                    });
+                }
+
+                const connection = await env.DB.prepare(`
+                    SELECT * FROM user_brokers WHERE user_id = ? AND broker_name = ? AND is_active = 1
+                `).bind(user.id, brokerName).first();
+
+                if (!connection) {
+                    return new Response(JSON.stringify({ error: `No connection to ${brokerName}` }), {
+                        status: 400, headers: corsHeaders
+                    });
+                }
+
+                const broker = getBroker(brokerName);
+                if (!broker) {
+                    return new Response(JSON.stringify({ error: `Broker ${brokerName} not configured` }), {
+                        status: 400, headers: corsHeaders
+                    });
+                }
+
+                const credentials = JSON.parse(atob(connection.credentials_encrypted as string));
+                const positions = await broker.getPositions(credentials);
+
+                return new Response(JSON.stringify(positions), {
+                    headers: { ...corsHeaders, "Content-Type": "application/json" }
+                });
+
+            } catch (e: any) {
+                console.error("Get positions error:", e);
+                return new Response(JSON.stringify({ error: e.message }), {
+                    status: 500, headers: corsHeaders
+                });
+            }
+        }
+
+        // GET /api/brokers/:name/balance - Get balance from a specific broker
+        if (url.pathname.match(/^\/api\/brokers\/[\w]+\/balance$/) && request.method === "GET") {
+            try {
+                const user = await getSession(env, request);
+                if (!user) {
+                    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+                        status: 401, headers: corsHeaders
+                    });
+                }
+
+                const brokerName = url.pathname.split('/')[3];
+
+                if (!env.DB) {
+                    return new Response(JSON.stringify({ error: "Database not configured" }), {
+                        status: 500, headers: corsHeaders
+                    });
+                }
+
+                const connection = await env.DB.prepare(`
+                    SELECT * FROM user_brokers WHERE user_id = ? AND broker_name = ? AND is_active = 1
+                `).bind(user.id, brokerName).first();
+
+                if (!connection) {
+                    return new Response(JSON.stringify({ error: `No connection to ${brokerName}` }), {
+                        status: 400, headers: corsHeaders
+                    });
+                }
+
+                const broker = getBroker(brokerName);
+                if (!broker) {
+                    return new Response(JSON.stringify({ error: `Broker ${brokerName} not configured` }), {
+                        status: 400, headers: corsHeaders
+                    });
+                }
+
+                const credentials = JSON.parse(atob(connection.credentials_encrypted as string));
+                const balance = await broker.getBalances(credentials);
+
+                return new Response(JSON.stringify(balance), {
+                    headers: { ...corsHeaders, "Content-Type": "application/json" }
+                });
+
+            } catch (e: any) {
+                console.error("Get balance error:", e);
+                return new Response(JSON.stringify({ error: e.message }), {
+                    status: 500, headers: corsHeaders
+                });
+            }
+        }
+
         // --- TRADING ROUTES ---
 
         // GET /api/signals - Get active trading signals
