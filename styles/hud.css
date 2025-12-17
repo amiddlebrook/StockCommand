@@ -210,3 +210,18 @@
 .animate-hud-pulse {
   animation: hud-pulse 2s ease-in-out infinite;
 }
+
+/* Fade In Animation */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.3s ease-in-out forwards;
+}
