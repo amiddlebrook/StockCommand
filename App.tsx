@@ -20,6 +20,7 @@ import { MarketClocksView } from './components/MarketClocksView';
 import { SocialView } from './components/SocialView';
 import { NewsSynthesisView } from './components/NewsSynthesisView';
 import { SettingsView } from './components/SettingsView';
+import { TraditionalView } from './components/TraditionalView';
 
 import type { ChatMessage as ChatMessageType, Source } from './types';
 import {
@@ -91,11 +92,18 @@ const AppContent: React.FC = () => {
   const [uncuratedTicker, setUncuratedTicker] = useState<string | null>(null);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
+  // VIEW MODE: 2D = Traditional charts/data, 3D = Agentic StockCommand view
+  type ViewMode = '2D' | '3D';
+  const [viewMode, setViewMode] = useState<ViewMode>(() => {
+    const saved = StorageService.loadSettings().viewMode;
+    return (saved as ViewMode) || '3D';
+  });
+
   // PERSISTENCE EFFECT HOOKS
   useEffect(() => { StorageService.saveWidgets(widgets); }, [widgets]);
   useEffect(() => { StorageService.saveReports(researchReports); }, [researchReports]);
   useEffect(() => { StorageService.saveClocks(marketClocks); }, [marketClocks]);
-  useEffect(() => { StorageService.saveSettings({ freshnessHours: dataFreshnessHours }); }, [dataFreshnessHours]);
+  useEffect(() => { StorageService.saveSettings({ freshnessHours: dataFreshnessHours, viewMode }); }, [dataFreshnessHours, viewMode]);
   useEffect(() => { StorageService.saveResearchHistory(researchHistory); }, [researchHistory]);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -425,6 +433,29 @@ const AppContent: React.FC = () => {
         </div>
         <div className="flex items-center gap-4">
           {scanningTarget && <span className="text-orange-500 text-xs animate-pulse font-mono">SCANNING_TARGET: {scanningTarget}</span>}
+
+          {/* 2D/3D View Mode Toggle */}
+          <div className="flex items-center gap-1 bg-slate-900/50 border border-slate-700/50 rounded-lg p-0.5">
+            <button
+              onClick={() => setViewMode('2D')}
+              className={`px-2 py-1 text-xs font-mono rounded transition-all ${viewMode === '2D'
+                ? 'bg-cyan-600 text-white shadow-lg shadow-cyan-500/30'
+                : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                }`}
+            >
+              2D
+            </button>
+            <button
+              onClick={() => setViewMode('3D')}
+              className={`px-2 py-1 text-xs font-mono rounded transition-all ${viewMode === '3D'
+                ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/30'
+                : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                }`}
+            >
+              3D
+            </button>
+          </div>
+
           <button onClick={() => setIsProfileOpen(true)} className="p-2 hover:bg-cyan-900/30 rounded text-cyan-500 transition-colors">
             <Icon icon="user" className="w-4 h-4" />
           </button>
@@ -435,7 +466,16 @@ const AppContent: React.FC = () => {
       <div className="hud-cell-main flex flex-col">
         {/* TOP: Dynamic Content (Full width now) */}
         <div className="flex-1 overflow-hidden relative">
-          {activeTab === 'command-center' ? (
+          {/* 2D Mode: Traditional View for most tabs */}
+          {viewMode === '2D' && activeTab !== 'settings' && activeTab !== 'creator' ? (
+            <div className="h-full overflow-hidden">
+              <TraditionalView
+                clocks={marketClocks}
+                symbols={symbols}
+                onAddSymbol={(sym) => setSymbols(prev => [...prev, sym])}
+              />
+            </div>
+          ) : activeTab === 'command-center' ? (
             <div className="h-full w-full">
               <ConsoleWidget
                 messages={messages}

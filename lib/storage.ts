@@ -69,7 +69,7 @@ export const StorageService = {
         }
     },
 
-    saveSettings: (settings: { freshnessHours: number }) => {
+    saveSettings: (settings: { freshnessHours: number; viewMode?: '2D' | '3D' }) => {
         try {
             localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(settings));
         } catch (e) {
@@ -77,12 +77,12 @@ export const StorageService = {
         }
     },
 
-    loadSettings: () => {
+    loadSettings: (): { freshnessHours: number; viewMode?: '2D' | '3D' } => {
         try {
             const saved = localStorage.getItem(STORAGE_KEYS.SETTINGS);
-            return saved ? JSON.parse(saved) : { freshnessHours: 24 };
+            return saved ? JSON.parse(saved) : { freshnessHours: 24, viewMode: '3D' };
         } catch (e) {
-            return { freshnessHours: 24 };
+            return { freshnessHours: 24, viewMode: '3D' };
         }
     },
 
