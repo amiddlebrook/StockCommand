@@ -80,7 +80,7 @@ export interface Env {
   OPENROUTER_MINIMAX_M2_API_KEY?: string;
   OPENROUTER_GLM_45_AIR_API_KEY?: string;
   OPENROUTER_QWEN3_235B_API_KEY?: string;
-  ODDS_API_KEY?: string;
+
 
   // Stock API keys
   ALPHA_VANTAGE_API_KEY?: string;

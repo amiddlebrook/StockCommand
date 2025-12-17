@@ -59,8 +59,7 @@ set_secret "OPENROUTER_GLM_45_AIR_API_KEY" "Enter OpenRouter GLM 4.5 Air API Key
 set_secret "OPENROUTER_QWEN3_235B_API_KEY" "Enter OpenRouter Qwen3 235B API Key (or press Enter to skip)"
 
 echo ""
-echo "🎯 Optional APIs:"
-set_secret "ODDS_API_KEY" "Enter Odds API Key for sports betting (or press Enter to skip)"
+
 
 echo ""
 echo "🎉 Cloudflare secrets setup complete!"

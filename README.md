@@ -19,7 +19,7 @@ This contains everything you need to run your app locally and deploy to Cloudfla
    `npm install`
 2. Configure API keys in `.env.local` (copy from `.env.local.example`):
    - At least one AI provider is required (Gemini, OpenAI, Claude, or OpenRouter)
-   - Optional: Odds API key for sports betting data
+
 3. Verify your configuration (optional):
    `npm run check-config`
 4. Run the app:
@@ -42,9 +42,7 @@ StockCommand supports multiple AI providers. Configure at least one of the follo
   - GLM 4.5 Air: `VITE_OPENROUTER_GLM_45_AIR_API_KEY`
   - Qwen 3 235B: `VITE_OPENROUTER_QWEN3_235B_API_KEY`
 
-### Optional APIs
 
-- **Odds API**: Set `VITE_ODDS_API_KEY` for sports betting odds data
 
 ### Example Configuration
 

@@ -21,7 +21,7 @@ const providers = {
   'OpenRouter Minimax M2': ['VITE_OPENROUTER_MINIMAX_M2_API_KEY'],
   'OpenRouter GLM 4.5 Air': ['VITE_OPENROUTER_GLM_45_AIR_API_KEY'],
   'OpenRouter Qwen3 235B': ['VITE_OPENROUTER_QWEN3_235B_API_KEY'],
-  'Odds API': ['VITE_ODDS_API_KEY', 'ODDS_API_KEY'],
+
 };
 
 function loadEnvFile(path) {
@@ -77,7 +77,7 @@ const configuredProviders = [];
 
 Object.entries(providers).forEach(([providerName, envKeys]) => {
   const foundKey = envKeys.find(key => envVars[key] && envVars[key].length > 0);
-  
+
   if (foundKey) {
     console.log(`✅ ${providerName.padEnd(30)} ${maskKey(envVars[foundKey])}`);
     configuredCount++;
@@ -101,11 +101,11 @@ if (configuredCount === 0) {
   configuredProviders.forEach(provider => {
     console.log(`   • ${provider}`);
   });
-  
+
   if (!configuredProviders.some(p => p === 'Gemini')) {
     console.log('\n💡 Tip: For full functionality, configure Gemini API');
   }
-  
+
   console.log('\n🚀 You\'re ready to run: npm run dev\n');
   process.exit(0);
 }
