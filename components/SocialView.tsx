@@ -2,10 +2,14 @@ import React, { useState } from 'react';
 import { Icon } from './Icon';
 import { GlassButton } from './ui/GlassButton';
 
+import { Leaderboard } from './social/Leaderboard';
+import { CompetitionsList } from './social/CompetitionsList';
+import { StrategyRegistry } from './social/StrategyRegistry';
+
 interface Channel {
     id: string;
     name: string;
-    type: 'text' | 'voice';
+    type: 'text' | 'voice' | 'app';
     unread?: number;
 }
 
@@ -27,9 +31,10 @@ interface Message {
 export const SocialView: React.FC = () => {
     const [activeChannel, setActiveChannel] = useState('global-trade');
     const [channels] = useState<Channel[]>([
+        { id: 'leaderboard', name: 'Global Rankings', type: 'app' },
+        { id: 'competitions', name: 'Competitions', type: 'app', unread: 3 },
+        { id: 'strategy-registry', name: 'Strategy Registry', type: 'app' },
         { id: 'global-trade', name: 'global-trade', type: 'text' },
-        { id: 'competitions', name: 'competitions', type: 'text', unread: 3 },
-        { id: 'strategy-war-room', name: 'strategy-war-room', type: 'text' },
         { id: 'alpha-leaks', name: 'alpha-leaks', type: 'text', unread: 12 },
         { id: 'voice-general', name: 'General Voice', type: 'voice' }
     ]);
@@ -59,6 +64,66 @@ export const SocialView: React.FC = () => {
             role: 'user'
         }]);
         setInput('');
+    };
+
+    // Render Logic
+    const renderMainContent = () => {
+        if (activeChannel === 'leaderboard') return <Leaderboard />;
+        if (activeChannel === 'competitions') return <CompetitionsList />;
+        if (activeChannel === 'strategy-registry') return <StrategyRegistry />;
+
+
+        // Default Chat View
+        return (
+            <div className="flex-1 flex flex-col h-full bg-slate-900/30">
+                {/* Messages */}
+                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                    {messages.map(msg => (
+                        <div key={msg.id} className="group flex gap-4 hover:bg-slate-900/40 p-2 -mx-2 rounded transition-colors">
+                            <div className="w-10 h-10 rounded-full bg-slate-800 flex-shrink-0 flex items-center justify-center border border-slate-700 mt-1">
+                                {msg.role === 'admin' ? (
+                                    <Icon icon="bot" className="w-5 h-5 text-red-500" />
+                                ) : (
+                                    <span className="text-xs font-bold text-slate-400">{msg.user.substr(0, 2).toUpperCase()}</span>
+                                )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <div className="flex items-baseline gap-2">
+                                    <span className={`font-bold hover:underline cursor-pointer ${msg.role === 'admin' ? 'text-red-500' :
+                                        msg.role === 'mod' ? 'text-green-400' : 'text-cyan-400'
+                                        }`}>
+                                        {msg.user}
+                                    </span>
+                                    {msg.role && msg.role !== 'user' && (
+                                        <span className="bg-slate-800 text-[10px] px-1 rounded uppercase text-slate-400 font-bold">{msg.role}</span>
+                                    )}
+                                    <span className="text-[10px] text-slate-600">{new Date(msg.timestamp).toLocaleTimeString()}</span>
+                                </div>
+                                <p className="text-slate-300 text-sm mt-0.5 leading-relaxed break-words">{msg.content}</p>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+
+                {/* Input Area */}
+                <div className="p-4 bg-slate-900 border-t border-slate-800">
+                    <div className="bg-slate-800/50 rounded-lg p-2 flex items-center gap-3 border border-slate-700 focus-within:border-cyan-500/50 transition-colors">
+                        <button className="text-slate-400 hover:text-white transition-colors p-1"><Icon icon="plus" className="w-5 h-5" /></button>
+                        <input
+                            value={input}
+                            onChange={(e) => setInput(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+                            placeholder={`Message #${activeChannel}`}
+                            className="flex-1 bg-transparent border-none outline-none text-white placeholder-slate-500"
+                        />
+                        <div className="flex gap-2 text-slate-400">
+                            <Icon icon="mic" className="w-5 h-5 hover:text-white cursor-pointer" />
+                            <Icon icon="check" className="w-5 h-5 hover:text-white cursor-pointer" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
     };
 
     return (
@@ -137,68 +202,8 @@ export const SocialView: React.FC = () => {
             </div>
 
             {/* MAIN CHAT AREA */}
-            <div className="flex-1 flex flex-col bg-slate-900/30">
-                {/* Chat Header */}
-                <div className="h-12 border-b border-slate-800 bg-slate-900/50 flex items-center justify-between px-4 shadow-sm">
-                    <div className="flex items-center gap-2">
-                        <Icon icon="check" className="text-slate-500 w-5 h-5" />
-                        <h3 className="font-bold text-white text-lg">{activeChannel}</h3>
-                        <span className="text-slate-500 text-xs pl-2 border-l border-slate-700 ml-2">Market discourse & alpha</span>
-                    </div>
-                    <div className="flex items-center gap-4 text-slate-400">
-                        <Icon icon="search" className="w-4 h-4 hover:text-white cursor-pointer" />
-                        <Icon icon="check" className="w-4 h-4 hover:text-white cursor-pointer" />
-                        <Icon icon="check" className="w-4 h-4 hover:text-white cursor-pointer" />
-                    </div>
-                </div>
-
-                {/* Messages */}
-                <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                    {messages.map(msg => (
-                        <div key={msg.id} className="group flex gap-4 hover:bg-slate-900/40 p-2 -mx-2 rounded transition-colors">
-                            <div className="w-10 h-10 rounded-full bg-slate-800 flex-shrink-0 flex items-center justify-center border border-slate-700 mt-1">
-                                {msg.role === 'admin' ? (
-                                    <Icon icon="bot" className="w-5 h-5 text-red-500" />
-                                ) : (
-                                    <span className="text-xs font-bold text-slate-400">{msg.user.substr(0, 2).toUpperCase()}</span>
-                                )}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <div className="flex items-baseline gap-2">
-                                    <span className={`font-bold hover:underline cursor-pointer ${msg.role === 'admin' ? 'text-red-500' :
-                                            msg.role === 'mod' ? 'text-green-400' : 'text-cyan-400'
-                                        }`}>
-                                        {msg.user}
-                                    </span>
-                                    {msg.role && msg.role !== 'user' && (
-                                        <span className="bg-slate-800 text-[10px] px-1 rounded uppercase text-slate-400 font-bold">{msg.role}</span>
-                                    )}
-                                    <span className="text-[10px] text-slate-600">{new Date(msg.timestamp).toLocaleTimeString()}</span>
-                                </div>
-                                <p className="text-slate-300 text-sm mt-0.5 leading-relaxed break-words">{msg.content}</p>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-
-                {/* Input Area */}
-                <div className="p-4 bg-slate-900 border-t border-slate-800">
-                    <div className="bg-slate-800/50 rounded-lg p-2 flex items-center gap-3 border border-slate-700 focus-within:border-cyan-500/50 transition-colors">
-                        <button className="text-slate-400 hover:text-white transition-colors p-1"><Icon icon="plus" className="w-5 h-5" /></button>
-                        <input
-                            value={input}
-                            onChange={(e) => setInput(e.target.value)}
-                            onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-                            placeholder={`Message #${activeChannel}`}
-                            className="flex-1 bg-transparent border-none outline-none text-white placeholder-slate-500"
-                        />
-                        <div className="flex gap-2 text-slate-400">
-                            <Icon icon="mic" className="w-5 h-5 hover:text-white cursor-pointer" />
-                            <Icon icon="check" className="w-5 h-5 hover:text-white cursor-pointer" />
-                        </div>
-                    </div>
-                </div>
-            </div>
+            {/* MAIN CONTENT AREA */}
+            {renderMainContent()}
 
             {/* RIGHT SIDEBAR: MEMBER LIST (Optional, Hidden on small screens) */}
             <div className="w-60 bg-slate-950 border-l border-slate-800 hidden xl:flex flex-col p-4">

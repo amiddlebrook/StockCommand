@@ -139,6 +139,66 @@ CREATE TABLE IF NOT EXISTS credit_transactions (
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+-- SOCIAL & COMPETITION TABLES
+
+CREATE TABLE IF NOT EXISTS user_profiles (
+  user_id TEXT PRIMARY KEY,
+  display_name TEXT NOT NULL,
+  avatar_url TEXT,
+  bio TEXT,
+  public_stats_visible INTEGER DEFAULT 1,
+  created_at INTEGER NOT NULL,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS competitions (
+  id TEXT PRIMARY KEY,
+  title TEXT NOT NULL,
+  description TEXT,
+  start_date INTEGER NOT NULL,
+  end_date INTEGER NOT NULL,
+  status TEXT NOT NULL, -- upcoming, active, completed
+  prize_pool TEXT,
+  entry_fee INTEGER DEFAULT 0,
+  rules TEXT,
+  created_at INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS competition_participants (
+  competition_id TEXT NOT NULL,
+  user_id TEXT NOT NULL,
+  score REAL DEFAULT 0,
+  rank INTEGER,
+  joined_at INTEGER NOT NULL,
+  PRIMARY KEY (competition_id, user_id),
+  FOREIGN KEY (competition_id) REFERENCES competitions(id) ON DELETE CASCADE,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS shared_strategies (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  name TEXT NOT NULL,
+  description TEXT,
+  config TEXT NOT NULL, -- JSON
+  performance_metrics TEXT, -- JSON (pnl, winrate)
+  price INTEGER DEFAULT 0, -- Credits
+  clones_count INTEGER DEFAULT 0,
+  is_public INTEGER DEFAULT 1,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS user_follows (
+  follower_id TEXT NOT NULL,
+  following_id TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  PRIMARY KEY (follower_id, following_id),
+  FOREIGN KEY (follower_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (following_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
 -- Indexes for performance
 CREATE INDEX IF NOT EXISTS idx_user_watchlists_user_id ON user_watchlists(user_id);
 CREATE INDEX IF NOT EXISTS idx_stock_analysis_user_symbol ON stock_analysis(user_id, symbol);

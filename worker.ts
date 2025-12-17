@@ -11,6 +11,14 @@ import {
     handleStripeWebhook,
     PRICING
 } from './lib/subscriptions';
+import {
+    getUserProfile,
+    createOrUpdateProfile,
+    getActiveCompetitions,
+    joinCompetition,
+    getGlobalLeaderboard,
+    getSharedStrategies
+} from './lib/social';
 
 export default {
     async fetch(request: Request, env: any, ctx: any): Promise<Response> {
@@ -253,6 +261,79 @@ export default {
                     status: 500, headers: corsHeaders
                 });
             }
+        }
+
+        // --- SOCIAL ROUTES ---
+
+        // GET /api/social/profile
+        if (url.pathname === "/api/social/profile" && request.method === "GET") {
+            try {
+                const user = await getSession(env, request);
+                if (!user || !env.DB) return new Response("Unauthorized", { status: 401 });
+
+                // Get own profile or create specific endpoint for others
+                const profile = await getUserProfile(env.DB, user.id);
+                return new Response(JSON.stringify(profile || {}), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+            } catch (e: any) { return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: corsHeaders }); }
+        }
+
+        // POST /api/social/profile
+        if (url.pathname === "/api/social/profile" && request.method === "POST") {
+            try {
+                const user = await getSession(env, request);
+                if (!user || !env.DB) return new Response("Unauthorized", { status: 401 });
+
+                const data = await request.json() as any;
+                await createOrUpdateProfile(env.DB, user.id, data);
+                return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+            } catch (e: any) { return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: corsHeaders }); }
+        }
+
+        // GET /api/social/competitions
+        if (url.pathname === "/api/social/competitions" && request.method === "GET") {
+            try {
+                const user = await getSession(env, request);
+                if (!user || !env.DB) return new Response("Unauthorized", { status: 401 });
+
+                const competitions = await getActiveCompetitions(env.DB);
+                return new Response(JSON.stringify(competitions), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+            } catch (e: any) { return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: corsHeaders }); }
+        }
+
+        // POST /api/social/competitions/:id/join
+        if (url.pathname.startsWith("/api/social/competitions/") && url.pathname.endsWith("/join") && request.method === "POST") {
+            try {
+                const user = await getSession(env, request);
+                if (!user || !env.DB) return new Response("Unauthorized", { status: 401 });
+
+                const parts = url.pathname.split('/');
+                const compId = parts[4]; // /api/social/competitions/[id]/join
+
+                await joinCompetition(env.DB, user.id, compId);
+                return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+            } catch (e: any) { return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: corsHeaders }); }
+        }
+
+        // GET /api/social/leaderboard
+        if (url.pathname === "/api/social/leaderboard" && request.method === "GET") {
+            try {
+                const user = await getSession(env, request);
+                if (!user || !env.DB) return new Response("Unauthorized", { status: 401 });
+
+                const leaderboard = await getGlobalLeaderboard(env.DB);
+                return new Response(JSON.stringify(leaderboard), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+            } catch (e: any) { return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: corsHeaders }); }
+        }
+
+        // GET /api/social/strategies
+        if (url.pathname === "/api/social/strategies" && request.method === "GET") {
+            try {
+                const user = await getSession(env, request);
+                if (!user || !env.DB) return new Response("Unauthorized", { status: 401 });
+
+                const strategies = await getSharedStrategies(env.DB);
+                return new Response(JSON.stringify(strategies), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+            } catch (e: any) { return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: corsHeaders }); }
         }
 
         // POST /api/subscription/portal - Create customer portal session
