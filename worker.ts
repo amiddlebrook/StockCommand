@@ -3,6 +3,8 @@ import { runAgentWorkflow } from './lib/agent/workflow';
 import { hashPassword, verifyPassword, createSession, getSession, destroySession, createSessionCookie, createClearSessionCookie } from './lib/auth';
 import { getGoogleAuthUrl, getGoogleUser } from './lib/google';
 import { createCheckoutSession } from './lib/stripe';
+import { initializeBrokers, getBroker, getAllBrokerInfo, getRegisteredBrokers } from './lib/brokers';
+import type { BrokerCredentials, BrokerConnection } from './lib/brokers/types';
 
 export default {
     async fetch(request: Request, env: any, ctx: any): Promise<Response> {
@@ -175,6 +177,185 @@ export default {
 
             } catch (e: any) {
                 return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: corsHeaders });
+            }
+        }
+
+        // --- BROKER ROUTES ---
+
+        // Initialize brokers with environment
+        initializeBrokers(env);
+
+        // GET /api/brokers - List available brokers
+        if (url.pathname === "/api/brokers" && request.method === "GET") {
+            const brokers = getAllBrokerInfo();
+            const registered = getRegisteredBrokers();
+
+            // Mark which brokers are configured (have env vars)
+            const brokersWithStatus = brokers.map(b => ({
+                ...b,
+                isConfigured: registered.includes(b.name)
+            }));
+
+            return new Response(JSON.stringify(brokersWithStatus), {
+                headers: { ...corsHeaders, "Content-Type": "application/json" }
+            });
+        }
+
+        // GET /api/brokers/:name/auth - Initiate broker OAuth
+        if (url.pathname.match(/^\/api\/brokers\/[\w]+\/auth$/) && request.method === "GET") {
+            const brokerName = url.pathname.split('/')[3];
+            const broker = getBroker(brokerName);
+
+            if (!broker) {
+                return new Response(JSON.stringify({ error: `Broker ${brokerName} not configured` }), {
+                    status: 404, headers: corsHeaders
+                });
+            }
+
+            try {
+                // Generate state for CSRF protection
+                const state = crypto.randomUUID();
+
+                // Store state in KV for verification
+                if (env.USER_SESSIONS_KV) {
+                    await env.USER_SESSIONS_KV.put(`broker_oauth_state:${state}`, brokerName, { expirationTtl: 600 });
+                }
+
+                const authUrl = broker.getAuthUrl(state);
+                return new Response(JSON.stringify({ authUrl }), {
+                    headers: { ...corsHeaders, "Content-Type": "application/json" }
+                });
+            } catch (e: any) {
+                return new Response(JSON.stringify({ error: e.message }), {
+                    status: 500, headers: corsHeaders
+                });
+            }
+        }
+
+        // GET /api/brokers/callback - Handle broker OAuth callback
+        if (url.pathname === "/api/brokers/callback" && request.method === "GET") {
+            const code = url.searchParams.get("code");
+            const state = url.searchParams.get("state");
+
+            if (!code || !state) {
+                return new Response("Missing code or state", { status: 400 });
+            }
+
+            try {
+                // Verify state
+                let brokerName: string | null = null;
+                if (env.USER_SESSIONS_KV) {
+                    brokerName = await env.USER_SESSIONS_KV.get(`broker_oauth_state:${state}`);
+                    await env.USER_SESSIONS_KV.delete(`broker_oauth_state:${state}`);
+                }
+
+                if (!brokerName) {
+                    return new Response("Invalid or expired state", { status: 400 });
+                }
+
+                const broker = getBroker(brokerName);
+                if (!broker) {
+                    return new Response(`Broker ${brokerName} not found`, { status: 404 });
+                }
+
+                // Get current user
+                const user = await getSession(env, request);
+                if (!user) {
+                    // Redirect to login with return URL
+                    return new Response(null, {
+                        status: 302,
+                        headers: { "Location": `/?broker_connect=${brokerName}` }
+                    });
+                }
+
+                // Exchange code for credentials
+                const credentials = await broker.handleCallback(code, state);
+
+                // Store encrypted credentials in D1
+                if (env.DB) {
+                    const connectionId = crypto.randomUUID();
+                    const now = Math.floor(Date.now() / 1000);
+
+                    // Simple encryption (in production, use proper encryption)
+                    const credentialsEncrypted = btoa(JSON.stringify(credentials));
+
+                    await env.DB.prepare(`
+                        INSERT INTO user_brokers (id, user_id, broker_name, credentials_encrypted, is_active, connected_at)
+                        VALUES (?, ?, ?, ?, ?, ?)
+                    `).bind(connectionId, user.id, brokerName, credentialsEncrypted, 1, now).run();
+                }
+
+                // Redirect to app with success
+                return new Response(null, {
+                    status: 302,
+                    headers: { "Location": `/?broker_connected=${brokerName}` }
+                });
+
+            } catch (e: any) {
+                console.error("Broker callback error:", e);
+                return new Response(`Broker connection failed: ${e.message}`, { status: 500 });
+            }
+        }
+
+        // GET /api/brokers/connections - List user's connected brokers
+        if (url.pathname === "/api/brokers/connections" && request.method === "GET") {
+            try {
+                const user = await getSession(env, request);
+                if (!user) {
+                    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+                        status: 401, headers: corsHeaders
+                    });
+                }
+
+                if (!env.DB) {
+                    return new Response(JSON.stringify([]), {
+                        headers: { ...corsHeaders, "Content-Type": "application/json" }
+                    });
+                }
+
+                const connections = await env.DB.prepare(`
+                    SELECT id, broker_name, is_active, connected_at, last_sync
+                    FROM user_brokers
+                    WHERE user_id = ? AND is_active = 1
+                `).bind(user.id).all();
+
+                return new Response(JSON.stringify(connections.results || []), {
+                    headers: { ...corsHeaders, "Content-Type": "application/json" }
+                });
+
+            } catch (e: any) {
+                return new Response(JSON.stringify({ error: e.message }), {
+                    status: 500, headers: corsHeaders
+                });
+            }
+        }
+
+        // DELETE /api/brokers/connections/:id - Disconnect a broker
+        if (url.pathname.match(/^\/api\/brokers\/connections\/[\w-]+$/) && request.method === "DELETE") {
+            try {
+                const user = await getSession(env, request);
+                if (!user) {
+                    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+                        status: 401, headers: corsHeaders
+                    });
+                }
+
+                const connectionId = url.pathname.split('/').pop();
+
+                if (env.DB) {
+                    await env.DB.prepare(`
+                        UPDATE user_brokers SET is_active = 0 WHERE id = ? AND user_id = ?
+                    `).bind(connectionId, user.id).run();
+                }
+
+                return new Response(JSON.stringify({ success: true }), {
+                    headers: { ...corsHeaders, "Content-Type": "application/json" }
+                });
+
+            } catch (e: any) {
+                return new Response(JSON.stringify({ error: e.message }), {
+                    status: 500, headers: corsHeaders
+                });
             }
         }
 

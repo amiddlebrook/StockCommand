@@ -21,6 +21,7 @@ import { SocialView } from './components/SocialView';
 import { NewsSynthesisView } from './components/NewsSynthesisView';
 import { SettingsView } from './components/SettingsView';
 import { TraditionalView } from './components/TraditionalView';
+import { BrokerConnectionModal } from './components/BrokerConnectionModal';
 
 import type { ChatMessage as ChatMessageType, Source } from './types';
 import {
@@ -82,6 +83,7 @@ const AppContent: React.FC = () => {
   const [isPortfolioGenerating, setIsPortfolioGenerating] = useState(false);
   const [scanningTarget, setScanningTarget] = useState<string | null>(null);
   const [agentOutput, setAgentOutput] = useState<string | null>(null);
+  const [isBrokerModalOpen, setIsBrokerModalOpen] = useState(false);
 
   const [marketClocks, setMarketClocks] = useState<MarketClock[]>(() => {
     const saved = StorageService.loadClocks();
@@ -457,6 +459,14 @@ const AppContent: React.FC = () => {
             </button>
           </div>
 
+          {/* Connect Broker Button */}
+          <button
+            onClick={() => setIsBrokerModalOpen(true)}
+            className="px-3 py-1.5 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white text-xs font-medium rounded-lg transition-all shadow-lg shadow-green-500/20"
+          >
+            Connect Broker
+          </button>
+
           <button onClick={() => setIsProfileOpen(true)} className="p-2 hover:bg-cyan-900/30 rounded text-cyan-500 transition-colors">
             <Icon icon="user" className="w-4 h-4" />
           </button>
@@ -586,6 +596,7 @@ const AppContent: React.FC = () => {
       <CommandPalette isOpen={isCommandPaletteOpen} onClose={() => setIsCommandPaletteOpen(false)} onNavigate={(tab) => { setActiveTab(tab as any); setIsCommandPaletteOpen(false); }} onSearch={(q) => { setActiveTab('command-center'); handleSendMessage(q); }} />
       <PortfolioReportModal isOpen={isPortfolioModalOpen} symbols={symbols} activeSymbol={null} isGenerating={isPortfolioGenerating} onClose={() => setIsPortfolioModalOpen(false)} onSubmit={handleGeneratePortfolioReport} />
       <ProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
+      <BrokerConnectionModal isOpen={isBrokerModalOpen} onClose={() => setIsBrokerModalOpen(false)} />
 
       {/* 6. MOBILE NAVIGATION */}
       <MobileNav activeTab={activeTab} setActiveTab={setActiveTab} />
