@@ -1,207 +1,222 @@
 import React, { useState } from 'react';
 import { Icon } from './Icon';
 import { GlassButton } from './ui/GlassButton';
+import { ModelSelector } from './ModelSelector';
+import { SystemHealth } from './SystemHealth';
 
 export const SettingsView: React.FC = () => {
-    const [activeSection, setActiveSection] = useState<'GENERAL' | 'API' | 'NOTIFICATIONS' | 'APPEARANCE' | 'SECURITY'>('GENERAL');
+    const [activeSection, setActiveSection] = useState<'GENERAL' | 'MODELS' | 'OPTIMIZER' | 'HEALTH' | 'BILLING'>('MODELS');
 
-    // Mock State for Settings
+    // MOCK USER STATE - In real app, this comes from Auth Context
+    const [isPro, setIsPro] = useState(false); // Default to Free for demo purposes
+
+    // Mock Settings State
     const [settings, setSettings] = useState({
         appName: 'STOCK_COMMAND // V2.2',
         timezone: 'UTC-5 (EST)',
-        retroMode: true,
-        highContrast: false,
-        notifications: {
-            priceAlerts: true,
-            newsFlashes: true,
-            strategySignals: false,
-            systemHealth: true
+        models: {
+            analysis: 'claude-3-5-sonnet',
+            chat: 'gemini-1-5-flash',
+            optimization: 'gpt-4o',
+            reporting: 'claude-3-5-sonnet',
         },
-        apiKeys: {
-            gemini: '**********************',
-            fmp: '**********************',
-            polygon: '**********************',
-            openai: '**********************'
-        },
-        security: {
-            twoFactor: true,
-            biometric: false,
-            sessionTimeout: '30m'
+        optimizer: {
+            autoApply: false,
+            budget: 50, // dollars
+            maxGenerations: 100
         }
     });
 
-    const toggleNotification = (key: keyof typeof settings.notifications) => {
-        setSettings(prev => ({
-            ...prev,
-            notifications: { ...prev.notifications, [key]: !prev.notifications[key] }
-        }));
-    };
+    const NAV_ITEMS = [
+        { id: 'GENERAL', label: 'General', icon: 'settings' },
+        { id: 'MODELS', label: 'Default Models', icon: 'cpu' },
+        { id: 'OPTIMIZER', label: 'Agent Optimizer', icon: 'zap' },
+        { id: 'HEALTH', label: 'System Health', icon: 'activity' },
+        { id: 'BILLING', label: 'Plan & Billing', icon: 'credit-card' },
+    ];
 
     return (
-        <div className="flex-1 h-full bg-slate-950 flex flex-col overflow-hidden relative">
-            {/* REMOVED BLOCKING GRADIENT OVERLAY */}
+        <div className="flex-1 h-full bg-slate-950 flex overflow-hidden">
 
-            {/* Header */}
-            <div className="p-8 border-b border-slate-800 bg-slate-900/50 backdrop-blur z-10 flex-shrink-0">
-                <h2 className="text-3xl font-bold text-white flex items-center gap-3">
-                    <Icon icon="settings" className="text-slate-400 w-8 h-8" />
-                    SYSTEM CONFIGURATION
-                </h2>
-                <p className="text-slate-400 text-sm mt-2 font-mono">Global Parameters & secure connection settings</p>
-            </div>
-
-            <div className="flex flex-col md:flex-row flex-1 overflow-hidden relative z-0">
-                {/* Sidebar */}
-                <div className="w-full md:w-64 border-b md:border-r md:order-b-0 border-slate-800 bg-slate-900/30 p-2 md:p-4 flex md:flex-col gap-2 md:gap-0 md:space-y-2 overflow-x-auto md:overflow-visible shrink-0 no-scrollbar z-10">
-                    {['GENERAL', 'API', 'NOTIFICATIONS', 'APPEARANCE', 'SECURITY'].map((section: any) => (
-                        <button
-                            key={section}
-                            onClick={() => setActiveSection(section)}
-                            className={`
-                                whitespace-nowrap px-4 py-2 md:py-3 rounded-lg font-bold text-xs md:text-sm transition-all md:w-full md:text-left
-                                ${activeSection === section
-                                    ? 'bg-cyan-900/20 text-cyan-400 border border-cyan-500/30'
-                                    : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50 border border-transparent'}
-                            `}
-                        >
-                            {section}
-                        </button>
-                    ))}
-
-                    <div className="md:pt-8 md:mt-8 md:border-t md:border-slate-800 ml-auto md:ml-0 pl-4 md:pl-0 border-l md:border-l-0 border-slate-800 md:w-full">
-                        <button className="md:w-full text-left px-4 py-2 text-xs font-bold text-red-500 hover:text-red-400 flex items-center gap-2 whitespace-nowrap">
-                            <Icon icon="trash" className="w-3 h-3" />
-                            <span className="hidden md:inline">RESET ALL DATA</span>
-                            <span className="md:hidden">RESET</span>
-                        </button>
-                    </div>
+            {/* 1. SIDEBAR (Artemis Style) */}
+            <div className="w-64 bg-slate-900/50 border-r border-slate-800 flex flex-col shrink-0 z-20">
+                <div className="p-6 border-b border-slate-800">
+                    <h2 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
+                        <Icon icon="settings" className="text-cyan-500 w-5 h-5" />
+                        SETTINGS
+                    </h2>
+                    <p className="text-xs text-slate-500 mt-1">System Configuration</p>
                 </div>
 
-                {/* Main Content */}
-                <div className="flex-1 overflow-y-auto p-4 md:p-8 max-w-4xl relative z-0">
+                <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+                    {NAV_ITEMS.map((item) => {
+                        const isActive = activeSection === item.id;
+                        return (
+                            <button
+                                key={item.id}
+                                onClick={() => setActiveSection(item.id as any)}
+                                className={`
+                                    w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all
+                                    ${isActive
+                                        ? 'bg-cyan-900/20 text-cyan-400 border border-cyan-500/30 shadow-[0_0_10px_rgba(6,182,212,0.1)]'
+                                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 border border-transparent'}
+                                `}
+                            >
+                                <Icon icon={item.icon as any} className={`w-4 h-4 ${isActive ? 'text-cyan-400' : 'text-slate-500'}`} />
+                                {item.label}
+                            </button>
+                        );
+                    })}
+                </nav>
+
+                <div className="p-4 border-t border-slate-800">
+                    <div className={`p-4 rounded-xl border ${isPro ? 'bg-gradient-to-br from-amber-900/20 to-amber-900/5 border-amber-500/30' : 'bg-slate-900 border-slate-700'}`}>
+                        <div className="flex items-center gap-2 mb-2">
+                            <Icon icon="award" className={isPro ? "text-amber-500" : "text-slate-400"} />
+                            <span className={`text-xs font-bold tracking-wider ${isPro ? "text-amber-500" : "text-slate-400"}`}>
+                                {isPro ? 'PRO PLAN' : 'FREE PLAN'}
+                            </span>
+                        </div>
+                        {!isPro && (
+                            <button
+                                onClick={() => setIsPro(true)} // Toggle for Demo
+                                className="w-full mt-2 py-2 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-black font-bold text-xs rounded shadow-lg transition-all"
+                            >
+                                UPGRADE TO PRO
+                            </button>
+                        )}
+                        {isPro && <div className="text-[10px] text-amber-500/60 mt-1 font-mono">Next billing: Dec 31</div>}
+                    </div>
+                </div>
+            </div>
+
+            {/* 2. MAIN CONTENT AREA */}
+            <div className="flex-1 overflow-y-auto bg-slate-950 relative">
+                <div className="max-w-5xl mx-auto p-8">
+
+                    {/* Header for Section */}
+                    <div className="mb-8">
+                        <h1 className="text-2xl font-bold text-white mb-2">{NAV_ITEMS.find(n => n.id === activeSection)?.label}</h1>
+                        <div className="h-1 w-20 bg-cyan-500 rounded-full"></div>
+                    </div>
 
                     {activeSection === 'GENERAL' && (
-                        <div className="space-y-8">
-                            <div className="space-y-4">
-                                <label className="block text-sm font-bold text-slate-400">APPLICATION NAME</label>
-                                <input
-                                    type="text"
-                                    value={settings.appName}
-                                    readOnly
-                                    className="w-full bg-slate-900 border border-slate-700 rounded p-3 text-slate-200 font-mono focus:border-cyan-500 outline-none"
+                        <div className="space-y-6">
+                            <div className="grid grid-cols-2 gap-6">
+                                <div className="space-y-2">
+                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Application Name</label>
+                                    <input type="text" value={settings.appName} readOnly className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-sm text-slate-200" />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Timezone</label>
+                                    <select className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-sm text-slate-200">
+                                        <option>UTC-5 (EST)</option>
+                                        <option>UTC-8 (PST)</option>
+                                        <option>UTC (GMT)</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {activeSection === 'MODELS' && (
+                        <div className="space-y-6">
+                            <div className="bg-slate-900/30 p-4 rounded-lg border border-slate-800 mb-6">
+                                <p className="text-sm text-slate-400">
+                                    Configure specific AI models for different agentic tasks.
+                                    <span className="text-amber-500 font-bold ml-2">Pro Plan required for advanced models.</span>
+                                </p>
+                            </div>
+
+                            <div className="grid grid-cols-1 gap-4">
+                                <ModelSelector
+                                    taskName="Code Generation / Logic"
+                                    description="The brain used for writing complex strategies and analyzing code structure."
+                                    selectedModelId={settings.models.analysis}
+                                    isLocked={!isPro}
+                                    onSelect={(id) => setSettings({ ...settings, models: { ...settings.models, analysis: id } })}
+                                />
+                                <ModelSelector
+                                    taskName="Chat & Interaction"
+                                    description="The conversational model used for the main Command Center chat interface."
+                                    selectedModelId={settings.models.chat}
+                                    isLocked={false} // Chat is free
+                                    onSelect={(id) => setSettings({ ...settings, models: { ...settings.models, chat: id } })}
+                                />
+                                <ModelSelector
+                                    taskName="Strategy Optimizer"
+                                    customIcon="zap"
+                                    description="The optimization engine that iterates and backtests strategies in the background."
+                                    selectedModelId={settings.models.optimization}
+                                    isLocked={!isPro}
+                                    onSelect={(id) => setSettings({ ...settings, models: { ...settings.models, optimization: id } })}
                                 />
                             </div>
-                            <div className="space-y-4">
-                                <label className="block text-sm font-bold text-slate-400">DEFAULT TIMEZONE</label>
-                                <select className="w-full bg-slate-900 border border-slate-700 rounded p-3 text-slate-200 font-mono focus:border-cyan-500 outline-none">
-                                    <option>UTC-5 (EST)</option>
-                                    <option>UTC-8 (PST)</option>
-                                    <option>UTC (GMT)</option>
-                                    <option>UTC+1 (CET)</option>
-                                    <option>UTC+9 (JST)</option>
-                                </select>
-                            </div>
-                            <div className="space-y-4">
-                                <label className="block text-sm font-bold text-slate-400">LANGUAGE</label>
-                                <select className="w-full bg-slate-900 border border-slate-700 rounded p-3 text-slate-200 font-mono focus:border-cyan-500 outline-none">
-                                    <option>English (US)</option>
-                                    <option>English (UK)</option>
-                                    <option>Español</option>
-                                    <option>Deutsch</option>
-                                    <option>日本語</option>
-                                </select>
-                            </div>
                         </div>
                     )}
 
-                    {activeSection === 'API' && (
-                        <div className="space-y-8">
-                            <div className="p-4 bg-amber-900/20 border border-amber-500/30 rounded-lg flex items-start gap-3">
-                                <Icon icon="alert" className="text-amber-500 w-5 h-5 mt-0.5" />
-                                <div>
-                                    <h4 className="font-bold text-amber-500 text-sm">SECURE STORAGE</h4>
-                                    <p className="text-amber-400/80 text-xs mt-1">Keys are stored locally in your browser's secure storage. They are never transmitted to our servers.</p>
-                                </div>
-                            </div>
-
-                            {['gemini', 'fmp', 'polygon', 'openai'].map(provider => (
-                                <div key={provider} className="space-y-2">
-                                    <label className="block text-sm font-bold text-slate-400 uppercase">{provider} API KEY</label>
-                                    <div className="flex gap-2">
-                                        <input
-                                            type="password"
-                                            value={settings.apiKeys[provider as keyof typeof settings.apiKeys]}
-                                            readOnly
-                                            className="flex-1 bg-slate-900 border border-slate-700 rounded p-3 text-slate-200 font-mono tracking-widest focus:border-cyan-500 outline-none"
-                                        />
-                                        <GlassButton variant="glass" className="w-24">EDIT</GlassButton>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-
-                    {activeSection === 'NOTIFICATIONS' && (
+                    {activeSection === 'OPTIMIZER' && (
                         <div className="space-y-6">
-                            {Object.entries(settings.notifications).map(([key, enabled]) => (
-                                <div key={key} className="flex items-center justify-between p-4 bg-slate-900/50 border border-slate-800 rounded-lg">
-                                    <div>
-                                        <h4 className="font-bold text-slate-200 uppercase">{key.replace(/([A-Z])/g, ' $1').trim()}</h4>
-                                        <p className="text-xs text-slate-500 mt-1">Receive alerts via system tray</p>
+                            {!isPro ? (
+                                <div className="flex flex-col items-center justify-center p-12 border border-slate-800 rounded-2xl bg-slate-900/20 text-center">
+                                    <div className="w-16 h-16 rounded-full bg-amber-500/10 flex items-center justify-center mb-6">
+                                        <Icon icon="lock" className="w-8 h-8 text-amber-500" />
                                     </div>
-                                    <button
-                                        onClick={() => toggleNotification(key as any)}
-                                        className={`w-12 h-6 rounded-full relative transition-colors ${enabled ? 'bg-cyan-600' : 'bg-slate-700'}`}
-                                    >
-                                        <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${enabled ? 'left-7' : 'left-1'}`} />
+                                    <h3 className="text-xl font-bold text-white mb-2">Pro Feature: Automated Optimization</h3>
+                                    <p className="text-slate-400 max-w-md mb-6">
+                                        Upgrade to Pro to enable the automated optimization engine. The agent will run thousands of backtests to improve your strategies automatically.
+                                    </p>
+                                    <button onClick={() => setIsPro(true)} className="px-6 py-3 bg-amber-500 hover:bg-amber-400 text-black font-bold rounded-lg shadow-lg transition-all">
+                                        See Demo (Enable Pro)
                                     </button>
                                 </div>
-                            ))}
+                            ) : (
+                                <div className="space-y-8 animate-fadeIn">
+                                    {/* Pro Content */}
+                                    <div className="p-6 bg-gradient-to-r from-emerald-900/20 to-slate-900 border border-emerald-500/30 rounded-xl flex items-center justify-between">
+                                        <div>
+                                            <h3 className="text-lg font-bold text-emerald-400 flex items-center gap-2">
+                                                <Icon icon="zap" className="w-5 h-5" />
+                                                OPTIMIZER ACTIVE
+                                            </h3>
+                                            <p className="text-sm text-emerald-500/60 mt-1">Optimization service is running in background worker.</p>
+                                        </div>
+                                        <div className="h-3 w-3 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_10px_#10b981]"></div>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-6">
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-bold text-slate-500 uppercase">Monthly Budget Limit</label>
+                                            <input type="range" min="10" max="500" value={settings.optimizer.budget} onChange={(e) => setSettings({ ...settings, optimizer: { ...settings.optimizer, budget: parseInt(e.target.value) } })} className="w-full accent-cyan-500" />
+                                            <div className="flex justify-between text-xs font-mono text-cyan-400">
+                                                <span>$10</span>
+                                                <span className="font-bold">${settings.optimizer.budget}.00</span>
+                                                <span>$500</span>
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-bold text-slate-500 uppercase">Max Iterations / Day</label>
+                                            <select className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-sm text-slate-200">
+                                                <option>50 Iterations (Slow)</option>
+                                                <option>100 Iterations (Balanced)</option>
+                                                <option>500 Iterations (Turbo)</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     )}
 
-                    {activeSection === 'APPEARANCE' && (
-                        <div className="space-y-6">
-                            <div className="flex items-center justify-between p-4 bg-slate-900/50 border border-slate-800 rounded-lg">
-                                <div>
-                                    <h4 className="font-bold text-slate-200">RETRO CRT EFFECTS</h4>
-                                    <p className="text-xs text-slate-500 mt-1">Simulate scanlines and chromatic aberration</p>
-                                </div>
-                                <button className="w-12 h-6 rounded-full relative bg-cyan-600">
-                                    <div className="absolute top-1 left-7 w-4 h-4 rounded-full bg-white" />
-                                </button>
-                            </div>
-                            <div className="space-y-4 pt-4 border-t border-slate-800">
-                                <label className="block text-sm font-bold text-slate-400">THEME ACCENT</label>
-                                <div className="flex gap-4">
-                                    {['#06b6d4', '#ef4444', '#f97316', '#8b5cf6'].map(color => (
-                                        <div key={color} className="w-8 h-8 rounded-full border border-slate-600 cursor-pointer hover:scale-110 transition-transform" style={{ backgroundColor: color }}></div>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
+                    {activeSection === 'HEALTH' && (
+                        <SystemHealth />
                     )}
 
-                    {activeSection === 'SECURITY' && (
-                        <div className="space-y-6">
-                            <div className="flex items-center justify-between p-4 bg-slate-900/50 border border-slate-800 rounded-lg">
-                                <div>
-                                    <h4 className="font-bold text-slate-200">TWO-FACTOR AUTHENTICATION</h4>
-                                    <p className="text-xs text-slate-500 mt-1">Secure your account with 2FA</p>
-                                </div>
-                                <button className="w-12 h-6 rounded-full relative bg-cyan-600">
-                                    <div className="absolute top-1 left-7 w-4 h-4 rounded-full bg-white" />
-                                </button>
-                            </div>
-                            <div className="space-y-4">
-                                <label className="block text-sm font-bold text-slate-400">SESSION TIMEOUT</label>
-                                <select className="w-full bg-slate-900 border border-slate-700 rounded p-3 text-slate-200 font-mono focus:border-cyan-500 outline-none">
-                                    <option>15 Minutes</option>
-                                    <option>30 Minutes</option>
-                                    <option>1 Hour</option>
-                                    <option>Never</option>
-                                </select>
-                            </div>
+                    {activeSection === 'BILLING' && (
+                        <div className="text-center py-20">
+                            <Icon icon="credit-card" className="w-16 h-16 text-slate-800 mx-auto mb-4" />
+                            <h3 className="text-slate-500 font-bold">Billing Portal Integration</h3>
+                            <p className="text-slate-600 text-sm mt-2">Connect Stripe to manage your subscription.</p>
                         </div>
                     )}
 
