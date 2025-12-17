@@ -116,17 +116,26 @@ CREATE TABLE IF NOT EXISTS signals (
   expires_at INTEGER NOT NULL
 );
 
--- User subscription tiers
-CREATE TABLE IF NOT EXISTS user_subscriptions (
+-- User credit balance (Agent Fuel)
+CREATE TABLE IF NOT EXISTS user_balances (
   user_id TEXT PRIMARY KEY,
-  tier TEXT NOT NULL DEFAULT 'free',
-  stripe_customer_id TEXT,
-  stripe_subscription_id TEXT,
-  status TEXT NOT NULL DEFAULT 'free',
-  current_period_start INTEGER,
-  current_period_end INTEGER,
-  cancel_at_period_end INTEGER DEFAULT 0,
+  credits INTEGER NOT NULL DEFAULT 0,
+  lifetime_credits INTEGER NOT NULL DEFAULT 0,
+  is_auto_refill INTEGER DEFAULT 0,
+  low_balance_threshold INTEGER DEFAULT 100,
   updated_at INTEGER NOT NULL,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- Credit transactions history
+CREATE TABLE IF NOT EXISTS credit_transactions (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  amount INTEGER NOT NULL, -- Positive for purchase, negative for usage
+  type TEXT NOT NULL, -- purchase, usage, bonus, refund
+  description TEXT,
+  timestamp INTEGER NOT NULL,
+  metadata TEXT, -- JSON
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
@@ -141,6 +150,7 @@ CREATE INDEX IF NOT EXISTS idx_user_sessions_expires ON user_sessions(expires_at
 CREATE INDEX IF NOT EXISTS idx_user_brokers_user ON user_brokers(user_id);
 CREATE INDEX IF NOT EXISTS idx_trades_user ON trades(user_id, executed_at);
 CREATE INDEX IF NOT EXISTS idx_signals_symbol ON signals(symbol, created_at);
+CREATE INDEX IF NOT EXISTS idx_credit_transactions_user ON credit_transactions(user_id, timestamp);
 
 -- Insert default anonymous user for guest access
 INSERT OR IGNORE INTO users (id, email, name, created_at, preferences)

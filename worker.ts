@@ -6,15 +6,11 @@ import { createCheckoutSession } from './lib/stripe';
 import { initializeBrokers, getBroker, getAllBrokerInfo, getRegisteredBrokers } from './lib/brokers';
 import type { BrokerCredentials, BrokerConnection } from './lib/brokers/types';
 import {
-    getUserSubscription,
-    createCheckoutSession as createSubscriptionCheckout,
-    createPortalSession,
+    getUserBalance,
+    createFuelCheckout,
     handleStripeWebhook,
-    getDisplayTiers,
-    hasFeatureAccess,
-    getTierLimit
+    PRICING
 } from './lib/subscriptions';
-import type { SubscriptionTier } from './lib/subscriptions/tiers';
 
 export default {
     async fetch(request: Request, env: any, ctx: any): Promise<Response> {
@@ -192,32 +188,33 @@ export default {
 
         // --- SUBSCRIPTION ROUTES ---
 
-        // GET /api/subscription/tiers - Get available subscription tiers
-        if (url.pathname === "/api/subscription/tiers" && request.method === "GET") {
-            const tiers = getDisplayTiers();
-            return new Response(JSON.stringify(tiers), {
+        // --- AGENT FUEL ROUTES ---
+
+        // GET /api/fuel/pricing - Get fuel pricing config
+        if (url.pathname === "/api/fuel/pricing" && request.method === "GET") {
+            return new Response(JSON.stringify(PRICING), {
                 headers: { ...corsHeaders, "Content-Type": "application/json" }
             });
         }
 
-        // GET /api/subscription - Get user's current subscription
-        if (url.pathname === "/api/subscription" && request.method === "GET") {
+        // GET /api/fuel/balance - Get user's credit balance
+        if (url.pathname === "/api/fuel/balance" && request.method === "GET") {
             try {
                 const user = await getSession(env, request);
                 if (!user) {
-                    return new Response(JSON.stringify({ tier: 'free', status: 'free' }), {
+                    return new Response(JSON.stringify({ credits: 0, lifetimeCredits: 0 }), {
                         headers: { ...corsHeaders, "Content-Type": "application/json" }
                     });
                 }
 
                 if (!env.DB) {
-                    return new Response(JSON.stringify({ tier: 'free', status: 'free' }), {
+                    return new Response(JSON.stringify({ credits: 0, lifetimeCredits: 0 }), {
                         headers: { ...corsHeaders, "Content-Type": "application/json" }
                     });
                 }
 
-                const subscription = await getUserSubscription(env.DB, user.id);
-                return new Response(JSON.stringify(subscription), {
+                const balance = await getUserBalance(env.DB, user.id);
+                return new Response(JSON.stringify(balance), {
                     headers: { ...corsHeaders, "Content-Type": "application/json" }
                 });
 
@@ -228,8 +225,8 @@ export default {
             }
         }
 
-        // POST /api/subscription/checkout - Create checkout session for tier upgrade
-        if (url.pathname === "/api/subscription/checkout" && request.method === "POST") {
+        // POST /api/fuel/buy - Create checkout for fuel
+        if (url.pathname === "/api/fuel/buy" && request.method === "POST") {
             try {
                 const user = await getSession(env, request);
                 if (!user) {
@@ -238,15 +235,15 @@ export default {
                     });
                 }
 
-                const { tier } = await request.json() as { tier: SubscriptionTier };
+                const { amount } = await request.json() as { amount: number };
 
-                if (!tier || tier === 'free') {
-                    return new Response(JSON.stringify({ error: "Invalid tier" }), {
+                if (!amount || amount < PRICING.MIN_DEPOSIT) {
+                    return new Response(JSON.stringify({ error: `Minimum deposit is $${PRICING.MIN_DEPOSIT}` }), {
                         status: 400, headers: corsHeaders
                     });
                 }
 
-                const result = await createSubscriptionCheckout(env, user.id, tier, user.email);
+                const result = await createFuelCheckout(env, user.id, amount, user.email);
                 return new Response(JSON.stringify(result), {
                     headers: { ...corsHeaders, "Content-Type": "application/json" }
                 });
@@ -274,15 +271,15 @@ export default {
                     });
                 }
 
-                const subscription = await getUserSubscription(env.DB, user.id);
+                // const subscription = await getUserSubscription(env.DB, user.id);
 
-                if (!subscription.stripeCustomerId) {
+                if (false /* !subscription.stripeCustomerId */) {
                     return new Response(JSON.stringify({ error: "No active subscription" }), {
                         status: 400, headers: corsHeaders
                     });
                 }
 
-                const portalUrl = await createPortalSession(env, subscription.stripeCustomerId);
+                const portalUrl = ""; // await createPortalSession(env, subscription.stripeCustomerId);
                 return new Response(JSON.stringify({ url: portalUrl }), {
                     headers: { ...corsHeaders, "Content-Type": "application/json" }
                 });

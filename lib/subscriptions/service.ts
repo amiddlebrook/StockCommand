@@ -1,140 +1,98 @@
 /**
- * Subscription Management Service
+ * Agent Fuel Service
  * 
- * Handles Stripe integration, subscription status, and user tier management.
+ * Handles credit balance, fuel purchases, and usage tracking.
  */
 
-import { SubscriptionTier, getTierConfig, SUBSCRIPTION_TIERS } from './tiers';
-
-// ============================================
-// TYPES
-// ============================================
-
-export interface UserSubscription {
-    userId: string;
-    tier: SubscriptionTier;
-    stripeCustomerId?: string;
-    stripeSubscriptionId?: string;
-    status: 'active' | 'past_due' | 'canceled' | 'trialing' | 'free';
-    currentPeriodStart?: number;
-    currentPeriodEnd?: number;
-    cancelAtPeriodEnd?: boolean;
-}
-
-export interface CheckoutResult {
-    sessionId: string;
-    url: string;
-}
+import { PRICING, CreditTransaction, UserBalance } from './tiers';
 
 // ============================================
 // DATABASE OPERATIONS
 // ============================================
 
 /**
- * Get user's current subscription
+ * Get user's current credit balance
  */
-export async function getUserSubscription(db: D1Database, userId: string): Promise<UserSubscription> {
+export async function getUserBalance(db: D1Database, userId: string): Promise<UserBalance> {
     const result = await db.prepare(`
-        SELECT * FROM user_subscriptions WHERE user_id = ?
+        SELECT * FROM user_balances WHERE user_id = ?
     `).bind(userId).first();
 
     if (!result) {
         return {
             userId,
-            tier: 'free',
-            status: 'free'
+            credits: 0,
+            lifetimeCredits: 0,
+            isAutoRefill: false,
+            lowBalanceThreshold: PRICING.MIN_BALANCE_WARNING
         };
     }
 
     return {
         userId: result.user_id as string,
-        tier: result.tier as SubscriptionTier,
-        stripeCustomerId: result.stripe_customer_id as string | undefined,
-        stripeSubscriptionId: result.stripe_subscription_id as string | undefined,
-        status: result.status as UserSubscription['status'],
-        currentPeriodStart: result.current_period_start as number | undefined,
-        currentPeriodEnd: result.current_period_end as number | undefined,
-        cancelAtPeriodEnd: Boolean(result.cancel_at_period_end)
+        credits: result.credits as number,
+        lifetimeCredits: result.lifetime_credits as number,
+        isAutoRefill: Boolean(result.is_auto_refill),
+        lowBalanceThreshold: result.low_balance_threshold as number
     };
 }
 
 /**
- * Update or create user subscription
+ * Create a fuel purchase checkout session
  */
-export async function upsertUserSubscription(
-    db: D1Database,
-    subscription: UserSubscription
-): Promise<void> {
-    const now = Math.floor(Date.now() / 1000);
-
-    await db.prepare(`
-        INSERT INTO user_subscriptions (
-            user_id, tier, stripe_customer_id, stripe_subscription_id, 
-            status, current_period_start, current_period_end, cancel_at_period_end, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ON CONFLICT(user_id) DO UPDATE SET
-            tier = excluded.tier,
-            stripe_customer_id = excluded.stripe_customer_id,
-            stripe_subscription_id = excluded.stripe_subscription_id,
-            status = excluded.status,
-            current_period_start = excluded.current_period_start,
-            current_period_end = excluded.current_period_end,
-            cancel_at_period_end = excluded.cancel_at_period_end,
-            updated_at = excluded.updated_at
-    `).bind(
-        subscription.userId,
-        subscription.tier,
-        subscription.stripeCustomerId || null,
-        subscription.stripeSubscriptionId || null,
-        subscription.status,
-        subscription.currentPeriodStart || null,
-        subscription.currentPeriodEnd || null,
-        subscription.cancelAtPeriodEnd ? 1 : 0,
-        now
-    ).run();
-}
-
-// ============================================
-// STRIPE INTEGRATION
-// ============================================
-
-/**
- * Create a Stripe checkout session for a tier upgrade
- */
-export async function createCheckoutSession(
+export async function createFuelCheckout(
     env: any,
     userId: string,
-    tier: SubscriptionTier,
+    amount: number, // In dollars
     userEmail?: string
-): Promise<CheckoutResult> {
+): Promise<{ sessionId: string; url: string }> {
     if (!env.STRIPE_SECRET_KEY) {
         throw new Error("Missing STRIPE_SECRET_KEY");
     }
 
-    // Get price ID for the tier from environment
-    const priceIdKey = `STRIPE_PRICE_${tier.toUpperCase()}`;
-    const priceId = env[priceIdKey];
-
-    if (!priceId) {
-        throw new Error(`Missing Stripe price ID for tier: ${tier}`);
+    if (amount < PRICING.MIN_DEPOSIT) {
+        throw new Error(`Minimum deposit is $${PRICING.MIN_DEPOSIT}`);
     }
 
+    // Calculate credits + bonus
+    const baseCredits = amount * PRICING.CREDITS_PER_DOLLAR;
+    let bonusPercent = 0;
+
+    for (const bonus of PRICING.BONUSES) {
+        if (amount >= bonus.threshold) {
+            // Take the highest applicable bonus
+            if (bonus.percent > bonusPercent) {
+                bonusPercent = bonus.percent;
+            }
+        }
+    }
+
+    const bonusCredits = Math.floor(baseCredits * bonusPercent);
+    const totalCredits = baseCredits + bonusCredits;
+
     const params = new URLSearchParams();
-    params.append('mode', 'subscription');
-    params.append('line_items[0][price]', priceId);
+    params.append('mode', 'payment');
+
+    // Create line item for "Agent Fuel"
+    params.append('line_items[0][price_data][currency]', 'usd');
+    params.append('line_items[0][price_data][product_data][name]', `Agent Fuel: ${totalCredits.toLocaleString()} Credits`);
+    params.append('line_items[0][price_data][product_data][description]', `To power your AI agents. Includes ${bonusCredits.toLocaleString()} bonus credits.`);
+    params.append('line_items[0][price_data][unit_amount]', Math.floor(amount * 100).toString()); // In cents
     params.append('line_items[0][quantity]', '1');
-    params.append('success_url', `${env.APP_URL}/?subscription=success&tier=${tier}`);
-    params.append('cancel_url', `${env.APP_URL}/?subscription=canceled`);
+
+    params.append('success_url', `${env.APP_URL}/?fuel=success&amount=${amount}`);
+    params.append('cancel_url', `${env.APP_URL}/?fuel=canceled`);
     params.append('client_reference_id', userId);
-    params.append('metadata[tier]', tier);
+
+    // Metadata for webhook fulfillment
+    params.append('metadata[type]', 'fuel_purchase');
     params.append('metadata[user_id]', userId);
+    params.append('metadata[credits]', totalCredits.toString());
+    params.append('metadata[amount]', amount.toString());
 
     if (userEmail) {
         params.append('customer_email', userEmail);
     }
-
-    // Allow promotion codes
-    params.append('allow_promotion_codes', 'true');
 
     const auth = btoa(`${env.STRIPE_SECRET_KEY}:`);
 
@@ -160,152 +118,101 @@ export async function createCheckoutSession(
 }
 
 /**
- * Create a Stripe customer portal session for subscription management
+ * Record credit usage (deduct from user balance)
  */
-export async function createPortalSession(
-    env: any,
-    stripeCustomerId: string
-): Promise<string> {
-    if (!env.STRIPE_SECRET_KEY) {
-        throw new Error("Missing STRIPE_SECRET_KEY");
+export async function recordUsage(
+    db: D1Database,
+    userId: string,
+    cost: number,
+    description: string,
+    metadata?: any
+): Promise<boolean> {
+    const balance = await getUserBalance(db, userId);
+
+    if (balance.credits < cost) {
+        return false; // Insufficient funds
     }
 
-    const params = new URLSearchParams();
-    params.append('customer', stripeCustomerId);
-    params.append('return_url', `${env.APP_URL}/settings`);
+    const now = Math.floor(Date.now() / 1000);
 
-    const auth = btoa(`${env.STRIPE_SECRET_KEY}:`);
+    // Transactional update
+    await db.batch([
+        // Deduct credits
+        db.prepare(`
+            UPDATE user_balances 
+            SET credits = credits - ?, updated_at = ? 
+            WHERE user_id = ?
+        `).bind(cost, now, userId),
 
-    const response = await fetch("https://api.stripe.com/v1/billing_portal/sessions", {
-        method: "POST",
-        headers: {
-            "Authorization": `Basic ${auth}`,
-            "Content-Type": "application/x-www-form-urlencoded"
-        },
-        body: params
-    });
+        // Record transaction
+        db.prepare(`
+            INSERT INTO credit_transactions (
+                id, user_id, amount, type, description, timestamp, metadata
+            ) VALUES (?, ?, ?, 'usage', ?, ?, ?)
+        `).bind(
+            crypto.randomUUID(),
+            userId,
+            -cost,
+            description,
+            now,
+            JSON.stringify(metadata || {})
+        )
+    ]);
 
-    if (!response.ok) {
-        const err = await response.text();
-        throw new Error(`Stripe Portal Error: ${err}`);
-    }
-
-    const session = await response.json() as { url: string };
-    return session.url;
+    return true;
 }
 
 /**
- * Map Stripe price ID to tier
- */
-export function getTierFromPriceId(priceId: string, env: any): SubscriptionTier {
-    const tiers: SubscriptionTier[] = ['observer', 'analyst', 'strategist', 'executor', 'autonomous'];
-
-    for (const tier of tiers) {
-        const envPriceId = env[`STRIPE_PRICE_${tier.toUpperCase()}`];
-        if (envPriceId === priceId) {
-            return tier;
-        }
-    }
-
-    return 'free';
-}
-
-// ============================================
-// WEBHOOK HANDLING
-// ============================================
-
-/**
- * Handle Stripe webhook events
+ * Handle Stripe webhook events for fuel
  */
 export async function handleStripeWebhook(
     env: any,
     payload: string,
     signature: string
 ): Promise<{ success: boolean; message: string }> {
-    // Verify webhook signature
     if (!env.STRIPE_WEBHOOK_SECRET) {
         throw new Error("Missing STRIPE_WEBHOOK_SECRET");
     }
 
-    // Parse the event (in production, verify signature with Stripe SDK)
     const event = JSON.parse(payload);
 
-    switch (event.type) {
-        case 'checkout.session.completed': {
-            const session = event.data.object;
-            const userId = session.client_reference_id || session.metadata?.user_id;
-            const tier = session.metadata?.tier as SubscriptionTier;
+    if (event.type === 'checkout.session.completed') {
+        const session = event.data.object;
 
-            if (userId && tier && env.DB) {
-                await upsertUserSubscription(env.DB, {
-                    userId,
-                    tier,
-                    stripeCustomerId: session.customer,
-                    stripeSubscriptionId: session.subscription,
-                    status: 'active'
-                });
+        // Only handle fuel purchases
+        if (session.metadata?.type === 'fuel_purchase') {
+            const userId = session.metadata.user_id;
+            const credits = parseInt(session.metadata.credits);
+            const amount = parseFloat(session.metadata.amount);
+
+            if (userId && credits && env.DB) {
+                const now = Math.floor(Date.now() / 1000);
+
+                // Add credits to balance
+                await env.DB.batch([
+                    env.DB.prepare(`
+                        INSERT INTO user_balances (user_id, credits, lifetime_credits, updated_at)
+                        VALUES (?, ?, ?, ?)
+                        ON CONFLICT(user_id) DO UPDATE SET
+                            credits = credits + ?,
+                            lifetime_credits = lifetime_credits + ?,
+                            updated_at = ?
+                    `).bind(userId, credits, credits, now, credits, credits, now),
+
+                    env.DB.prepare(`
+                        INSERT INTO credit_transactions (
+                            id, user_id, amount, type, description, timestamp, metadata
+                        ) VALUES (?, ?, ?, 'purchase', ?, ?, ?)
+                    `).bind(
+                        crypto.randomUUID(),
+                        userId,
+                        credits,
+                        `Purchased $${amount} Fuel`,
+                        now,
+                        JSON.stringify({ stripe_session: session.id })
+                    )
+                ]);
             }
-            break;
-        }
-
-        case 'customer.subscription.updated': {
-            const subscription = event.data.object;
-            const priceId = subscription.items?.data?.[0]?.price?.id;
-            const tier = priceId ? getTierFromPriceId(priceId, env) : 'free';
-
-            // Find user by Stripe customer ID
-            if (env.DB) {
-                const user = await env.DB.prepare(`
-                    SELECT user_id FROM user_subscriptions WHERE stripe_customer_id = ?
-                `).bind(subscription.customer).first();
-
-                if (user) {
-                    await upsertUserSubscription(env.DB, {
-                        userId: user.user_id as string,
-                        tier,
-                        stripeCustomerId: subscription.customer,
-                        stripeSubscriptionId: subscription.id,
-                        status: subscription.status === 'active' ? 'active' :
-                            subscription.status === 'past_due' ? 'past_due' :
-                                subscription.status === 'canceled' ? 'canceled' : 'active',
-                        currentPeriodStart: subscription.current_period_start,
-                        currentPeriodEnd: subscription.current_period_end,
-                        cancelAtPeriodEnd: subscription.cancel_at_period_end
-                    });
-                }
-            }
-            break;
-        }
-
-        case 'customer.subscription.deleted': {
-            const subscription = event.data.object;
-
-            if (env.DB) {
-                const user = await env.DB.prepare(`
-                    SELECT user_id FROM user_subscriptions WHERE stripe_customer_id = ?
-                `).bind(subscription.customer).first();
-
-                if (user) {
-                    await upsertUserSubscription(env.DB, {
-                        userId: user.user_id as string,
-                        tier: 'free',
-                        stripeCustomerId: subscription.customer,
-                        status: 'canceled'
-                    });
-                }
-            }
-            break;
-        }
-
-        case 'invoice.payment_failed': {
-            const invoice = event.data.object;
-
-            if (env.DB) {
-                await env.DB.prepare(`
-                    UPDATE user_subscriptions SET status = 'past_due' WHERE stripe_customer_id = ?
-                `).bind(invoice.customer).run();
-            }
-            break;
         }
     }
 
