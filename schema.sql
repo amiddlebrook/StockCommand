@@ -116,6 +116,20 @@ CREATE TABLE IF NOT EXISTS signals (
   expires_at INTEGER NOT NULL
 );
 
+-- User subscription tiers
+CREATE TABLE IF NOT EXISTS user_subscriptions (
+  user_id TEXT PRIMARY KEY,
+  tier TEXT NOT NULL DEFAULT 'free',
+  stripe_customer_id TEXT,
+  stripe_subscription_id TEXT,
+  status TEXT NOT NULL DEFAULT 'free',
+  current_period_start INTEGER,
+  current_period_end INTEGER,
+  cancel_at_period_end INTEGER DEFAULT 0,
+  updated_at INTEGER NOT NULL,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
 -- Indexes for performance
 CREATE INDEX IF NOT EXISTS idx_user_watchlists_user_id ON user_watchlists(user_id);
 CREATE INDEX IF NOT EXISTS idx_stock_analysis_user_symbol ON stock_analysis(user_id, symbol);

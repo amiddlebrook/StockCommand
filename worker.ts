@@ -5,6 +5,16 @@ import { getGoogleAuthUrl, getGoogleUser } from './lib/google';
 import { createCheckoutSession } from './lib/stripe';
 import { initializeBrokers, getBroker, getAllBrokerInfo, getRegisteredBrokers } from './lib/brokers';
 import type { BrokerCredentials, BrokerConnection } from './lib/brokers/types';
+import {
+    getUserSubscription,
+    createCheckoutSession as createSubscriptionCheckout,
+    createPortalSession,
+    handleStripeWebhook,
+    getDisplayTiers,
+    hasFeatureAccess,
+    getTierLimit
+} from './lib/subscriptions';
+import type { SubscriptionTier } from './lib/subscriptions/tiers';
 
 export default {
     async fetch(request: Request, env: any, ctx: any): Promise<Response> {
@@ -177,6 +187,127 @@ export default {
 
             } catch (e: any) {
                 return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: corsHeaders });
+            }
+        }
+
+        // --- SUBSCRIPTION ROUTES ---
+
+        // GET /api/subscription/tiers - Get available subscription tiers
+        if (url.pathname === "/api/subscription/tiers" && request.method === "GET") {
+            const tiers = getDisplayTiers();
+            return new Response(JSON.stringify(tiers), {
+                headers: { ...corsHeaders, "Content-Type": "application/json" }
+            });
+        }
+
+        // GET /api/subscription - Get user's current subscription
+        if (url.pathname === "/api/subscription" && request.method === "GET") {
+            try {
+                const user = await getSession(env, request);
+                if (!user) {
+                    return new Response(JSON.stringify({ tier: 'free', status: 'free' }), {
+                        headers: { ...corsHeaders, "Content-Type": "application/json" }
+                    });
+                }
+
+                if (!env.DB) {
+                    return new Response(JSON.stringify({ tier: 'free', status: 'free' }), {
+                        headers: { ...corsHeaders, "Content-Type": "application/json" }
+                    });
+                }
+
+                const subscription = await getUserSubscription(env.DB, user.id);
+                return new Response(JSON.stringify(subscription), {
+                    headers: { ...corsHeaders, "Content-Type": "application/json" }
+                });
+
+            } catch (e: any) {
+                return new Response(JSON.stringify({ error: e.message }), {
+                    status: 500, headers: corsHeaders
+                });
+            }
+        }
+
+        // POST /api/subscription/checkout - Create checkout session for tier upgrade
+        if (url.pathname === "/api/subscription/checkout" && request.method === "POST") {
+            try {
+                const user = await getSession(env, request);
+                if (!user) {
+                    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+                        status: 401, headers: corsHeaders
+                    });
+                }
+
+                const { tier } = await request.json() as { tier: SubscriptionTier };
+
+                if (!tier || tier === 'free') {
+                    return new Response(JSON.stringify({ error: "Invalid tier" }), {
+                        status: 400, headers: corsHeaders
+                    });
+                }
+
+                const result = await createSubscriptionCheckout(env, user.id, tier, user.email);
+                return new Response(JSON.stringify(result), {
+                    headers: { ...corsHeaders, "Content-Type": "application/json" }
+                });
+
+            } catch (e: any) {
+                return new Response(JSON.stringify({ error: e.message }), {
+                    status: 500, headers: corsHeaders
+                });
+            }
+        }
+
+        // POST /api/subscription/portal - Create customer portal session
+        if (url.pathname === "/api/subscription/portal" && request.method === "POST") {
+            try {
+                const user = await getSession(env, request);
+                if (!user) {
+                    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+                        status: 401, headers: corsHeaders
+                    });
+                }
+
+                if (!env.DB) {
+                    return new Response(JSON.stringify({ error: "Database not configured" }), {
+                        status: 500, headers: corsHeaders
+                    });
+                }
+
+                const subscription = await getUserSubscription(env.DB, user.id);
+
+                if (!subscription.stripeCustomerId) {
+                    return new Response(JSON.stringify({ error: "No active subscription" }), {
+                        status: 400, headers: corsHeaders
+                    });
+                }
+
+                const portalUrl = await createPortalSession(env, subscription.stripeCustomerId);
+                return new Response(JSON.stringify({ url: portalUrl }), {
+                    headers: { ...corsHeaders, "Content-Type": "application/json" }
+                });
+
+            } catch (e: any) {
+                return new Response(JSON.stringify({ error: e.message }), {
+                    status: 500, headers: corsHeaders
+                });
+            }
+        }
+
+        // POST /api/stripe/webhook - Handle Stripe webhooks
+        if (url.pathname === "/api/stripe/webhook" && request.method === "POST") {
+            try {
+                const payload = await request.text();
+                const signature = request.headers.get("stripe-signature") || "";
+
+                const result = await handleStripeWebhook(env, payload, signature);
+                return new Response(JSON.stringify(result), {
+                    headers: { "Content-Type": "application/json" }
+                });
+
+            } catch (e: any) {
+                console.error("Webhook error:", e);
+                return new Response(JSON.stringify({ error: e.message }), { status: 400 });
             }
         }
 
