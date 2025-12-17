@@ -79,8 +79,9 @@ export const HUDNav: React.FC<HUDNavProps> = ({
 
                             <Icon icon={item.icon as any} className="w-5 h-5" />
 
-                            {/* Tooltip */}
+                            {/* Tooltip (becomes explicit label on mobile) */}
                             <div className={`
+                                nav-label
                                 absolute left-full ml-4 px-3 py-1
                                 bg-slate-900 border border-slate-700
                                 text-xs font-mono text-cyan-400 whitespace-nowrap pointer-events-none

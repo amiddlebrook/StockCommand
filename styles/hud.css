@@ -63,6 +63,26 @@
     transform: translateX(0);
   }
 
+  /* Show labels in mobile drawer */
+  .hud-cell-nav.mobile-open .nav-label {
+    opacity: 1 !important;
+    transform: translateX(0) !important;
+    position: static !important;
+    pointer-events: auto !important;
+    border: none !important;
+    background: transparent !important;
+    margin-left: 10px !important;
+    width: auto !important;
+  }
+
+  .hud-cell-nav.mobile-open button {
+    justify-content: flex-start !important;
+    padding-left: 20px !important;
+    width: 100% !important;
+    aspect-ratio: auto !important;
+    height: 50px !important;
+  }
+
   .hud-cell-header {
     grid-column: 1 / -1;
   }
