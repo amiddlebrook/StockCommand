@@ -2,7 +2,7 @@
 import React from 'react';
 
 interface IconProps {
-  icon: 'send' | 'upload' | 'mic' | 'search' | 'chart' | 'strategy' | 'ghost' | 'close' | 'bot' | 'portfolio' | 'user' | 'chevron-down' | 'check' | 'message' | 'terminal' | 'briefcase' | 'clock' | 'trophy' | 'code' | 'activity' | 'loader' | 'settings' | 'trash' | 'alert';
+  icon: 'send' | 'upload' | 'mic' | 'search' | 'chart' | 'strategy' | 'ghost' | 'close' | 'bot' | 'portfolio' | 'user' | 'chevron-down' | 'check' | 'message' | 'terminal' | 'briefcase' | 'clock' | 'trophy' | 'code' | 'activity' | 'loader' | 'settings' | 'trash' | 'alert' | 'menu';
   className?: string;
 }
 
@@ -128,6 +128,11 @@ export const Icon: React.FC<IconProps> = ({ icon, className = 'w-6 h-6' }) => {
     alert: (
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+      </svg>
+    ),
+    menu: (
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
       </svg>
     )
   };
