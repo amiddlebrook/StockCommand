@@ -76,7 +76,7 @@ export const ConsoleWidget: React.FC<ConsoleWidgetProps> = ({
             {/* Input Area (Flush Bottom) */}
             <div className="p-3 bg-slate-900/30 border-t border-cyan-900/30">
                 <ChatInput
-                    onSend={onSendMessage}
+                    onSendMessage={onSendMessage}
                     isLoading={isLoading}
                     isRecording={isRecording}
                     onStartRecording={onStartRecording}
