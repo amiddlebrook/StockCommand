@@ -53,6 +53,8 @@ const AppContent: React.FC = () => {
 
   // Console Drawer State
   const [isConsoleOpen, setIsConsoleOpen] = useState(false);
+  // Mobile Menu State
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // Command Palette State
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
@@ -397,10 +399,13 @@ const AppContent: React.FC = () => {
   return (
     <div className="hud-grid">
       {/* 1. LEFT RAIL (NAV) */}
-      <div className="hud-cell-nav">
+      <div className={`hud-cell-nav ${isMobileMenuOpen ? 'mobile-open' : ''}`}>
+        <div className="md:hidden absolute top-4 right-4 z-50">
+          <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 text-cyan-500"><Icon icon="close" className="w-6 h-6" /></button>
+        </div>
         <HUDNav
           activeTab={activeTab}
-          onNavigate={(tab) => setActiveTab(tab as any)}
+          onNavigate={(tab) => { setActiveTab(tab as any); setIsMobileMenuOpen(false); }}
           activeJobsCount={activeJobsCount}
         />
       </div>
@@ -408,6 +413,12 @@ const AppContent: React.FC = () => {
       {/* 2. HEADER (SYSTEM STATUS) */}
       <div className="hud-cell-header justify-between">
         <div className="flex items-center gap-4">
+          <button
+            className="md:hidden p-2 text-cyan-500 hover:bg-cyan-900/30 rounded"
+            onClick={() => setIsMobileMenuOpen(true)}
+          >
+            <Icon icon="menu" className="w-6 h-6" />
+          </button>
           <span className="text-cyan-500 font-bold tracking-[0.2em] text-sm">STOCK_COMMAND // V2.2</span>
           <div className="h-4 w-[1px] bg-cyan-900"></div>
           <span className="text-slate-500 text-xs text-shadow-glow">SYSTEM ONLINE</span>
@@ -516,6 +527,12 @@ const AppContent: React.FC = () => {
       </div>
 
       {/* Overlays */}
+      {isMobileMenuOpen && (
+        <div
+          className="fixed inset-0 bg-black/80 z-40 md:hidden backdrop-blur-sm"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
       <CommandPalette isOpen={isCommandPaletteOpen} onClose={() => setIsCommandPaletteOpen(false)} onNavigate={(tab) => { setActiveTab(tab as any); setIsCommandPaletteOpen(false); }} onSearch={(q) => { setActiveTab('command-center'); handleSendMessage(q); }} />
       <PortfolioReportModal isOpen={isPortfolioModalOpen} symbols={symbols} activeSymbol={null} isGenerating={isPortfolioGenerating} onClose={() => setIsPortfolioModalOpen(false)} onSubmit={handleGeneratePortfolioReport} />
       <ProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
