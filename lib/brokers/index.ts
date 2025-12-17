@@ -26,12 +26,16 @@ export {
 // Alpaca Adapter
 export { AlpacaAdapter } from './alpaca/adapter';
 
+// IBKR Adapter
+export { IBKRAdapter } from './ibkr/adapter';
+
 // ============================================
 // INITIALIZATION
 // ============================================
 
 import { registerBroker } from './registry';
 import { AlpacaAdapter } from './alpaca/adapter';
+import { IBKRAdapter } from './ibkr/adapter';
 import { AVAILABLE_BROKERS } from './registry';
 
 /**
@@ -50,7 +54,13 @@ export function initializeBrokers(env: Record<string, string | undefined>): void
         }));
     }
 
-    // Future: Register other brokers
-    // if (env.IBKR_CLIENT_ID) { ... }
-    // if (env.TRADIER_ACCESS_TOKEN) { ... }
+    // Register Interactive Brokers
+    const ibkrInfo = AVAILABLE_BROKERS.find(b => b.name === 'interactive_brokers');
+    if (ibkrInfo && env.IBKR_CLIENT_ID) {
+        registerBroker('interactive_brokers', ibkrInfo, () => new IBKRAdapter({
+            IBKR_CLIENT_ID: env.IBKR_CLIENT_ID,
+            IBKR_CLIENT_SECRET: env.IBKR_CLIENT_SECRET,
+            IBKR_REDIRECT_URI: env.IBKR_REDIRECT_URI
+        }));
+    }
 }
