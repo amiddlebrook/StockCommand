@@ -3,7 +3,7 @@ import { Icon } from './Icon';
 import { GlassButton } from './ui/GlassButton';
 
 export const SettingsView: React.FC = () => {
-    const [activeSection, setActiveSection] = useState<'GENERAL' | 'API' | 'NOTIFICATIONS' | 'APPEARANCE'>('GENERAL');
+    const [activeSection, setActiveSection] = useState<'GENERAL' | 'API' | 'NOTIFICATIONS' | 'APPEARANCE' | 'SECURITY'>('GENERAL');
 
     // Mock State for Settings
     const [settings, setSettings] = useState({
@@ -14,12 +14,19 @@ export const SettingsView: React.FC = () => {
         notifications: {
             priceAlerts: true,
             newsFlashes: true,
-            strategySignals: false
+            strategySignals: false,
+            systemHealth: true
         },
         apiKeys: {
             gemini: '**********************',
             fmp: '**********************',
-            polygon: '**********************'
+            polygon: '**********************',
+            openai: '**********************'
+        },
+        security: {
+            twoFactor: true,
+            biometric: false,
+            sessionTimeout: '30m'
         }
     });
 
@@ -32,10 +39,10 @@ export const SettingsView: React.FC = () => {
 
     return (
         <div className="flex-1 h-full bg-slate-950 flex flex-col overflow-hidden relative">
-            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900 via-slate-950 to-slate-950 pointer-events-none" />
+            {/* REMOVED BLOCKING GRADIENT OVERLAY */}
 
             {/* Header */}
-            <div className="p-8 border-b border-slate-800 bg-slate-900/50 backdrop-blur z-10">
+            <div className="p-8 border-b border-slate-800 bg-slate-900/50 backdrop-blur z-10 flex-shrink-0">
                 <h2 className="text-3xl font-bold text-white flex items-center gap-3">
                     <Icon icon="settings" className="text-slate-400 w-8 h-8" />
                     SYSTEM CONFIGURATION
@@ -43,10 +50,10 @@ export const SettingsView: React.FC = () => {
                 <p className="text-slate-400 text-sm mt-2 font-mono">Global Parameters & secure connection settings</p>
             </div>
 
-            <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
+            <div className="flex flex-col md:flex-row flex-1 overflow-hidden relative z-0">
                 {/* Sidebar */}
-                <div className="w-full md:w-64 border-b md:border-r md:order-b-0 border-slate-800 bg-slate-900/30 p-2 md:p-4 flex md:flex-col gap-2 md:gap-0 md:space-y-2 overflow-x-auto md:overflow-visible shrink-0 no-scrollbar">
-                    {['GENERAL', 'API', 'NOTIFICATIONS', 'APPEARANCE'].map((section: any) => (
+                <div className="w-full md:w-64 border-b md:border-r md:order-b-0 border-slate-800 bg-slate-900/30 p-2 md:p-4 flex md:flex-col gap-2 md:gap-0 md:space-y-2 overflow-x-auto md:overflow-visible shrink-0 no-scrollbar z-10">
+                    {['GENERAL', 'API', 'NOTIFICATIONS', 'APPEARANCE', 'SECURITY'].map((section: any) => (
                         <button
                             key={section}
                             onClick={() => setActiveSection(section)}
@@ -71,7 +78,7 @@ export const SettingsView: React.FC = () => {
                 </div>
 
                 {/* Main Content */}
-                <div className="flex-1 overflow-y-auto p-4 md:p-8 max-w-4xl">
+                <div className="flex-1 overflow-y-auto p-4 md:p-8 max-w-4xl relative z-0">
 
                     {activeSection === 'GENERAL' && (
                         <div className="space-y-8">
@@ -90,6 +97,18 @@ export const SettingsView: React.FC = () => {
                                     <option>UTC-5 (EST)</option>
                                     <option>UTC-8 (PST)</option>
                                     <option>UTC (GMT)</option>
+                                    <option>UTC+1 (CET)</option>
+                                    <option>UTC+9 (JST)</option>
+                                </select>
+                            </div>
+                            <div className="space-y-4">
+                                <label className="block text-sm font-bold text-slate-400">LANGUAGE</label>
+                                <select className="w-full bg-slate-900 border border-slate-700 rounded p-3 text-slate-200 font-mono focus:border-cyan-500 outline-none">
+                                    <option>English (US)</option>
+                                    <option>English (UK)</option>
+                                    <option>Español</option>
+                                    <option>Deutsch</option>
+                                    <option>日本語</option>
                                 </select>
                             </div>
                         </div>
@@ -105,7 +124,7 @@ export const SettingsView: React.FC = () => {
                                 </div>
                             </div>
 
-                            {['gemini', 'fmp', 'polygon'].map(provider => (
+                            {['gemini', 'fmp', 'polygon', 'openai'].map(provider => (
                                 <div key={provider} className="space-y-2">
                                     <label className="block text-sm font-bold text-slate-400 uppercase">{provider} API KEY</label>
                                     <div className="flex gap-2">
@@ -151,6 +170,37 @@ export const SettingsView: React.FC = () => {
                                 <button className="w-12 h-6 rounded-full relative bg-cyan-600">
                                     <div className="absolute top-1 left-7 w-4 h-4 rounded-full bg-white" />
                                 </button>
+                            </div>
+                            <div className="space-y-4 pt-4 border-t border-slate-800">
+                                <label className="block text-sm font-bold text-slate-400">THEME ACCENT</label>
+                                <div className="flex gap-4">
+                                    {['#06b6d4', '#ef4444', '#f97316', '#8b5cf6'].map(color => (
+                                        <div key={color} className="w-8 h-8 rounded-full border border-slate-600 cursor-pointer hover:scale-110 transition-transform" style={{ backgroundColor: color }}></div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {activeSection === 'SECURITY' && (
+                        <div className="space-y-6">
+                            <div className="flex items-center justify-between p-4 bg-slate-900/50 border border-slate-800 rounded-lg">
+                                <div>
+                                    <h4 className="font-bold text-slate-200">TWO-FACTOR AUTHENTICATION</h4>
+                                    <p className="text-xs text-slate-500 mt-1">Secure your account with 2FA</p>
+                                </div>
+                                <button className="w-12 h-6 rounded-full relative bg-cyan-600">
+                                    <div className="absolute top-1 left-7 w-4 h-4 rounded-full bg-white" />
+                                </button>
+                            </div>
+                            <div className="space-y-4">
+                                <label className="block text-sm font-bold text-slate-400">SESSION TIMEOUT</label>
+                                <select className="w-full bg-slate-900 border border-slate-700 rounded p-3 text-slate-200 font-mono focus:border-cyan-500 outline-none">
+                                    <option>15 Minutes</option>
+                                    <option>30 Minutes</option>
+                                    <option>1 Hour</option>
+                                    <option>Never</option>
+                                </select>
                             </div>
                         </div>
                     )}
