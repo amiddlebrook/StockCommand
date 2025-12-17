@@ -63,30 +63,48 @@
     transform: translateX(0);
   }
 
-  /* Show labels in mobile drawer */
+  /* Show labels in mobile drawer with flex layout */
   .hud-cell-nav.mobile-open .nav-label {
     opacity: 1 !important;
-    transform: translateX(0) !important;
-    position: static !important;
-    pointer-events: auto !important;
-    border: none !important;
+    transform: none !important;
+    position: relative !important;
+    left: auto !important;
+    margin-left: 12px !important;
+    padding: 0 !important;
     background: transparent !important;
-    margin-left: 10px !important;
+    border: none !important;
     width: auto !important;
+    pointer-events: auto !important;
+    display: inline-block !important;
+    text-align: left !important;
   }
 
   .hud-cell-nav.mobile-open button {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
     justify-content: flex-start !important;
     padding-left: 20px !important;
     width: 100% !important;
     aspect-ratio: auto !important;
-    height: 44px !important;
+    height: 52px !important;
     border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+    border-right: none !important;
+    border-left: none !important;
+    border-top: none !important;
   }
 
-  /* Reduce nav gap on mobile */
+  /* Reset tooltips on mobile label */
+  .hud-cell-nav.mobile-open .nav-label::before,
+  .hud-cell-nav.mobile-open .nav-label::after {
+    display: none !important;
+  }
+
   .hud-cell-nav.mobile-open nav {
     gap: 0 !important;
+    width: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
   }
 
   .hud-cell-header {
