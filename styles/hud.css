@@ -35,6 +35,40 @@
     linear-gradient(rgba(6, 182, 212, 0.05) 1px, transparent 1px),
     linear-gradient(90deg, rgba(6, 182, 212, 0.05) 1px, transparent 1px);
   background-size: 40px 40px;
+  background-size: 40px 40px;
+}
+
+@media (max-width: 768px) {
+  .hud-grid {
+    grid-template-columns: 1fr;
+    grid-template-rows: 48px 1fr 64px;
+    /* Header | Content | Mobile Nav Space */
+  }
+
+  .hud-cell-nav {
+    display: none;
+  }
+
+  .hud-cell-header {
+    grid-column: 1 / -1;
+  }
+
+  .hud-cell-main {
+    grid-column: 1 / -1;
+  }
+
+  .hud-cell-footer {
+    grid-column: 1 / -1;
+    margin-bottom: 64px;
+    /* Space for Mobile Nav */
+    display: none;
+    /* Hide footer text on mobile to save space, or keep if needed */
+  }
+
+  .hud-cell-right {
+    display: none;
+    /* Hide right panel on mobile by default, or stack it if needed */
+  }
 }
 
 /* Hard Grid Cells */
