@@ -80,7 +80,13 @@
     padding-left: 20px !important;
     width: 100% !important;
     aspect-ratio: auto !important;
-    height: 50px !important;
+    height: 44px !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+  }
+
+  /* Reduce nav gap on mobile */
+  .hud-cell-nav.mobile-open nav {
+    gap: 0 !important;
   }
 
   .hud-cell-header {

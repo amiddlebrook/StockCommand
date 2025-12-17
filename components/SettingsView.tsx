@@ -74,7 +74,7 @@ export const SettingsView: React.FC = () => {
                 <div className="flex-1 overflow-y-auto p-4 md:p-8 max-w-4xl">
 
                     {activeSection === 'GENERAL' && (
-                        <div className="space-y-8 animate-fadeIn">
+                        <div className="space-y-8">
                             <div className="space-y-4">
                                 <label className="block text-sm font-bold text-slate-400">APPLICATION NAME</label>
                                 <input
@@ -96,7 +96,7 @@ export const SettingsView: React.FC = () => {
                     )}
 
                     {activeSection === 'API' && (
-                        <div className="space-y-8 animate-fadeIn">
+                        <div className="space-y-8">
                             <div className="p-4 bg-amber-900/20 border border-amber-500/30 rounded-lg flex items-start gap-3">
                                 <Icon icon="alert" className="text-amber-500 w-5 h-5 mt-0.5" />
                                 <div>
@@ -123,7 +123,7 @@ export const SettingsView: React.FC = () => {
                     )}
 
                     {activeSection === 'NOTIFICATIONS' && (
-                        <div className="space-y-6 animate-fadeIn">
+                        <div className="space-y-6">
                             {Object.entries(settings.notifications).map(([key, enabled]) => (
                                 <div key={key} className="flex items-center justify-between p-4 bg-slate-900/50 border border-slate-800 rounded-lg">
                                     <div>
@@ -142,7 +142,7 @@ export const SettingsView: React.FC = () => {
                     )}
 
                     {activeSection === 'APPEARANCE' && (
-                        <div className="space-y-6 animate-fadeIn">
+                        <div className="space-y-6">
                             <div className="flex items-center justify-between p-4 bg-slate-900/50 border border-slate-800 rounded-lg">
                                 <div>
                                     <h4 className="font-bold text-slate-200">RETRO CRT EFFECTS</h4>
