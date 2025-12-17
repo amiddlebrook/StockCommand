@@ -47,7 +47,7 @@ const AppContent: React.FC = () => {
   const [isChatLoading, setIsChatLoading] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [widgets, setWidgets] = useState<AnalysisWidget[]>(() => StorageService.loadWidgets());
-  const [activeTab, setActiveTab] = useState<'command-center' | 'portfolio' | 'entity-detail' | 'competitions' | 'feature-detail' | 'features' | 'creator' | 'market-clocks'>('portfolio');
+  const [activeTab, setActiveTab] = useState<'command-center' | 'portfolio' | 'entity-detail' | 'competitions' | 'feature-detail' | 'features' | 'creator' | 'market-clocks' | 'settings'>('portfolio');
   const [activeFeature, setActiveFeature] = useState<{ name: string; symbols: string[]; content: string | null } | null>(null);
 
   // Console Drawer State
@@ -423,15 +423,15 @@ const AppContent: React.FC = () => {
         {/* TOP: Dynamic Content (Full width now) */}
         <div className="flex-1 overflow-hidden relative">
           {activeTab === 'command-center' ? (
-            // Home View - maybe show high level status or empty state urging user to use console
-            <div className="h-full flex items-center justify-center text-slate-500 flex-col gap-4">
-              <div className="w-20 h-20 rounded-full bg-slate-900/50 flex items-center justify-center border border-slate-800">
-                <Icon icon="terminal" className="w-10 h-10 text-cyan-500/50" />
-              </div>
-              <p className="font-mono text-sm max-w-md text-center">
-                Command Console Active.<br />
-                Open the terminal drawer below to interact.
-              </p>
+            <div className="h-full w-full">
+              <ConsoleWidget
+                messages={messages}
+                onSendMessage={handleSendMessage}
+                isLoading={isChatLoading}
+                isRecording={isRecording}
+                onStartRecording={handleStartRecording}
+                onStopRecording={handleStopRecording}
+              />
             </div>
           ) : activeTab === 'portfolio' ? (
             <div className="h-full overflow-y-auto"><PortfolioView sleevesWithStats={sleevesWithStats} onClockClick={() => { }} freshnessThreshold={0} /></div>
@@ -466,40 +466,42 @@ const AppContent: React.FC = () => {
           ) : null}
         </div>
 
-        {/* BOTTOM: Collapsible Console Drawer */}
-        <div
-          className={`
-                flex-shrink-0 relative z-20 shadow-[0_-5px_20px_rgba(0,0,0,0.5)] border-t border-slate-800 bg-slate-950 transition-all duration-300 ease-in-out
-                ${isConsoleOpen ? 'h-[350px]' : 'h-[48px]'}
-            `}
-        >
-          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-900 via-cyan-500 to-cyan-900 opacity-20"></div>
-
-          {/* Toggle Handle */}
+        {/* BOTTOM: Collapsible Console Drawer (Hidden on Command Center View) */}
+        {activeTab !== 'command-center' && (
           <div
-            className="absolute -top-3 left-1/2 -translate-x-1/2 w-16 h-4 bg-slate-900 border border-slate-700 rounded-t-lg flex items-center justify-center cursor-pointer hover:bg-slate-800 z-30"
-            onClick={() => setIsConsoleOpen(!isConsoleOpen)}
+            className={`
+                  flex-shrink-0 relative z-20 shadow-[0_-5px_20px_rgba(0,0,0,0.5)] border-t border-slate-800 bg-slate-950 transition-all duration-300 ease-in-out
+                  ${isConsoleOpen ? 'h-[350px]' : 'h-[48px]'}
+              `}
           >
-            <Icon icon="chevron-down" className={`w-3 h-3 text-cyan-500 transition-transform duration-300 ${isConsoleOpen ? '' : 'rotate-180'}`} />
-          </div>
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-900 via-cyan-500 to-cyan-900 opacity-20"></div>
 
-          {isConsoleOpen ? (
-            <ConsoleWidget
-              messages={messages}
-              onSendMessage={handleSendMessage}
-              isLoading={isChatLoading}
-              isRecording={isRecording}
-              onStartRecording={handleStartRecording}
-              onStopRecording={handleStopRecording}
-            />
-          ) : (
-            /* Minimized State: Single Line Input / Status */
-            <div className="h-full flex items-center px-4 gap-4 cursor-pointer hover:bg-slate-900/30" onClick={() => setIsConsoleOpen(true)}>
-              <span className="text-cyan-500 animate-pulse text-xs font-mono">{'>'}</span>
-              <span className="text-slate-500 text-xs font-mono">Terminal Standby. Click to expand or start typing...</span>
+            {/* Toggle Handle */}
+            <div
+              className="absolute -top-3 left-1/2 -translate-x-1/2 w-16 h-4 bg-slate-900 border border-slate-700 rounded-t-lg flex items-center justify-center cursor-pointer hover:bg-slate-800 z-30"
+              onClick={() => setIsConsoleOpen(!isConsoleOpen)}
+            >
+              <Icon icon="chevron-down" className={`w-3 h-3 text-cyan-500 transition-transform duration-300 ${isConsoleOpen ? '' : 'rotate-180'}`} />
             </div>
-          )}
-        </div>
+
+            {isConsoleOpen ? (
+              <ConsoleWidget
+                messages={messages}
+                onSendMessage={handleSendMessage}
+                isLoading={isChatLoading}
+                isRecording={isRecording}
+                onStartRecording={handleStartRecording}
+                onStopRecording={handleStopRecording}
+              />
+            ) : (
+              /* Minimized State: Single Line Input / Status */
+              <div className="h-full flex items-center px-4 gap-4 cursor-pointer hover:bg-slate-900/30" onClick={() => setIsConsoleOpen(true)}>
+                <span className="text-cyan-500 animate-pulse text-xs font-mono">{'>'}</span>
+                <span className="text-slate-500 text-xs font-mono">Terminal Standby. Click to expand or start typing...</span>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* 5. FOOTER (TICKER) */}
