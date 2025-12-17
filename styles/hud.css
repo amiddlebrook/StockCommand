@@ -48,19 +48,34 @@
   .hud-cell-nav {
     display: none;
     position: fixed;
-    top: 0;
+    top: 48px;
+    /* Start below header */
     left: 0;
     bottom: 0;
-    width: 250px;
+    width: 200px;
+    /* Reduced width */
     z-index: 100;
-    box-shadow: 10px 0 30px rgba(0, 0, 0, 0.5);
+    box-shadow: 10px 0 30px rgba(0, 0, 0, 0.8);
     transition: transform 0.3s ease-in-out;
     transform: translateX(-100%);
+    border-right: 1px solid var(--hud-c-primary);
   }
 
   .hud-cell-nav.mobile-open {
-    display: block !important;
+    display: flex !important;
+    flex-direction: column !important;
     transform: translateX(0);
+    background: rgba(2, 6, 23, 0.95) !important;
+  }
+
+  /* Force Icon Visibility */
+  .hud-cell-nav.mobile-open svg {
+    display: block !important;
+    width: 20px !important;
+    height: 20px !important;
+    min-width: 20px !important;
+    opacity: 1 !important;
+    color: var(--hud-c-primary) !important;
   }
 
   /* Show labels in mobile drawer with flex layout */
@@ -77,6 +92,9 @@
     pointer-events: auto !important;
     display: inline-block !important;
     text-align: left !important;
+    color: white !important;
+    font-size: 14px !important;
+    letter-spacing: 1px;
   }
 
   .hud-cell-nav.mobile-open button {
@@ -84,14 +102,15 @@
     flex-direction: row !important;
     align-items: center !important;
     justify-content: flex-start !important;
-    padding-left: 20px !important;
+    padding: 0 20px !important;
     width: 100% !important;
     aspect-ratio: auto !important;
-    height: 52px !important;
+    height: 50px !important;
     border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
     border-right: none !important;
     border-left: none !important;
     border-top: none !important;
+    margin: 0 !important;
   }
 
   /* Reset tooltips on mobile label */
@@ -105,10 +124,13 @@
     width: 100% !important;
     display: flex !important;
     flex-direction: column !important;
+    padding: 0 !important;
   }
 
   .hud-cell-header {
     grid-column: 1 / -1;
+    z-index: 101;
+    /* Ensure header stays on top */
   }
 
   .hud-cell-main {
