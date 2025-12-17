@@ -359,6 +359,144 @@ export default {
             }
         }
 
+        // --- TRADING ROUTES ---
+
+        // GET /api/signals - Get active trading signals
+        if (url.pathname === "/api/signals" && request.method === "GET") {
+            try {
+                const user = await getSession(env, request);
+
+                // Get signals from database or generate mock ones
+                if (env.DB) {
+                    const now = Math.floor(Date.now() / 1000);
+                    const signals = await env.DB.prepare(`
+                        SELECT * FROM signals WHERE expires_at > ? ORDER BY created_at DESC LIMIT 20
+                    `).bind(now).all();
+
+                    return new Response(JSON.stringify(signals.results || []), {
+                        headers: { ...corsHeaders, "Content-Type": "application/json" }
+                    });
+                }
+
+                // Return empty if no DB
+                return new Response(JSON.stringify([]), {
+                    headers: { ...corsHeaders, "Content-Type": "application/json" }
+                });
+            } catch (e: any) {
+                return new Response(JSON.stringify({ error: e.message }), {
+                    status: 500, headers: corsHeaders
+                });
+            }
+        }
+
+        // POST /api/orders - Execute a trade order
+        if (url.pathname === "/api/orders" && request.method === "POST") {
+            try {
+                const user = await getSession(env, request);
+                if (!user) {
+                    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+                        status: 401, headers: corsHeaders
+                    });
+                }
+
+                const { brokerName, symbol, side, type, qty, limitPrice, signalId } = await request.json() as any;
+
+                if (!brokerName || !symbol || !side || !qty) {
+                    return new Response(JSON.stringify({ error: "Missing required fields" }), {
+                        status: 400, headers: corsHeaders
+                    });
+                }
+
+                // Get user's broker connection
+                if (!env.DB) {
+                    return new Response(JSON.stringify({ error: "Database not configured" }), {
+                        status: 500, headers: corsHeaders
+                    });
+                }
+
+                const connection = await env.DB.prepare(`
+                    SELECT * FROM user_brokers WHERE user_id = ? AND broker_name = ? AND is_active = 1
+                `).bind(user.id, brokerName).first();
+
+                if (!connection) {
+                    return new Response(JSON.stringify({ error: `No active connection to ${brokerName}` }), {
+                        status: 400, headers: corsHeaders
+                    });
+                }
+
+                // Get the broker adapter
+                const broker = getBroker(brokerName);
+                if (!broker) {
+                    return new Response(JSON.stringify({ error: `Broker ${brokerName} not configured` }), {
+                        status: 400, headers: corsHeaders
+                    });
+                }
+
+                // Decrypt credentials
+                const credentials = JSON.parse(atob(connection.credentials_encrypted as string));
+
+                // Place the order
+                const order = await broker.placeOrder(credentials, {
+                    symbol: symbol.toUpperCase(),
+                    side,
+                    type: type || 'market',
+                    qty: parseFloat(qty),
+                    limitPrice: limitPrice ? parseFloat(limitPrice) : undefined,
+                    timeInForce: 'day'
+                });
+
+                // Record the trade
+                const tradeId = crypto.randomUUID();
+                const now = Math.floor(Date.now() / 1000);
+
+                await env.DB.prepare(`
+                    INSERT INTO trades (id, user_id, broker_name, symbol, side, qty, price, signal_id, executed_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                `).bind(tradeId, user.id, brokerName, symbol, side, qty, order.avgFillPrice || 0, signalId || null, now).run();
+
+                return new Response(JSON.stringify({ success: true, order }), {
+                    headers: { ...corsHeaders, "Content-Type": "application/json" }
+                });
+
+            } catch (e: any) {
+                console.error("Order execution error:", e);
+                return new Response(JSON.stringify({ error: e.message }), {
+                    status: 500, headers: corsHeaders
+                });
+            }
+        }
+
+        // GET /api/trades - Get user's trade history
+        if (url.pathname === "/api/trades" && request.method === "GET") {
+            try {
+                const user = await getSession(env, request);
+                if (!user) {
+                    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+                        status: 401, headers: corsHeaders
+                    });
+                }
+
+                if (!env.DB) {
+                    return new Response(JSON.stringify([]), {
+                        headers: { ...corsHeaders, "Content-Type": "application/json" }
+                    });
+                }
+
+                const trades = await env.DB.prepare(`
+                    SELECT * FROM trades WHERE user_id = ? ORDER BY executed_at DESC LIMIT 50
+                `).bind(user.id).all();
+
+                return new Response(JSON.stringify(trades.results || []), {
+                    headers: { ...corsHeaders, "Content-Type": "application/json" }
+                });
+
+            } catch (e: any) {
+                return new Response(JSON.stringify({ error: e.message }), {
+                    status: 500, headers: corsHeaders
+                });
+            }
+        }
+
 
         // --- EXISTING ROUTES ---
 

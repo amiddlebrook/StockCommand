@@ -18,12 +18,13 @@ interface HUDNavProps {
 const NAV_ITEMS: NavItem[] = [
     { id: 'command-center', label: 'DASHBOARD', icon: 'terminal', shortcut: '1' },
     { id: 'portfolio', label: 'PORTFOLIO', icon: 'briefcase', shortcut: '2' },
-    { id: 'market-clocks', label: 'MARKET DATA', icon: 'clock', shortcut: '3' },
-    { id: 'competitions', label: 'COMPETITIONS', icon: 'trophy', shortcut: '4' },
-    { id: 'comms', label: 'COMMS', icon: 'message', shortcut: '5' },
-    { id: 'news', label: 'NEWS', icon: 'activity', shortcut: '6' },
-    { id: 'creator', label: 'CREATOR', icon: 'code', shortcut: '7' },
-    { id: 'settings', label: 'SYSTEM', icon: 'settings', shortcut: '8' },
+    { id: 'trade', label: 'TRADE', icon: 'chart', shortcut: '3' },
+    { id: 'market-clocks', label: 'MARKET DATA', icon: 'clock', shortcut: '4' },
+    { id: 'competitions', label: 'COMPETITIONS', icon: 'trophy', shortcut: '5' },
+    { id: 'comms', label: 'COMMS', icon: 'message', shortcut: '6' },
+    { id: 'news', label: 'NEWS', icon: 'activity', shortcut: '7' },
+    { id: 'creator', label: 'CREATOR', icon: 'code', shortcut: '8' },
+    { id: 'settings', label: 'SYSTEM', icon: 'settings', shortcut: '9' },
 ];
 
 export const HUDNav: React.FC<HUDNavProps> = ({
