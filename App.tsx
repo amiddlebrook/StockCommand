@@ -98,11 +98,11 @@ const AppContent: React.FC = () => {
   const [uncuratedTicker, setUncuratedTicker] = useState<string | null>(null);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
-  // VIEW MODE: CHART = 2D Charts/Data, SPATIAL = 3D Agentic Universe (HUD)
-  type ViewMode = 'CHART' | 'SPATIAL';
+  // VIEW MODE: CHART = 2D Charts/Data, ARENA = 3D Agentic Universe (HUD)
+  type ViewMode = 'CHART' | 'ARENA';
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
     const saved = StorageService.loadSettings().viewMode;
-    return (saved as ViewMode) || 'SPATIAL';
+    return (saved as ViewMode) || 'ARENA';
   });
 
   // PERSISTENCE EFFECT HOOKS
@@ -439,8 +439,8 @@ const AppContent: React.FC = () => {
 
   return (
     <div className="hud-grid">
-      {/* 1. LEFT RAIL (NAV) - Hidden in SPATIAL mode */}
-      <div className={`hud-cell-nav ${isMobileMenuOpen ? 'mobile-open' : ''} ${viewMode === 'SPATIAL' ? 'hidden' : ''}`}>
+      {/* 1. LEFT RAIL (NAV) - Hidden in ARENA mode */}
+      <div className={`hud-cell-nav ${isMobileMenuOpen ? 'mobile-open' : ''} ${viewMode === 'ARENA' ? 'hidden' : ''}`}>
         <div className="md:hidden absolute top-4 right-4 z-50">
           <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 text-cyan-500"><Icon icon="close" className="w-6 h-6" /></button>
         </div>
@@ -454,6 +454,14 @@ const AppContent: React.FC = () => {
       {/* 2. HEADER (USER & SYSTEM STATUS) */}
       <div className="hud-cell-header justify-between">
         <div className="flex items-center gap-4">
+          {/* Mobile Menu Toggle - TOP LEFT */}
+          <button
+            className="md:hidden p-2 text-cyan-500 hover:bg-cyan-900/30 rounded"
+            onClick={() => setIsMobileMenuOpen(true)}
+          >
+            <Icon icon="menu" className="w-5 h-5" />
+          </button>
+
           <Icon icon="command" className="w-5 h-5 text-cyan-400 animate-spin-slow" />
           <h1 className="font-bold tracking-widest text-lg hidden md:block">STOCK_COMMAND <span className="text-cyan-500 text-xs align-top">V2.1</span></h1>
           <h1 className="font-bold tracking-widest text-lg md:hidden">CMD <span className="text-cyan-500 text-xs align-top">V2.1</span></h1>
@@ -472,14 +480,14 @@ const AppContent: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Return to HUD Button (SPATIAL mode only, when not on dashboard) */}
-          {viewMode === 'SPATIAL' && activeTab !== 'command-center' && (
+          {/* Return to Command Button (ARENA mode only, when not on dashboard) */}
+          {viewMode === 'ARENA' && activeTab !== 'command-center' && (
             <button
               onClick={() => setActiveTab('command-center')}
               className="flex items-center gap-1.5 px-2 py-1 text-xs font-mono rounded transition-all bg-slate-800 border border-purple-500/50 text-purple-400 hover:bg-purple-900/30 hover:text-purple-300"
             >
               <Icon icon="command" className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">HUD</span>
+              <span className="hidden sm:inline">Return to Command</span>
             </button>
           )}
 
@@ -495,13 +503,13 @@ const AppContent: React.FC = () => {
               CHART
             </button>
             <button
-              onClick={() => setViewMode('SPATIAL')}
-              className={`px-2 py-1 text-xs font-mono rounded transition-all ${viewMode === 'SPATIAL'
+              onClick={() => setViewMode('ARENA')}
+              className={`px-2 py-1 text-xs font-mono rounded transition-all ${viewMode === 'ARENA'
                 ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/30'
                 : 'text-slate-400 hover:text-white hover:bg-slate-800'
                 }`}
             >
-              SPATIAL
+              ARENA
             </button>
           </div>
 
@@ -515,14 +523,6 @@ const AppContent: React.FC = () => {
 
           <button onClick={() => setIsProfileOpen(true)} className="p-2 hover:bg-cyan-900/30 rounded text-cyan-500 transition-colors">
             <Icon icon="user" className="w-4 h-4" />
-          </button>
-
-          {/* Mobile Menu Toggle */}
-          <button
-            className="md:hidden p-2 text-cyan-500 hover:bg-cyan-900/30 rounded"
-            onClick={() => setIsMobileMenuOpen(true)}
-          >
-            <Icon icon="menu" className="w-5 h-5" />
           </button>
         </div>
       </div>

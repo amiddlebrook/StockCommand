@@ -19,7 +19,7 @@ const SPATIAL_NAV_ITEMS = [
 interface CentralCommandProps {
     activeMode?: string;
     status?: 'optimal' | 'warning' | 'critical';
-    viewMode?: 'CHART' | 'SPATIAL';
+    viewMode?: 'CHART' | 'ARENA';
     activeTab?: string;
     onNavigate?: (tab: string) => void;
     clocks?: MarketClock[];
@@ -30,7 +30,7 @@ interface CentralCommandProps {
 export const CentralCommand: React.FC<CentralCommandProps> = ({
     activeMode = 'READY',
     status = 'optimal',
-    viewMode = 'SPATIAL',
+    viewMode = 'ARENA',
     activeTab = 'command-center',
     onNavigate = () => { },
     clocks = [],

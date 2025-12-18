@@ -70,7 +70,7 @@ export const StorageService = {
         }
     },
 
-    saveSettings: (settings: { freshnessHours: number; viewMode?: 'CHART' | 'SPATIAL' }) => {
+    saveSettings: (settings: { freshnessHours: number; viewMode?: 'CHART' | 'ARENA' }) => {
         try {
             localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(settings));
         } catch (e) {
@@ -78,19 +78,19 @@ export const StorageService = {
         }
     },
 
-    loadSettings: (): { freshnessHours: number; viewMode?: 'CHART' | 'SPATIAL' } => {
+    loadSettings: (): { freshnessHours: number; viewMode?: 'CHART' | 'ARENA' } => {
         try {
             const saved = localStorage.getItem(STORAGE_KEYS.SETTINGS);
             if (saved) {
                 const parsed = JSON.parse(saved);
                 // Migrate legacy schemas
                 if (parsed.viewMode === '2D' || parsed.viewMode === 'TACTICAL') parsed.viewMode = 'CHART';
-                if (parsed.viewMode === '3D') parsed.viewMode = 'SPATIAL';
+                if (parsed.viewMode === '3D' || parsed.viewMode === 'SPATIAL') parsed.viewMode = 'ARENA';
                 return parsed;
             }
-            return { freshnessHours: 24, viewMode: 'SPATIAL' };
+            return { freshnessHours: 24, viewMode: 'ARENA' };
         } catch (e) {
-            return { freshnessHours: 24, viewMode: 'SPATIAL' };
+            return { freshnessHours: 24, viewMode: 'ARENA' };
         }
     },
 
