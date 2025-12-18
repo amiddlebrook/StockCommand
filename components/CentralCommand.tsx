@@ -1,17 +1,44 @@
 import React from 'react';
 import { Icon } from './Icon';
+import { TraditionalView } from './TraditionalView';
+import { MarketClock } from '../lib/agent/types';
 
 interface CentralCommandProps {
     activeMode?: string;
     status?: 'optimal' | 'warning' | 'critical';
+    viewMode?: 'TACTICAL' | 'SPATIAL';
+    clocks?: MarketClock[];
+    symbols?: string[];
+    onAddSymbol?: (symbol: string) => void;
 }
 
-export const CentralCommand: React.FC<CentralCommandProps> = ({ activeMode = 'READY', status = 'optimal' }) => {
+export const CentralCommand: React.FC<CentralCommandProps> = ({
+    activeMode = 'READY',
+    status = 'optimal',
+    viewMode = 'SPATIAL',
+    clocks = [],
+    symbols = [],
+    onAddSymbol = () => { }
+}) => {
     const colorClass = status === 'optimal' ? 'text-cyan-400' : status === 'warning' ? 'text-orange-400' : 'text-red-500';
     const ringColor = status === 'optimal' ? 'border-cyan-500/30' : status === 'warning' ? 'border-orange-500/30' : 'border-red-500/30';
 
+    // TACTICAL VIEW (2D Charts)
+    if (viewMode === 'TACTICAL') {
+        return (
+            <div className="w-full h-full animate-in fade-in duration-500">
+                <TraditionalView
+                    clocks={clocks}
+                    symbols={symbols}
+                    onAddSymbol={onAddSymbol}
+                />
+            </div>
+        );
+    }
+
+    // SPATIAL VIEW (3D / Rings)
     return (
-        <div className="relative flex items-center justify-center w-64 h-64 md:w-96 md:h-96 mx-auto my-8">
+        <div className="relative flex items-center justify-center w-64 h-64 md:w-96 md:h-96 mx-auto my-8 animate-in zoom-in-95 duration-500">
             {/* Outer Ring - Static */}
             <div className={`absolute inset-0 rounded-full border-2 ${ringColor} opacity-20`}></div>
 

@@ -21,7 +21,6 @@ import { SocialView } from './components/SocialView';
 import { ChatInput } from './components/ChatInput';
 import { NewsSynthesisView } from './components/NewsSynthesisView';
 import { SettingsView } from './components/SettingsView';
-import { TraditionalView } from './components/TraditionalView';
 import { BrokerConnectionModal } from './components/BrokerConnectionModal';
 import { TradeExecutionPanel } from './components/TradeExecutionPanel';
 import { BrokerPortfolioView } from './components/BrokerPortfolioView';
@@ -523,169 +522,163 @@ const AppContent: React.FC = () => {
         <div className="flex-1 overflow-hidden relative">
           {/* 2D Mode: Traditional View for most tabs */}
           {/* View Mode Switching: TACTICAL (Charts) vs SPATIAL (Console/3D) */}
-          {activeTab === 'command-center' && viewMode === 'TACTICAL' ? (
-            <div className="h-full overflow-hidden">
-              <TraditionalView
-                clocks={marketClocks}
-                symbols={symbols}
-                onAddSymbol={(sym) => setSymbols(prev => [...prev, sym])}
-              />
+          {activeTab === 'command-center' ? (
+            <CentralCommand
+              activeMode="READY"
+              viewMode={viewMode}
+              clocks={marketClocks}
+              symbols={symbols}
+              onAddSymbol={(sym) => setSymbols(prev => [...prev, sym])}
+            />
             </div>
-          ) : activeTab === 'command-center' ? (
-            <div className="h-full w-full">
-              <ConsoleWidget
-                messages={messages}
-                onSendMessage={handleSendMessage}
-                isLoading={isChatLoading}
-                isRecording={isRecording}
-                onStartRecording={handleStartRecording}
-                onStopRecording={handleStopRecording}
-              />
-            </div>
-          ) : activeTab === 'portfolio' ? (
-            <div className="h-full overflow-y-auto">
-              {hasBrokerConnection ? (
-                <div className="h-full overflow-hidden"><BrokerPortfolioView onOpenBrokerModal={() => setIsBrokerModalOpen(true)} /></div>
-              ) : (
-                <PortfolioView sleevesWithStats={sleevesWithStats} onClockClick={() => { }} freshnessThreshold={0} totalLiquidity={0} />
-              )}
-            </div>
-          ) : activeTab === 'trade' ? (
-            <div className="h-full overflow-hidden"><TradeExecutionPanel /></div>
-          ) : activeTab === 'comms' ? (
-            <div className="h-full overflow-hidden"><SocialView /></div>
-          ) : activeTab === 'news' ? (
-            <div className="h-full overflow-hidden"><NewsSynthesisView /></div>
-          ) : activeTab === 'settings' ? (
-            <div className="h-full overflow-hidden"><SettingsView /></div>
-          ) : activeTab === 'market-clocks' ? (
-            <div className="h-full overflow-y-auto"><MarketClocksView clocks={marketClocks} onClockClick={() => { }} onPinClock={() => { }} /></div>
-          ) : activeTab === 'competitions' ? (
-            <div className="h-full overflow-y-auto"><CompetitionsView clocks={marketClocks} onSubmitPortfolio={() => { }} /></div>
-          ) : activeTab === 'creator' ? (
-            <div className="h-full overflow-y-auto"><CreatorModeView clocks={marketClocks} /></div>
-          ) : activeTab === 'features' ? (
-            <div className="h-full overflow-y-auto p-4">
-              <h2 className="text-xl font-bold mb-4 font-mono text-cyan-400">AVAILABLE_MODULES</h2>
-              <div className="grid grid-cols-2 gap-4">
-                {Object.entries(FEATURE_CONFIG).map(([name, config]) => (
-                  <div key={name} className="bg-slate-900/40 border border-cyan-900/30 p-4 hover:border-cyan-500 hover:bg-cyan-900/10 cursor-pointer transition-all" onClick={() => { setActiveFeature({ name, symbols: ['SPY'], content: null }); setActiveTab('feature-detail'); }}>
-                    <h3 className="text-cyan-400 font-bold font-mono text-sm mb-1">{name}</h3>
-                    <p className="text-[10px] text-slate-500">{config.description}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : activeTab === 'feature-detail' && activeFeature ? (
-            <FeatureDetailView featureName={activeFeature.name} symbols={activeFeature.symbols} content={activeFeature.content} isLoading={false} onBack={() => setActiveTab('features')} onRerun={() => { }} />
-          ) : activeTab === 'entity-detail' && selectedEntity ? (
-            <EntityDetailView entity={selectedEntity} freshnessThreshold={0} onBack={() => setActiveTab('command-center')} onRunAnalysis={() => { }} researchContent={null} />
-          ) : null}
+        ) : activeTab === 'portfolio' ? (
+        <div className="h-full overflow-y-auto">
+          {hasBrokerConnection ? (
+            <div className="h-full overflow-hidden"><BrokerPortfolioView onOpenBrokerModal={() => setIsBrokerModalOpen(true)} /></div>
+          ) : (
+            <PortfolioView sleevesWithStats={sleevesWithStats} onClockClick={() => { }} freshnessThreshold={0} totalLiquidity={0} />
+          )}
         </div>
+        ) : activeTab === 'trade' ? (
+        <div className="h-full overflow-hidden"><TradeExecutionPanel /></div>
+        ) : activeTab === 'comms' ? (
+        <div className="h-full overflow-hidden"><SocialView /></div>
+        ) : activeTab === 'news' ? (
+        <div className="h-full overflow-hidden"><NewsSynthesisView /></div>
+        ) : activeTab === 'settings' ? (
+        <div className="h-full overflow-hidden"><SettingsView /></div>
+        ) : activeTab === 'market-clocks' ? (
+        <div className="h-full overflow-y-auto"><MarketClocksView clocks={marketClocks} onClockClick={() => { }} onPinClock={() => { }} /></div>
+        ) : activeTab === 'competitions' ? (
+        <div className="h-full overflow-y-auto"><CompetitionsView clocks={marketClocks} onSubmitPortfolio={() => { }} /></div>
+        ) : activeTab === 'creator' ? (
+        <div className="h-full overflow-y-auto"><CreatorModeView clocks={marketClocks} /></div>
+        ) : activeTab === 'features' ? (
+        <div className="h-full overflow-y-auto p-4">
+          <h2 className="text-xl font-bold mb-4 font-mono text-cyan-400">AVAILABLE_MODULES</h2>
+          <div className="grid grid-cols-2 gap-4">
+            {Object.entries(FEATURE_CONFIG).map(([name, config]) => (
+              <div key={name} className="bg-slate-900/40 border border-cyan-900/30 p-4 hover:border-cyan-500 hover:bg-cyan-900/10 cursor-pointer transition-all" onClick={() => { setActiveFeature({ name, symbols: ['SPY'], content: null }); setActiveTab('feature-detail'); }}>
+                <h3 className="text-cyan-400 font-bold font-mono text-sm mb-1">{name}</h3>
+                <p className="text-[10px] text-slate-500">{config.description}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+        ) : activeTab === 'feature-detail' && activeFeature ? (
+        <FeatureDetailView featureName={activeFeature.name} symbols={activeFeature.symbols} content={activeFeature.content} isLoading={false} onBack={() => setActiveTab('features')} onRerun={() => { }} />
+        ) : activeTab === 'entity-detail' && selectedEntity ? (
+        <EntityDetailView entity={selectedEntity} freshnessThreshold={0} onBack={() => setActiveTab('command-center')} onRunAnalysis={() => { }} researchContent={null} />
+          ) : null}
+      </div>
 
-        {/* BOTTOM: Collapsible Console Drawer (Hidden on Command Center View) */}
-        {activeTab !== 'command-center' && (
-          <div
-            className={`
+      {/* BOTTOM: Collapsible Console Drawer (Hidden on Command Center View) */}
+      {activeTab !== 'command-center' && (
+        <div
+          className={`
                   flex-shrink-0 relative z-20 shadow-[0_-5px_20px_rgba(0,0,0,0.5)] border-t border-slate-800 bg-slate-950 transition-all duration-300 ease-in-out
                   ${isConsoleOpen ? 'h-[350px]' : 'h-[48px]'}
               `}
-          >
-            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-900 via-cyan-500 to-cyan-900 opacity-20"></div>
+        >
+          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-900 via-cyan-500 to-cyan-900 opacity-20"></div>
 
-            {/* Toggle Handle */}
-            <div
-              className={`
+          {/* Toggle Handle */}
+          <div
+            className={`
                 absolute -top-5 left-1/2 -translate-x-1/2 w-48 h-8 rounded-t-xl flex items-center justify-center cursor-pointer z-30 transition-all
                 ${isConsoleOpen
-                  ? 'bg-slate-900 border-t border-x border-slate-700 shadow-[0_-4px_10px_rgba(0,0,0,0.5)]'
-                  : 'bg-cyan-900/80 border-t border-x border-cyan-500/50 shadow-[0_-4px_10px_rgba(6,182,212,0.3)] hover:bg-cyan-600'}
+                ? 'bg-slate-900 border-t border-x border-slate-700 shadow-[0_-4px_10px_rgba(0,0,0,0.5)]'
+                : 'bg-cyan-900/80 border-t border-x border-cyan-500/50 shadow-[0_-4px_10px_rgba(6,182,212,0.3)] hover:bg-cyan-600'}
               `}
-              onClick={() => setIsConsoleOpen(!isConsoleOpen)}
-            >
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-bold text-white tracking-widest uppercase">{isConsoleOpen ? 'Minimize' : 'Terminal'}</span>
-                <Icon icon="chevron-down" className={`w-4 h-4 text-white transition-transform duration-300 ${isConsoleOpen ? '' : 'rotate-180'}`} />
+            onClick={() => setIsConsoleOpen(!isConsoleOpen)}
+          >
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-bold text-white tracking-widest uppercase">{isConsoleOpen ? 'Minimize' : 'Terminal'}</span>
+              <Icon icon="chevron-down" className={`w-4 h-4 text-white transition-transform duration-300 ${isConsoleOpen ? '' : 'rotate-180'}`} />
+            </div>
+          </div>
+
+          {isConsoleOpen ? (
+            <ConsoleWidget
+              messages={messages}
+              onSendMessage={handleSendMessage}
+              isLoading={isChatLoading}
+              isRecording={isRecording}
+              onStartRecording={handleStartRecording}
+              onStopRecording={handleStopRecording}
+            />
+          ) : (
+            /* Minimized State: Active Chat Input */
+            <div className="h-full flex flex-col bg-slate-950 border-t border-slate-800">
+              <div className="flex-1 px-2 pt-1">
+                <ChatInput
+                  onSendMessage={(msg, img) => {
+                    handleSendMessage(msg, img);
+                    setIsConsoleOpen(true);
+                  }}
+                  isLoading={isChatLoading}
+                  isRecording={isRecording}
+                  onStartRecording={handleStartRecording}
+                  onStopRecording={handleStopRecording}
+                  compact={true}
+                />
               </div>
             </div>
-
-            {isConsoleOpen ? (
-              <ConsoleWidget
-                messages={messages}
-                onSendMessage={handleSendMessage}
-                isLoading={isChatLoading}
-                isRecording={isRecording}
-                onStartRecording={handleStartRecording}
-                onStopRecording={handleStopRecording}
-              />
-            ) : (
-              /* Minimized State: Active Chat Input */
-              <div className="h-full flex flex-col bg-slate-950 border-t border-slate-800">
-                <div className="flex-1 px-2 pt-1">
-                  <ChatInput
-                    onSendMessage={(msg, img) => {
-                      handleSendMessage(msg, img);
-                      setIsConsoleOpen(true);
-                    }}
-                    isLoading={isChatLoading}
-                    isRecording={isRecording}
-                    onStartRecording={handleStartRecording}
-                    onStopRecording={handleStopRecording}
-                    compact={true}
-                  />
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* 5. FOOTER (TICKER) */}
-      <div className="hud-cell-footer justify-between">
-        <span className="flex items-center gap-2">
-          <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
-          LIVE FEED :: MARKET OPEN
-        </span>
-        <span className="opacity-50">LATE_PACKET_LOSS: 0.00%</span>
-      </div>
-
-      {/* Overlays */}
-      {isMobileMenuOpen && (
-        <div
-          className="fixed inset-0 bg-black/80 z-40 md:hidden backdrop-blur-sm"
-          onClick={() => setIsMobileMenuOpen(false)}
-        />
+          )}
+        </div>
       )}
+    </div>
+
+      {/* 5. FOOTER (TICKER) */ }
+  <div className="hud-cell-footer justify-between">
+    <span className="flex items-center gap-2">
+      <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
+      LIVE FEED :: MARKET OPEN
+    </span>
+    <span className="opacity-50">LATE_PACKET_LOSS: 0.00%</span>
+  </div>
+
+  {/* Overlays */ }
+  {
+    isMobileMenuOpen && (
+      <div
+        className="fixed inset-0 bg-black/80 z-40 md:hidden backdrop-blur-sm"
+        onClick={() => setIsMobileMenuOpen(false)}
+      />
+    )
+  }
       <CommandPalette isOpen={isCommandPaletteOpen} onClose={() => setIsCommandPaletteOpen(false)} onNavigate={(tab) => { setActiveTab(tab as any); setIsCommandPaletteOpen(false); }} onSearch={(q) => { setActiveTab('command-center'); handleSendMessage(q); }} />
       <PortfolioReportModal isOpen={isPortfolioModalOpen} symbols={symbols} activeSymbol={null} isGenerating={isPortfolioGenerating} onClose={() => setIsPortfolioModalOpen(false)} onSubmit={handleGeneratePortfolioReport} />
       <ProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
       <BrokerConnectionModal isOpen={isBrokerModalOpen} onClose={() => setIsBrokerModalOpen(false)} />
 
-      {/* MOBILE SIDEBAR OVERLAY */}
-      {isMobileMenuOpen && (
-        <div className="fixed inset-0 z-50 flex md:hidden font-sans">
-          <div className="relative z-50 h-full">
-            <HUDNav
-              activeTab={activeTab}
-              onNavigate={(tab) => {
-                setActiveTab(tab as any);
-                setIsMobileMenuOpen(false);
-              }}
-              marketStatus={marketStatus}
-              activeJobsCount={activeJobs.length}
-            />
-          </div>
-          {/* Backdrop */}
-          <div
-            className="flex-1 bg-black/60 backdrop-blur-sm transition-opacity"
-            onClick={() => setIsMobileMenuOpen(false)}
+  {/* MOBILE SIDEBAR OVERLAY */ }
+  {
+    isMobileMenuOpen && (
+      <div className="fixed inset-0 z-50 flex md:hidden font-sans">
+        <div className="relative z-50 h-full">
+          <HUDNav
+            activeTab={activeTab}
+            onNavigate={(tab) => {
+              setActiveTab(tab as any);
+              setIsMobileMenuOpen(false);
+            }}
+            marketStatus={marketStatus}
+            activeJobsCount={activeJobs.length}
           />
         </div>
-      )}
+        {/* Backdrop */}
+        <div
+          className="flex-1 bg-black/60 backdrop-blur-sm transition-opacity"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      </div>
+    )
+  }
 
-      {/* 6. MOBILE NAVIGATION - REMOVED per user request */}
-      {/* <MobileNav activeTab={activeTab} setActiveTab={setActiveTab} /> */}
-    </div>
+  {/* 6. MOBILE NAVIGATION - REMOVED per user request */ }
+  {/* <MobileNav activeTab={activeTab} setActiveTab={setActiveTab} /> */ }
+    </div >
   );
 };
 
