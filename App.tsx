@@ -18,7 +18,6 @@ import { CommandPalette } from './components/CommandPalette';
 import { Icon } from './components/Icon';
 import { MarketClocksView } from './components/MarketClocksView';
 import { SocialView } from './components/SocialView';
-import { ConsoleWidget } from './components/ConsoleWidget';
 import { ChatInput } from './components/ChatInput';
 import { NewsSynthesisView } from './components/NewsSynthesisView';
 import { SettingsView } from './components/SettingsView';

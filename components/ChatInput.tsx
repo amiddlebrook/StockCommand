@@ -1,4 +1,3 @@
-```typescript
 import React, { useState, useRef, ChangeEvent } from 'react';
 import { Icon } from './Icon';
 
@@ -72,11 +71,10 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, onStartReco
 
         <button
           onClick={isRecording ? onStopRecording : onStartRecording}
-          className={`p - 2 rounded - lg transition - all ${
-  isRecording
-    ? 'text-red-500 bg-red-500/10 animate-pulse'
-    : 'text-gray-400 hover:text-cyan-400 hover:bg-slate-800/50'
-} `}
+          className={`p - 2 rounded - lg transition - all ${isRecording
+              ? 'text-red-500 bg-red-500/10 animate-pulse'
+              : 'text-gray-400 hover:text-cyan-400 hover:bg-slate-800/50'
+            } `}
           aria-label={isRecording ? 'Stop recording' : 'Start recording'}
         >
           <Icon icon="mic" className="w-5 h-5" />
@@ -87,7 +85,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, onStartReco
           onChange={(e) => setInput(e.target.value)}
           onKeyPress={handleKeyPress}
           placeholder={compact ? "Enter command..." : "Enter command or ask Agent..."}
-          className={`w - full bg - transparent text - cyan - 100 placeholder - slate - 600 focus: outline - none font - mono text - sm resize - none ${ compact ? 'h-8 py-1' : 'h-12 py-3' } `}
+          className={`w - full bg - transparent text - cyan - 100 placeholder - slate - 600 focus: outline - none font - mono text - sm resize - none ${compact ? 'h-8 py-1' : 'h-12 py-3'} `}
           disabled={isLoading}
         />
 
