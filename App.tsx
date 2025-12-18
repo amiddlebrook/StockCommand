@@ -520,6 +520,16 @@ const AppContent: React.FC = () => {
       <div className="hud-cell-main flex flex-col">
         {/* TOP: Dynamic Content (Full width now) */}
         <div className="flex-1 overflow-hidden relative">
+          {/* SPATIAL Mode: Floating Return to HUD Button */}
+          {viewMode === 'SPATIAL' && activeTab !== 'command-center' && (
+            <button
+              onClick={() => setActiveTab('command-center')}
+              className="fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-3 bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-500 hover:to-cyan-500 text-white font-mono text-sm rounded-full shadow-2xl shadow-purple-500/30 transition-all hover:scale-105"
+            >
+              <Icon icon="command" className="w-5 h-5" />
+              <span className="hidden sm:inline">Return to HUD</span>
+            </button>
+          )}
           {/* 2D Mode: Traditional View for most tabs */}
           {/* View Mode Switching: TACTICAL (Charts) vs SPATIAL (Console/3D) */}
           {activeTab === 'command-center' ? (
