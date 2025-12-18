@@ -439,8 +439,8 @@ const AppContent: React.FC = () => {
 
   return (
     <div className="hud-grid">
-      {/* 1. LEFT RAIL (NAV) */}
-      <div className={`hud-cell-nav ${isMobileMenuOpen ? 'mobile-open' : ''}`}>
+      {/* 1. LEFT RAIL (NAV) - Hidden in SPATIAL mode */}
+      <div className={`hud-cell-nav ${isMobileMenuOpen ? 'mobile-open' : ''} ${viewMode === 'SPATIAL' ? 'hidden' : ''}`}>
         <div className="md:hidden absolute top-4 right-4 z-50">
           <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 text-cyan-500"><Icon icon="close" className="w-6 h-6" /></button>
         </div>
@@ -526,6 +526,8 @@ const AppContent: React.FC = () => {
             <CentralCommand
               activeMode="READY"
               viewMode={viewMode}
+              activeTab={activeTab}
+              onNavigate={(tab) => setActiveTab(tab as any)}
               clocks={marketClocks}
               symbols={symbols}
               onAddSymbol={(sym) => setSymbols(prev => [...prev, sym])}
