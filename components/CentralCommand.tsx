@@ -3,17 +3,11 @@ import { Icon } from './Icon';
 import { TraditionalView } from './TraditionalView';
 import { MarketClock } from '../lib/agent/types';
 
-// Navigation items for SPATIAL HUD (same as sidebar)
-const SPATIAL_NAV_ITEMS = [
-    { id: 'command-center', label: 'DASHBOARD', icon: 'terminal', angle: 0 },
-    { id: 'portfolio', label: 'PORTFOLIO', icon: 'briefcase', angle: 40 },
-    { id: 'trade', label: 'TRADE', icon: 'chart', angle: 80 },
-    { id: 'market-clocks', label: 'MARKETS', icon: 'clock', angle: 120 },
-    { id: 'competitions', label: 'COMPETE', icon: 'trophy', angle: 160 },
-    { id: 'comms', label: 'COMMS', icon: 'message', angle: 200 },
-    { id: 'news', label: 'NEWS', icon: 'activity', angle: 240 },
-    { id: 'creator', label: 'CREATOR', icon: 'code', angle: 280 },
-    { id: 'settings', label: 'SYSTEM', icon: 'settings', angle: 320 },
+// ARENA MODE TABS (shown in HUD orbital nodes)
+const ARENA_NAV_ITEMS = [
+    { id: 'competitions', label: 'COMPETE', icon: 'trophy', angle: 270 },
+    { id: 'comms', label: 'COMMS', icon: 'message', angle: 330 },
+    { id: 'creator', label: 'CREATOR', icon: 'code', angle: 30 },
 ];
 
 interface CentralCommandProps {
@@ -83,7 +77,7 @@ export const CentralCommand: React.FC<CentralCommandProps> = ({
             </div>
 
             {/* Orbital Navigation Nodes */}
-            {SPATIAL_NAV_ITEMS.map((item) => {
+            {ARENA_NAV_ITEMS.map((item) => {
                 const radians = (item.angle * Math.PI) / 180;
                 const x = Math.cos(radians) * orbitRadius;
                 const y = Math.sin(radians) * orbitRadius;

@@ -100,10 +100,22 @@ const AppContent: React.FC = () => {
 
   // VIEW MODE: DATA = 2D Charts/Data, ARENA = 3D Agentic Universe (HUD)
   type ViewMode = 'DATA' | 'ARENA';
+  const DATA_TABS = ['command-center', 'portfolio', 'trade', 'market-clocks', 'news', 'settings'];
+  const ARENA_TABS = ['competitions', 'comms', 'creator'];
+
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
     const saved = StorageService.loadSettings().viewMode;
     return (saved as ViewMode) || 'ARENA';
   });
+
+  // Auto-redirect when switching modes
+  useEffect(() => {
+    if (viewMode === 'DATA' && !DATA_TABS.includes(activeTab)) {
+      setActiveTab('command-center');
+    } else if (viewMode === 'ARENA' && !ARENA_TABS.includes(activeTab)) {
+      setActiveTab('competitions');
+    }
+  }, [viewMode]);
 
   // PERSISTENCE EFFECT HOOKS
   useEffect(() => { StorageService.saveWidgets(widgets); }, [widgets]);
