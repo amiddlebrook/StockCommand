@@ -3,11 +3,16 @@ import { Icon } from './Icon';
 import { TraditionalView } from './TraditionalView';
 import { MarketClock } from '../lib/agent/types';
 
-// ARENA MODE TABS (shown in HUD orbital nodes)
+// ARENA MODE TABS (shown in HUD orbital nodes) - 8 tabs
 const ARENA_NAV_ITEMS = [
-    { id: 'competitions', label: 'COMPETE', icon: 'trophy', angle: 270 },
-    { id: 'comms', label: 'COMMS', icon: 'message', angle: 330 },
-    { id: 'creator', label: 'CREATOR', icon: 'code', angle: 30 },
+    { id: 'competitions', label: 'COMPETE', icon: 'trophy', angle: 0 },
+    { id: 'leaderboards', label: 'RANKS', icon: 'award', angle: 45 },
+    { id: 'duels', label: 'DUELS', icon: 'swords', angle: 90 },
+    { id: 'comms', label: 'COMMS', icon: 'message', angle: 135 },
+    { id: 'teams', label: 'TEAMS', icon: 'users', angle: 180 },
+    { id: 'creator', label: 'CREATOR', icon: 'code', angle: 225 },
+    { id: 'marketplace', label: 'MARKET', icon: 'store', angle: 270 },
+    { id: 'settings', label: 'SYSTEM', icon: 'settings', angle: 315 },
 ];
 
 interface CentralCommandProps {

@@ -100,20 +100,42 @@ const AppContent: React.FC = () => {
 
   // VIEW MODE: DATA = 2D Charts/Data, ARENA = 3D Agentic Universe (HUD)
   type ViewMode = 'DATA' | 'ARENA';
-  const DATA_TABS = ['command-center', 'portfolio', 'trade', 'market-clocks', 'news', 'settings'];
-  const ARENA_TABS = ['competitions', 'comms', 'creator'];
+
+  // DATA Mode: Research & Analysis tabs (8)
+  const DATA_TABS = [
+    'command-center',  // Dashboard
+    'portfolio',       // Portfolio + Strategies
+    'trade',           // Trade Execution
+    'market-clocks',   // Market Data
+    'news',            // News & Sentiment
+    'screener',        // Stock Screener
+    'calendar',        // Economic Calendar
+    'settings',        // System Settings
+  ];
+
+  // ARENA Mode: Competition & Social tabs (8)
+  const ARENA_TABS = [
+    'command-center',  // HUD (Central Command)
+    'competitions',    // Tournaments
+    'leaderboards',    // Rankings
+    'duels',           // Head-to-head battles
+    'comms',           // Chat & Social
+    'teams',           // Guilds/Teams
+    'creator',         // Strategy Builder
+    'marketplace',     // Buy/Sell Strategies
+  ];
 
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
     const saved = StorageService.loadSettings().viewMode;
     return (saved as ViewMode) || 'ARENA';
   });
 
-  // Auto-redirect when switching modes
+  // Auto-redirect when switching modes (ARENA always goes to HUD first)
   useEffect(() => {
     if (viewMode === 'DATA' && !DATA_TABS.includes(activeTab)) {
       setActiveTab('command-center');
     } else if (viewMode === 'ARENA' && !ARENA_TABS.includes(activeTab)) {
-      setActiveTab('competitions');
+      setActiveTab('command-center'); // Always go to HUD first
     }
   }, [viewMode]);
 

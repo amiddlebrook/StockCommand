@@ -15,14 +15,16 @@ interface HUDNavProps {
     activeJobsCount?: number;
 }
 
-// DATA MODE TABS (shown in sidebar)
+// DATA MODE TABS (shown in sidebar) - 8 tabs
 const NAV_ITEMS: NavItem[] = [
     { id: 'command-center', label: 'DASHBOARD', icon: 'terminal', shortcut: '1' },
     { id: 'portfolio', label: 'PORTFOLIO', icon: 'briefcase', shortcut: '2' },
     { id: 'trade', label: 'TRADE', icon: 'chart', shortcut: '3' },
     { id: 'market-clocks', label: 'MARKET DATA', icon: 'clock', shortcut: '4' },
     { id: 'news', label: 'NEWS', icon: 'activity', shortcut: '5' },
-    { id: 'settings', label: 'SYSTEM', icon: 'settings', shortcut: '6' },
+    { id: 'screener', label: 'SCREENER', icon: 'search', shortcut: '6' },
+    { id: 'calendar', label: 'CALENDAR', icon: 'calendar', shortcut: '7' },
+    { id: 'settings', label: 'SYSTEM', icon: 'settings', shortcut: '8' },
 ];
 
 export const HUDNav: React.FC<HUDNavProps> = ({
