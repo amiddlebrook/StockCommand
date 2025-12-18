@@ -6,9 +6,10 @@ import { SystemHealth } from './SystemHealth';
 
 export const SettingsView: React.FC = () => {
     const [activeSection, setActiveSection] = useState<'GENERAL' | 'MODELS' | 'OPTIMIZER' | 'HEALTH' | 'BILLING'>('MODELS');
+    const [isPro, setIsPro] = useState(false); // Mock User State
 
-    // MOCK USER STATE - In real app, this comes from Auth Context
-    const [isPro, setIsPro] = useState(false); // Default to Free for demo purposes
+    // Mobile Navigation State
+    const [showMobileSidebar, setShowMobileSidebar] = useState(true);
 
     // Mock Settings State
     const [settings, setSettings] = useState({
@@ -22,7 +23,7 @@ export const SettingsView: React.FC = () => {
         },
         optimizer: {
             autoApply: false,
-            budget: 50, // dollars
+            budget: 50,
             maxGenerations: 100
         }
     });
@@ -35,11 +36,20 @@ export const SettingsView: React.FC = () => {
         { id: 'BILLING', label: 'Plan & Billing', icon: 'credit-card' },
     ];
 
-    return (
-        <div className="flex-1 h-full bg-slate-950 flex overflow-hidden">
+    const handleNavClick = (id: string) => {
+        setActiveSection(id as any);
+        setShowMobileSidebar(false);
+    };
 
-            {/* 1. SIDEBAR (Artemis Style) */}
-            <div className="w-64 bg-slate-900/50 border-r border-slate-800 flex flex-col shrink-0 z-20">
+    return (
+        <div className="flex-1 h-full bg-slate-950 flex overflow-hidden relative">
+
+            {/* 1. SIDEBAR (Responsive) */}
+            <div className={`
+                bg-slate-900/50 border-r border-slate-800 flex-col shrink-0 z-20 
+                md:flex md:w-64
+                ${showMobileSidebar ? 'flex w-full absolute inset-0 bg-slate-950 md:static md:bg-transparent' : 'hidden'}
+            `}>
                 <div className="p-6 border-b border-slate-800">
                     <h2 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
                         <Icon icon="settings" className="text-cyan-500 w-5 h-5" />
@@ -54,7 +64,7 @@ export const SettingsView: React.FC = () => {
                         return (
                             <button
                                 key={item.id}
-                                onClick={() => setActiveSection(item.id as any)}
+                                onClick={() => handleNavClick(item.id)}
                                 className={`
                                     w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all
                                     ${isActive
@@ -64,6 +74,10 @@ export const SettingsView: React.FC = () => {
                             >
                                 <Icon icon={item.icon as any} className={`w-4 h-4 ${isActive ? 'text-cyan-400' : 'text-slate-500'}`} />
                                 {item.label}
+                                {/* Mobile Chevron */}
+                                <div className="ml-auto md:hidden">
+                                    <Icon icon="chevron-right" className="w-4 h-4 text-slate-600" />
+                                </div>
                             </button>
                         );
                     })}
@@ -91,18 +105,28 @@ export const SettingsView: React.FC = () => {
             </div>
 
             {/* 2. MAIN CONTENT AREA */}
-            <div className="flex-1 overflow-y-auto bg-slate-950 relative">
-                <div className="max-w-5xl mx-auto p-8">
+            <div className={`flex-1 overflow-y-auto bg-slate-950 relative md:block ${showMobileSidebar ? 'hidden' : 'block'}`}>
+                <div className="max-w-5xl mx-auto p-4 md:p-8">
 
                     {/* Header for Section */}
-                    <div className="mb-8">
-                        <h1 className="text-2xl font-bold text-white mb-2">{NAV_ITEMS.find(n => n.id === activeSection)?.label}</h1>
-                        <div className="h-1 w-20 bg-cyan-500 rounded-full"></div>
+                    <div className="mb-8 flex items-center gap-4">
+                        {/* Mobile Back Button */}
+                        <button
+                            onClick={() => setShowMobileSidebar(true)}
+                            className="md:hidden p-2 rounded-lg bg-slate-900 border border-slate-700 text-slate-400 hover:text-white"
+                        >
+                            <Icon icon="arrow-left" className="w-5 h-5" />
+                        </button>
+
+                        <div>
+                            <h1 className="text-2xl font-bold text-white mb-2">{NAV_ITEMS.find(n => n.id === activeSection)?.label}</h1>
+                            <div className="h-1 w-20 bg-cyan-500 rounded-full"></div>
+                        </div>
                     </div>
 
                     {activeSection === 'GENERAL' && (
                         <div className="space-y-6">
-                            <div className="grid grid-cols-2 gap-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div className="space-y-2">
                                     <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Application Name</label>
                                     <input type="text" value={settings.appName} readOnly className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-sm text-slate-200" />
@@ -184,7 +208,7 @@ export const SettingsView: React.FC = () => {
                                         <div className="h-3 w-3 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_10px_#10b981]"></div>
                                     </div>
 
-                                    <div className="grid grid-cols-2 gap-6">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         <div className="space-y-2">
                                             <label className="text-xs font-bold text-slate-500 uppercase">Monthly Budget Limit</label>
                                             <input type="range" min="10" max="500" value={settings.optimizer.budget} onChange={(e) => setSettings({ ...settings, optimizer: { ...settings.optimizer, budget: parseInt(e.target.value) } })} className="w-full accent-cyan-500" />
