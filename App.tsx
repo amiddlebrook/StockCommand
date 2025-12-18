@@ -487,7 +487,7 @@ const AppContent: React.FC = () => {
               className="flex items-center gap-1.5 px-2 py-1 text-xs font-mono rounded transition-all bg-slate-800 border border-purple-500/50 text-purple-400 hover:bg-purple-900/30 hover:text-purple-300"
             >
               <Icon icon="command" className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Return to Command</span>
+              <span className="hidden sm:inline">Return to Arena</span>
             </button>
           )}
 
