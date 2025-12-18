@@ -11,10 +11,16 @@ if (!rootElement) {
 }
 
 const root = ReactDOM.createRoot(rootElement);
-root.render(
-  <React.StrictMode>
-    <AuthProvider>
-      <App />
-    </AuthProvider>
-  </React.StrictMode>
-);
+console.log("Application Entry Point - Mounting Root");
+try {
+  root.render(
+    <React.StrictMode>
+      <AuthProvider>
+        <App />
+      </AuthProvider>
+    </React.StrictMode>
+  );
+  console.log("Application Render Triggered");
+} catch (e) {
+  console.error("Critical Render Error:", e);
+}
