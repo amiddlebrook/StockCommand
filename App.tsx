@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import { HUDNav } from './components/HUDNav';
-import { MobileNav } from './components/MobileNav';
+// import { MobileNav } from './components/MobileNav';
 import { CentralCommand } from './components/CentralCommand';
 import { StatusWidget } from './components/StatusWidget';
 import { LogicPipeline } from './components/LogicPipeline';
@@ -588,7 +588,6 @@ const AppContent: React.FC = () => {
             className={`
                   flex-shrink-0 relative z-20 shadow-[0_-5px_20px_rgba(0,0,0,0.5)] border-t border-slate-800 bg-slate-950 transition-all duration-300 ease-in-out
                   ${isConsoleOpen ? 'h-[350px]' : 'h-[48px]'}
-                  mb-[64px] md:mb-0
               `}
           >
             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-900 via-cyan-500 to-cyan-900 opacity-20"></div>
@@ -650,8 +649,8 @@ const AppContent: React.FC = () => {
       <ProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
       <BrokerConnectionModal isOpen={isBrokerModalOpen} onClose={() => setIsBrokerModalOpen(false)} />
 
-      {/* 6. MOBILE NAVIGATION */}
-      <MobileNav activeTab={activeTab} setActiveTab={setActiveTab} />
+      {/* 6. MOBILE NAVIGATION - REMOVED per user request */}
+      {/* <MobileNav activeTab={activeTab} setActiveTab={setActiveTab} /> */}
     </div>
   );
 };
