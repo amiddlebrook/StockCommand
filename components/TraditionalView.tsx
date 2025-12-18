@@ -89,7 +89,7 @@ export const TraditionalView: React.FC<TraditionalViewProps> = ({ clocks = [], s
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-xl font-bold text-white font-mono">TACTICAL_VIEW</h1>
+                    <h1 className="text-xl font-bold text-white font-mono">CHART_VIEW</h1>
                     <p className="text-xs text-slate-500">Raw data & charts — compare with Spatial color signals</p>
                 </div>
 

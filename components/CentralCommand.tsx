@@ -6,7 +6,7 @@ import { MarketClock } from '../lib/agent/types';
 interface CentralCommandProps {
     activeMode?: string;
     status?: 'optimal' | 'warning' | 'critical';
-    viewMode?: 'TACTICAL' | 'SPATIAL';
+    viewMode?: 'CHART' | 'SPATIAL';
     clocks?: MarketClock[];
     symbols?: string[];
     onAddSymbol?: (symbol: string) => void;
@@ -23,8 +23,8 @@ export const CentralCommand: React.FC<CentralCommandProps> = ({
     const colorClass = status === 'optimal' ? 'text-cyan-400' : status === 'warning' ? 'text-orange-400' : 'text-red-500';
     const ringColor = status === 'optimal' ? 'border-cyan-500/30' : status === 'warning' ? 'border-orange-500/30' : 'border-red-500/30';
 
-    // TACTICAL VIEW (2D Charts)
-    if (viewMode === 'TACTICAL') {
+    // CHART VIEW (2D Charts)
+    if (viewMode === 'CHART') {
         return (
             <div className="w-full h-full animate-in fade-in duration-500">
                 <TraditionalView
