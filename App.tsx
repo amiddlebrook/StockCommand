@@ -98,8 +98,8 @@ const AppContent: React.FC = () => {
   const [uncuratedTicker, setUncuratedTicker] = useState<string | null>(null);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
-  // VIEW MODE: CHART = 2D Charts/Data, ARENA = 3D Agentic Universe (HUD)
-  type ViewMode = 'CHART' | 'ARENA';
+  // VIEW MODE: DATA = 2D Charts/Data, ARENA = 3D Agentic Universe (HUD)
+  type ViewMode = 'DATA' | 'ARENA';
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
     const saved = StorageService.loadSettings().viewMode;
     return (saved as ViewMode) || 'ARENA';
@@ -494,13 +494,13 @@ const AppContent: React.FC = () => {
           {/* View Mode Toggle */}
           <div className="flex items-center bg-slate-900 rounded-lg p-1 border border-slate-800">
             <button
-              onClick={() => setViewMode('CHART')}
-              className={`px-2 py-1 text-xs font-mono rounded transition-all ${viewMode === 'CHART'
+              onClick={() => setViewMode('DATA')}
+              className={`px-2 py-1 text-xs font-mono rounded transition-all ${viewMode === 'DATA'
                 ? 'bg-cyan-600 text-white shadow-lg shadow-cyan-500/30'
                 : 'text-slate-400 hover:text-white hover:bg-slate-800'
                 }`}
             >
-              CHART
+              DATA
             </button>
             <button
               onClick={() => setViewMode('ARENA')}

@@ -19,7 +19,7 @@ const SPATIAL_NAV_ITEMS = [
 interface CentralCommandProps {
     activeMode?: string;
     status?: 'optimal' | 'warning' | 'critical';
-    viewMode?: 'CHART' | 'ARENA';
+    viewMode?: 'DATA' | 'ARENA';
     activeTab?: string;
     onNavigate?: (tab: string) => void;
     clocks?: MarketClock[];
@@ -41,8 +41,8 @@ export const CentralCommand: React.FC<CentralCommandProps> = ({
     const colorClass = status === 'optimal' ? 'text-cyan-400' : status === 'warning' ? 'text-orange-400' : 'text-red-500';
     const ringColor = status === 'optimal' ? 'border-cyan-500/30' : status === 'warning' ? 'border-orange-500/30' : 'border-red-500/30';
 
-    // CHART VIEW (2D Charts)
-    if (viewMode === 'CHART') {
+    // DATA VIEW (2D Charts)
+    if (viewMode === 'DATA') {
         return (
             <div className="w-full h-full animate-in fade-in duration-500">
                 <TraditionalView
