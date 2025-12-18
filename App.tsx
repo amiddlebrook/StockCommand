@@ -675,8 +675,7 @@ const AppContent: React.FC = () => {
                   setActiveTab(tab as any);
                   setIsMobileMenuOpen(false);
                 }}
-                marketStatus={marketStatus}
-                activeJobsCount={activeJobs.length}
+                activeJobsCount={activeJobsCount}
               />
             </div>
             {/* Backdrop */}
