@@ -142,7 +142,7 @@
     grid-column: 1 / -1;
     margin-bottom: 64px;
     /* Space for Mobile Nav */
-    display: none;
+    display: none !important;
     /* Hide footer text on mobile to save space, or keep if needed */
   }
 

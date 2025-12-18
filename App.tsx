@@ -504,6 +504,14 @@ const AppContent: React.FC = () => {
           <button onClick={() => setIsProfileOpen(true)} className="p-2 hover:bg-cyan-900/30 rounded text-cyan-500 transition-colors">
             <Icon icon="user" className="w-4 h-4" />
           </button>
+
+          {/* Mobile Menu Toggle */}
+          <button
+            className="md:hidden p-2 text-cyan-500 hover:bg-cyan-900/30 rounded"
+            onClick={() => setIsMobileMenuOpen(true)}
+          >
+            <Icon icon="menu" className="w-5 h-5" />
+          </button>
         </div>
       </div>
 

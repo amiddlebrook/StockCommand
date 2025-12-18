@@ -30,8 +30,13 @@ function clockToPercentage(status: string): number {
     }
 }
 
-export const TraditionalView: React.FC<TraditionalViewProps> = ({ clocks, symbols, onAddSymbol }) => {
-    console.log("TraditionalView mounting", { clocks, symbols });
+export const TraditionalView: React.FC<TraditionalViewProps> = ({ clocks = [], symbols = [], onAddSymbol }) => {
+    // Safety check just in case
+    if (!Array.isArray(clocks)) {
+        console.error("TraditionalView: clocks prop is not an array", clocks);
+        return <div className="p-4 text-red-500">Error: Invalid Market Data</div>;
+    }
+    console.log("TraditionalView mounting", { clocksCount: clocks.length, symbolsCount: symbols.length });
     const [symbolInput, setSymbolInput] = useState('');
     const [selectedTicker, setSelectedTicker] = useState<string | null>(null);
 
@@ -108,26 +113,30 @@ export const TraditionalView: React.FC<TraditionalViewProps> = ({ clocks, symbol
             {/* Sleeve Performance Bar Chart */}
             <div className="bg-slate-900/40 border border-slate-700/50 rounded-lg p-4">
                 <h2 className="text-sm font-bold text-cyan-400 mb-3 font-mono">SLEEVE_PERFORMANCE_INDEX</h2>
-                <div className="h-48 flex items-center justify-center border border-slate-700 rounded">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={sleeveData} layout="vertical">
-                            <XAxis type="number" domain={[0, 100]} tick={{ fill: '#64748b', fontSize: 10 }} />
-                            <YAxis type="category" dataKey="name" tick={{ fill: '#94a3b8', fontSize: 10 }} width={80} />
-                            <Tooltip
-                                contentStyle={{ background: '#0f172a', border: '1px solid #334155', borderRadius: '8px' }}
-                                labelStyle={{ color: '#e2e8f0' }}
-                                formatter={(value: number, name: string) => [`${value.toFixed(1)}%`, 'Score']}
-                            />
-                            <Bar dataKey="score" radius={[0, 4, 4, 0]}>
-                                {sleeveData.map((entry, index) => (
-                                    <Cell
-                                        key={`cell-${index}`}
-                                        fill={entry.score >= 70 ? '#22c55e' : entry.score >= 40 ? '#eab308' : '#ef4444'}
-                                    />
-                                ))}
-                            </Bar>
-                        </BarChart>
-                    </ResponsiveContainer>
+                <div className="h-48 flex items-center justify-center border border-slate-700 rounded relative">
+                    {sleeveData.length > 0 ? (
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={sleeveData} layout="vertical">
+                                <XAxis type="number" domain={[0, 100]} tick={{ fill: '#64748b', fontSize: 10 }} />
+                                <YAxis type="category" dataKey="name" tick={{ fill: '#94a3b8', fontSize: 10 }} width={80} />
+                                <Tooltip
+                                    contentStyle={{ background: '#0f172a', border: '1px solid #334155', borderRadius: '8px' }}
+                                    labelStyle={{ color: '#e2e8f0' }}
+                                    formatter={(value: number, name: string) => [`${value.toFixed(1)}%`, 'Score']}
+                                />
+                                <Bar dataKey="score" radius={[0, 4, 4, 0]}>
+                                    {sleeveData.map((entry, index) => (
+                                        <Cell
+                                            key={`cell-${index}`}
+                                            fill={entry.score >= 70 ? '#22c55e' : entry.score >= 40 ? '#eab308' : '#ef4444'}
+                                        />
+                                    ))}
+                                </Bar>
+                            </BarChart>
+                        </ResponsiveContainer>
+                    ) : (
+                        <p className="text-slate-500 text-xs">No Data Available</p>
+                    )}
                 </div>
                 <p className="text-[10px] text-slate-600 mt-2">↑ This correlates with 3D view's color-coded sleeves</p>
             </div>
