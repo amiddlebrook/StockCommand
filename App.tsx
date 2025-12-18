@@ -26,6 +26,7 @@ import { TradeExecutionPanel } from './components/TradeExecutionPanel';
 import { BrokerPortfolioView } from './components/BrokerPortfolioView';
 
 import type { ChatMessage as ChatMessageType, Source } from './types';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import {
   analyzeImage,
   searchWithGrounding,
@@ -657,7 +658,9 @@ const AppContent: React.FC = () => {
 const App: React.FC = () => {
   return (
     <JobProvider>
-      <AppContent />
+      <ErrorBoundary>
+        <AppContent />
+      </ErrorBoundary>
     </JobProvider>
   );
 };

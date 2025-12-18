@@ -50,13 +50,16 @@ export const TraditionalView: React.FC<TraditionalViewProps> = ({ clocks = [], s
     const sleeveData = useMemo(() => {
         return sleeves.map(sleeve => {
             const sleeveTickers = UNIVERSE.filter(t => t.sleeve === sleeve);
-            const sleevClocks = clocks.filter(c =>
-                sleeveTickers.some(t => c.code.includes(t.symbol) || c.name.toLowerCase().includes(sleeve.toLowerCase()))
-            );
+            const sleevClocks = clocks.filter(c => {
+                if (!c) return false;
+                const code = c.code || '';
+                const name = c.name || '';
+                return sleeveTickers.some(t => code.includes(t.symbol) || name.toLowerCase().includes(sleeve.toLowerCase()));
+            });
 
-            const greenCount = sleevClocks.filter(c => c.status === 'GREEN').length;
-            const yellowCount = sleevClocks.filter(c => c.status === 'YELLOW').length;
-            const redCount = sleevClocks.filter(c => c.status === 'RED').length;
+            const greenCount = sleevClocks.filter(c => c?.status === 'GREEN').length;
+            const yellowCount = sleevClocks.filter(c => c?.status === 'YELLOW').length;
+            const redCount = sleevClocks.filter(c => c?.status === 'RED').length;
             const total = greenCount + yellowCount + redCount || 1;
 
             return {
