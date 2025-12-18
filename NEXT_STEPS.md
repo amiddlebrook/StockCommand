@@ -41,6 +41,13 @@ npx wrangler secret put OPENAI_API_KEY
 # (Add others as needed: ANTHROPIC_API_KEY, etc.)
 ```
 
+**Security Keys (Critical):**
+You MUST set an encryption secret to secure your broker options.
+```bash
+# Generate a random 32-character string (or similar)
+npx wrangler secret put ENCRYPTION_SECRET
+```
+
 **Broker Keys (Required for Trading):**
 *Wait until you have these from IBKR/Alpaca.*
 ```bash

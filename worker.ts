@@ -11,6 +11,8 @@ import {
     handleStripeWebhook,
     PRICING
 } from './lib/subscriptions';
+// Security
+import { encrypt, decrypt } from './lib/security';
 import {
     getUserProfile,
     createOrUpdateProfile,
@@ -485,8 +487,9 @@ export default {
                     const connectionId = crypto.randomUUID();
                     const now = Math.floor(Date.now() / 1000);
 
-                    // Simple encryption (in production, use proper encryption)
-                    const credentialsEncrypted = btoa(JSON.stringify(credentials));
+                    // AES-GCM Encryption
+                    if (!env.ENCRYPTION_SECRET) throw new Error("ENCRYPTION_SECRET not configured");
+                    const credentialsEncrypted = await encrypt(JSON.stringify(credentials), env.ENCRYPTION_SECRET);
 
                     await env.DB.prepare(`
                         INSERT INTO user_brokers (id, user_id, broker_name, credentials_encrypted, is_active, connected_at)
@@ -604,7 +607,7 @@ export default {
                     });
                 }
 
-                const credentials = JSON.parse(atob(connection.credentials_encrypted as string));
+                const credentials = JSON.parse(await decrypt(connection.credentials_encrypted as string, env.ENCRYPTION_SECRET));
                 const positions = await broker.getPositions(credentials);
 
                 return new Response(JSON.stringify(positions), {
@@ -654,7 +657,7 @@ export default {
                     });
                 }
 
-                const credentials = JSON.parse(atob(connection.credentials_encrypted as string));
+                const credentials = JSON.parse(await decrypt(connection.credentials_encrypted as string, env.ENCRYPTION_SECRET));
                 const balance = await broker.getBalances(credentials);
 
                 return new Response(JSON.stringify(balance), {
@@ -743,7 +746,7 @@ export default {
                 }
 
                 // Decrypt credentials
-                const credentials = JSON.parse(atob(connection.credentials_encrypted as string));
+                const credentials = JSON.parse(await decrypt(connection.credentials_encrypted as string, env.ENCRYPTION_SECRET));
 
                 // Place the order
                 const order = await broker.placeOrder(credentials, {
