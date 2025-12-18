@@ -472,6 +472,17 @@ const AppContent: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-3">
+          {/* Return to HUD Button (SPATIAL mode only, when not on dashboard) */}
+          {viewMode === 'SPATIAL' && activeTab !== 'command-center' && (
+            <button
+              onClick={() => setActiveTab('command-center')}
+              className="flex items-center gap-1.5 px-2 py-1 text-xs font-mono rounded transition-all bg-slate-800 border border-purple-500/50 text-purple-400 hover:bg-purple-900/30 hover:text-purple-300"
+            >
+              <Icon icon="command" className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">HUD</span>
+            </button>
+          )}
+
           {/* View Mode Toggle */}
           <div className="flex items-center bg-slate-900 rounded-lg p-1 border border-slate-800">
             <button
@@ -520,16 +531,6 @@ const AppContent: React.FC = () => {
       <div className="hud-cell-main flex flex-col">
         {/* TOP: Dynamic Content (Full width now) */}
         <div className="flex-1 overflow-hidden relative">
-          {/* SPATIAL Mode: Floating Return to HUD Button */}
-          {viewMode === 'SPATIAL' && activeTab !== 'command-center' && (
-            <button
-              onClick={() => setActiveTab('command-center')}
-              className="fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-3 bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-500 hover:to-cyan-500 text-white font-mono text-sm rounded-full shadow-2xl shadow-purple-500/30 transition-all hover:scale-105"
-            >
-              <Icon icon="command" className="w-5 h-5" />
-              <span className="hidden sm:inline">Return to HUD</span>
-            </button>
-          )}
           {/* 2D Mode: Traditional View for most tabs */}
           {/* View Mode Switching: TACTICAL (Charts) vs SPATIAL (Console/3D) */}
           {activeTab === 'command-center' ? (
