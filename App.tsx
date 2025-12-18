@@ -23,6 +23,7 @@ import { SettingsView } from './components/SettingsView';
 import { TraditionalView } from './components/TraditionalView';
 import { BrokerConnectionModal } from './components/BrokerConnectionModal';
 import { TradeExecutionPanel } from './components/TradeExecutionPanel';
+import { BrokerPortfolioView } from './components/BrokerPortfolioView';
 
 import type { ChatMessage as ChatMessageType, Source } from './types';
 import {
@@ -387,6 +388,21 @@ const AppContent: React.FC = () => {
   }, []);
 
 
+  // Broker State
+  const [hasBrokerConnection, setHasBrokerConnection] = useState(false);
+
+  useEffect(() => {
+    // Check for broker connections on mount
+    fetch('/api/brokers/connections')
+      .then(res => res.json())
+      .then((data: any[]) => {
+        if (data && data.length > 0) {
+          setHasBrokerConnection(true);
+        }
+      })
+      .catch(err => console.error("Failed to check broker connections", err));
+  }, []);
+
   // --- REAL DATA INTEGRATION FOR PORTFOLIO VIEW ---
   const sleevesWithStats = useMemo(() => {
     // If no symbols, return empty to show empty state
@@ -433,24 +449,29 @@ const AppContent: React.FC = () => {
         />
       </div>
 
-      {/* 2. HEADER (SYSTEM STATUS) */}
+      {/* 2. HEADER (USER & SYSTEM STATUS) */}
       <div className="hud-cell-header justify-between">
         <div className="flex items-center gap-4">
-          <button
-            className="md:hidden p-2 text-cyan-500 hover:bg-cyan-900/30 rounded"
-            onClick={() => setIsMobileMenuOpen(true)}
-          >
-            <Icon icon="menu" className="w-6 h-6" />
-          </button>
-          <span className="text-cyan-500 font-bold tracking-[0.2em] text-sm">STOCK_COMMAND // V2.2</span>
-          <div className="h-4 w-[1px] bg-cyan-900"></div>
-          <span className="text-slate-500 text-xs text-shadow-glow">SYSTEM ONLINE</span>
-        </div>
-        <div className="flex items-center gap-4">
-          {scanningTarget && <span className="text-orange-500 text-xs animate-pulse font-mono">SCANNING_TARGET: {scanningTarget}</span>}
+          <Icon icon="command" className="w-5 h-5 text-cyan-400 animate-spin-slow" />
+          <h1 className="font-bold tracking-widest text-lg hidden md:block">STOCK_COMMAND <span className="text-cyan-500 text-xs align-top">V2.1</span></h1>
+          <h1 className="font-bold tracking-widest text-lg md:hidden">CMD <span className="text-cyan-500 text-xs align-top">V2.1</span></h1>
 
-          {/* 2D/3D View Mode Toggle */}
-          <div className="flex items-center gap-1 bg-slate-900/50 border border-slate-700/50 rounded-lg p-0.5">
+          {/* ACTIVE AGENT STATUS (Top Centerish) */}
+          <div className="hidden md:flex items-center gap-2 px-3 py-1 bg-cyan-900/10 border border-cyan-500/30 rounded-full">
+            <span className="w-1.5 h-1.5 bg-cyan-500 rounded-full animate-pulse"></span>
+            <span className="text-[10px] font-mono text-cyan-400">AGENT_ACTIVE</span>
+          </div>
+
+          {/* Agent Fuel Balance Mini-Display */}
+          <div className="hidden md:flex items-center gap-2 px-3 py-1 bg-slate-800/50 border border-slate-700/50 rounded-full">
+            <Icon icon="zap" className="w-3 h-3 text-amber-400" />
+            <span className="text-[10px] font-mono text-amber-400">FUEL: 100%</span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3">
+          {/* View Mode Toggle */}
+          <div className="flex items-center bg-slate-900 rounded-lg p-1 border border-slate-800">
             <button
               onClick={() => setViewMode('2D')}
               className={`px-2 py-1 text-xs font-mono rounded transition-all ${viewMode === '2D'
@@ -474,7 +495,7 @@ const AppContent: React.FC = () => {
           {/* Connect Broker Button */}
           <button
             onClick={() => setIsBrokerModalOpen(true)}
-            className="px-3 py-1.5 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white text-xs font-medium rounded-lg transition-all shadow-lg shadow-green-500/20"
+            className="hidden md:block px-3 py-1.5 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white text-xs font-medium rounded-lg transition-all shadow-lg shadow-green-500/20"
           >
             Connect Broker
           </button>
@@ -510,7 +531,13 @@ const AppContent: React.FC = () => {
               />
             </div>
           ) : activeTab === 'portfolio' ? (
-            <div className="h-full overflow-y-auto"><PortfolioView sleevesWithStats={sleevesWithStats} onClockClick={() => { }} freshnessThreshold={0} /></div>
+            <div className="h-full overflow-y-auto">
+              {hasBrokerConnection ? (
+                <div className="h-full overflow-hidden"><BrokerPortfolioView onOpenBrokerModal={() => setIsBrokerModalOpen(true)} /></div>
+              ) : (
+                <PortfolioView sleevesWithStats={sleevesWithStats} onClockClick={() => { }} freshnessThreshold={0} totalLiquidity={0} />
+              )}
+            </div>
           ) : activeTab === 'trade' ? (
             <div className="h-full overflow-hidden"><TradeExecutionPanel /></div>
           ) : activeTab === 'comms' ? (
