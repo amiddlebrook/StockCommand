@@ -26,22 +26,38 @@ export default {
     async fetch(request: Request, env: any, ctx: any): Promise<Response> {
         const url = new URL(request.url);
 
-        // CORS
-        if (request.method === "OPTIONS") {
-            return new Response(null, {
-                headers: {
-                    "Access-Control-Allow-Origin": request.headers.get("Origin") || "*",
-                    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-                    "Access-Control-Allow-Headers": "Content-Type, Authorization",
-                    "Access-Control-Allow-Credentials": "true"
-                },
-            });
-        }
+        const origin = request.headers.get("Origin");
+        const allowedOrigins = (env.ALLOWED_ORIGINS || "").split(",");
+        const isAllowed = origin && allowedOrigins.includes(origin);
 
         const corsHeaders = {
-            "Access-Control-Allow-Origin": request.headers.get("Origin") || "*",
+            "Access-Control-Allow-Origin": isAllowed ? origin : allowedOrigins[0] || "https://stockcommand.averymiddlebrook2014.workers.dev",
+            "Access-Control-Allow-Methods": "GET, POST, OPTIONS, DELETE, PUT",
+            "Access-Control-Allow-Headers": "Content-Type, Authorization",
             "Access-Control-Allow-Credentials": "true"
         };
+
+        // CORS Preflight
+        if (request.method === "OPTIONS") {
+            return new Response(null, { headers: corsHeaders });
+        }
+
+        // Rate Limiting (IP based)
+        const ip = request.headers.get("CF-Connecting-IP") || "unknown";
+        if (env.USER_SESSIONS_KV && env.RATE_LIMIT_REQUESTS) {
+            const limit = parseInt(env.RATE_LIMIT_REQUESTS) || 100;
+            const windowSec = parseInt(env.RATE_LIMIT_WINDOW) || 60;
+            const key = `ratelimit:${ip}`;
+
+            const current = await env.USER_SESSIONS_KV.get(key);
+            const count = current ? parseInt(current) : 0;
+
+            if (count >= limit) {
+                return new Response("Rate limit exceeded", { status: 429, headers: corsHeaders });
+            }
+
+            await env.USER_SESSIONS_KV.put(key, (count + 1).toString(), { expirationTtl: windowSec });
+        }
 
         // --- AUTH ROUTES ---
 
