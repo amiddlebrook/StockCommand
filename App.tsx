@@ -661,6 +661,28 @@ const AppContent: React.FC = () => {
       <ProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
       <BrokerConnectionModal isOpen={isBrokerModalOpen} onClose={() => setIsBrokerModalOpen(false)} />
 
+      {/* MOBILE SIDEBAR OVERLAY */}
+      {isMobileMenuOpen && (
+        <div className="fixed inset-0 z-50 flex md:hidden font-sans">
+          <div className="relative z-50 h-full">
+            <HUDNav
+              activeTab={activeTab}
+              onNavigate={(tab) => {
+                setActiveTab(tab as any);
+                setIsMobileMenuOpen(false);
+              }}
+              marketStatus={marketStatus}
+              activeJobsCount={activeJobs.length}
+            />
+          </div>
+          {/* Backdrop */}
+          <div
+            className="flex-1 bg-black/60 backdrop-blur-sm transition-opacity"
+            onClick={() => setIsMobileMenuOpen(false)}
+          />
+        </div>
+      )}
+
       {/* 6. MOBILE NAVIGATION - REMOVED per user request */}
       {/* <MobileNav activeTab={activeTab} setActiveTab={setActiveTab} /> */}
     </div>
