@@ -389,23 +389,34 @@ const AppContent: React.FC = () => {
 
   // --- REAL DATA INTEGRATION FOR PORTFOLIO VIEW ---
   const sleevesWithStats = useMemo(() => {
-    const sleeves = new Set(UNIVERSE.map(t => t.sleeve));
-    return Array.from(sleeves).map(sleeveName => {
-      const items = UNIVERSE.filter(t => t.sleeve === sleeveName).map(t => ({
-        symbol: t.symbol,
-        name: t.role, // Mapping role to name for now, or could be empty
-        allocation: 0
-      }));
+    // If no symbols, return empty to show empty state
+    if (!symbols || symbols.length === 0) return [];
 
-      // Mock stats or derive from real marketClocks
-      // In a real app we'd aggregate signal data per sleeve
-      return {
-        sleeveName,
-        items,
-        stats: { green: 0, yellow: 0, red: 0 }
-      };
+    // Group symbols by sleeve
+    const sleeveMap = new Map<string, Array<{ symbol: string, name: string, allocation: number }>>();
+
+    symbols.forEach(symbol => {
+      // Find metadata in UNIVERSE if available (Knowledge Base)
+      const known = UNIVERSE.find(u => u.symbol === symbol);
+      const sleeveName = known ? known.sleeve : 'Unclassified';
+      const role = known ? known.role : 'Custom Ticker';
+
+      if (!sleeveMap.has(sleeveName)) {
+        sleeveMap.set(sleeveName, []);
+      }
+      sleeveMap.get(sleeveName)!.push({
+        symbol,
+        name: role,
+        allocation: 0 // Mock allocation for now
+      });
     });
-  }, []);
+
+    return Array.from(sleeveMap.entries()).map(([sleeveName, items]) => ({
+      sleeveName,
+      items,
+      stats: { green: 0, yellow: 0, red: 0 }
+    }));
+  }, [symbols]);
   // ------------------------------------------------
 
   return (

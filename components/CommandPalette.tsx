@@ -48,7 +48,26 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
         )
         : commands;
 
+    // Dynamic Ticker Detection
+    const tickerMatch = query.toUpperCase().match(/^[A-Z]{1,5}$/);
+    if (tickerMatch && query.length > 1) {
+        const ticker = tickerMatch[0];
+        // Check if scanning this ticker is already an option? No, just add it.
+        const dynamicCommand: CommandItem = {
+            id: `scan-${ticker}`,
+            label: `Analyze $${ticker}`,
+            description: `Run full agent analysis on ${ticker}`,
+            icon: 'crosshair', // Use a distinct icon
+            action: () => { onSearch(`scan ${ticker}`); onClose(); },
+            category: 'ticker'
+        };
+
+        // Add to TOP of list
+        filteredCommands.unshift(dynamicCommand);
+    }
+
     // Group by category
+    const tickerCommands = filteredCommands.filter(c => c.category === 'ticker');
     const navigationCommands = filteredCommands.filter(c => c.category === 'navigation');
     const actionCommands = filteredCommands.filter(c => c.category === 'action');
 
@@ -133,6 +152,37 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
 
                 {/* Results */}
                 <div className="max-h-[400px] overflow-y-auto p-2">
+                    {/* Ticker Section */}
+                    {tickerCommands.length > 0 && (
+                        <div className="mb-2">
+                            <div className="px-3 py-1.5 text-[10px] text-cyan-500 font-bold uppercase tracking-wider flex items-center gap-2">
+                                <Icon icon="zap" className="w-3 h-3" />
+                                Instant Analysis
+                            </div>
+                            {tickerCommands.map((cmd) => {
+                                const globalIdx = filteredCommands.indexOf(cmd);
+                                return (
+                                    <button
+                                        key={cmd.id}
+                                        onClick={() => { cmd.action(); onClose(); }}
+                                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md transition-all ${globalIdx === selectedIndex
+                                            ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/50 shadow-[0_0_10px_rgba(6,182,212,0.2)]'
+                                            : 'hover:bg-slate-800/50 text-slate-300'
+                                            }`}
+                                    >
+                                        <Icon icon={cmd.icon as any} className="w-4 h-4" />
+                                        <div className="flex-1 text-left">
+                                            <div className="text-sm font-bold">{cmd.label}</div>
+                                            <div className="text-[10px] text-cyan-500/70">{cmd.description}</div>
+                                        </div>
+                                        {globalIdx === selectedIndex && (
+                                            <div className="text-[10px] text-slate-500">↵</div>
+                                        )}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    )}
                     {/* Navigation Section */}
                     {navigationCommands.length > 0 && (
                         <div className="mb-2">
@@ -146,8 +196,8 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
                                         key={cmd.id}
                                         onClick={() => { cmd.action(); onClose(); }}
                                         className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md transition-all ${globalIdx === selectedIndex
-                                                ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/30'
-                                                : 'hover:bg-slate-800/50 text-slate-300'
+                                            ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/30'
+                                            : 'hover:bg-slate-800/50 text-slate-300'
                                             }`}
                                     >
                                         <Icon icon={cmd.icon} className="w-4 h-4" />
@@ -177,8 +227,8 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
                                         key={cmd.id}
                                         onClick={() => { cmd.action(); onClose(); }}
                                         className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md transition-all ${globalIdx === selectedIndex
-                                                ? 'bg-purple-500/10 text-purple-400 border border-purple-500/30'
-                                                : 'hover:bg-slate-800/50 text-slate-300'
+                                            ? 'bg-purple-500/10 text-purple-400 border border-purple-500/30'
+                                            : 'hover:bg-slate-800/50 text-slate-300'
                                             }`}
                                     >
                                         <Icon icon={cmd.icon} className="w-4 h-4" />
