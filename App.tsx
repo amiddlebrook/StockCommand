@@ -45,6 +45,7 @@ const DEFAULT_SYMBOLS: string[] = [];
 
 const AppContent: React.FC = () => {
   const { startJob, activeJobsCount } = useJobContext();
+  console.log("AppContent Mounting");
 
   const [messages, setMessages] = useState<ChatMessageType[]>(() => [
     { id: 'welcome', role: 'model', content: "StockCommand V2.1 online. Monitoring active markets. Awaiting input." },

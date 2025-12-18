@@ -27,7 +27,7 @@
   /* Nav | Main | Side */
   grid-template-rows: 48px 1fr 32px;
   /* Header | Content | Footer */
-  height: 100vh;
+  height: 100dvh;
   width: 100vw;
   overflow: hidden;
   background-color: var(--hud-c-bg);
@@ -43,6 +43,7 @@
     grid-template-columns: 1fr;
     grid-template-rows: 48px 1fr 64px;
     /* Header | Content | Mobile Nav Space */
+    height: 100dvh;
   }
 
   .hud-cell-nav {

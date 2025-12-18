@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Icon } from './Icon';
-// import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, Cell } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, Cell } from 'recharts';
 import { UNIVERSE } from '../lib/agent/universe';
 import { MarketClock } from '../lib/agent/types';
 
@@ -109,8 +109,6 @@ export const TraditionalView: React.FC<TraditionalViewProps> = ({ clocks, symbol
             <div className="bg-slate-900/40 border border-slate-700/50 rounded-lg p-4">
                 <h2 className="text-sm font-bold text-cyan-400 mb-3 font-mono">SLEEVE_PERFORMANCE_INDEX</h2>
                 <div className="h-48 flex items-center justify-center border border-slate-700 rounded">
-                    <p className="text-slate-500 text-xs">Chart Temporarily Disabled</p>
-                    {/*
                     <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={sleeveData} layout="vertical">
                             <XAxis type="number" domain={[0, 100]} tick={{ fill: '#64748b', fontSize: 10 }} />
@@ -130,7 +128,6 @@ export const TraditionalView: React.FC<TraditionalViewProps> = ({ clocks, symbol
                             </Bar>
                         </BarChart>
                     </ResponsiveContainer>
-                   */}
                 </div>
                 <p className="text-[10px] text-slate-600 mt-2">↑ This correlates with 3D view's color-coded sleeves</p>
             </div>
@@ -178,8 +175,6 @@ export const TraditionalView: React.FC<TraditionalViewProps> = ({ clocks, symbol
 
                     {/* Price Chart */}
                     <div className="h-48 mb-4 flex items-center justify-center border border-slate-700 rounded">
-                        <p className="text-slate-500 text-xs">Price Chart Disabled</p>
-                        {/*
                         <ResponsiveContainer width="100%" height="100%">
                             <LineChart data={selectedData}>
                                 <XAxis dataKey="day" tick={{ fill: '#64748b', fontSize: 10 }} />
@@ -197,13 +192,10 @@ export const TraditionalView: React.FC<TraditionalViewProps> = ({ clocks, symbol
                                 />
                             </LineChart>
                         </ResponsiveContainer>
-                        */}
                     </div>
 
                     {/* Volume Chart */}
                     <div className="h-24 flex items-center justify-center border border-slate-700 rounded">
-                        <p className="text-slate-500 text-xs">Volume Chart Disabled</p>
-                        {/*
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={selectedData}>
                                 <XAxis dataKey="day" tick={{ fill: '#64748b', fontSize: 8 }} />
@@ -213,7 +205,6 @@ export const TraditionalView: React.FC<TraditionalViewProps> = ({ clocks, symbol
                                 <Bar dataKey="volume" fill="#3b82f6" opacity={0.6} />
                             </BarChart>
                         </ResponsiveContainer>
-                        */}
                     </div>
 
                     <p className="text-[10px] text-slate-600 mt-2">
