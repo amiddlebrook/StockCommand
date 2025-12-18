@@ -511,7 +511,7 @@ const AppContent: React.FC = () => {
         {/* TOP: Dynamic Content (Full width now) */}
         <div className="flex-1 overflow-hidden relative">
           {/* 2D Mode: Traditional View for most tabs */}
-          {viewMode === '2D' && activeTab !== 'settings' && activeTab !== 'creator' ? (
+          {viewMode === '2D' && activeTab !== 'settings' && activeTab !== 'creator' && activeTab !== 'portfolio' ? (
             <div className="h-full overflow-hidden">
               <TraditionalView
                 clocks={marketClocks}
