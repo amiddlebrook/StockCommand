@@ -98,11 +98,11 @@ const AppContent: React.FC = () => {
   const [uncuratedTicker, setUncuratedTicker] = useState<string | null>(null);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
-  // VIEW MODE: 2D = Traditional charts/data, 3D = Agentic StockCommand view
-  type ViewMode = '2D' | '3D';
+  // VIEW MODE: TACTICAL = 2D Charts/Data, SPATIAL = 3D Agentic Universe
+  type ViewMode = 'TACTICAL' | 'SPATIAL';
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
     const saved = StorageService.loadSettings().viewMode;
-    return (saved as ViewMode) || '3D';
+    return (saved as ViewMode) || 'SPATIAL';
   });
 
   // PERSISTENCE EFFECT HOOKS
@@ -475,22 +475,22 @@ const AppContent: React.FC = () => {
           {/* View Mode Toggle */}
           <div className="flex items-center bg-slate-900 rounded-lg p-1 border border-slate-800">
             <button
-              onClick={() => setViewMode('2D')}
-              className={`px-2 py-1 text-xs font-mono rounded transition-all ${viewMode === '2D'
+              onClick={() => setViewMode('TACTICAL')}
+              className={`px-2 py-1 text-xs font-mono rounded transition-all ${viewMode === 'TACTICAL'
                 ? 'bg-cyan-600 text-white shadow-lg shadow-cyan-500/30'
                 : 'text-slate-400 hover:text-white hover:bg-slate-800'
                 }`}
             >
-              2D
+              TACTICAL
             </button>
             <button
-              onClick={() => setViewMode('3D')}
-              className={`px-2 py-1 text-xs font-mono rounded transition-all ${viewMode === '3D'
+              onClick={() => setViewMode('SPATIAL')}
+              className={`px-2 py-1 text-xs font-mono rounded transition-all ${viewMode === 'SPATIAL'
                 ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/30'
                 : 'text-slate-400 hover:text-white hover:bg-slate-800'
                 }`}
             >
-              3D
+              SPATIAL
             </button>
           </div>
 
@@ -521,7 +521,8 @@ const AppContent: React.FC = () => {
         {/* TOP: Dynamic Content (Full width now) */}
         <div className="flex-1 overflow-hidden relative">
           {/* 2D Mode: Traditional View for most tabs */}
-          {viewMode === '2D' && activeTab !== 'settings' && activeTab !== 'creator' && activeTab !== 'portfolio' ? (
+          {/* View Mode Switching: TACTICAL (Charts) vs SPATIAL (Console/3D) */}
+          {activeTab === 'command-center' && viewMode === 'TACTICAL' ? (
             <div className="h-full overflow-hidden">
               <TraditionalView
                 clocks={marketClocks}

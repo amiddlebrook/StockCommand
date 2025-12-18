@@ -89,8 +89,8 @@ export const TraditionalView: React.FC<TraditionalViewProps> = ({ clocks = [], s
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-xl font-bold text-white font-mono">TRADITIONAL_VIEW</h1>
-                    <p className="text-xs text-slate-500">Raw data & charts — compare with 3D color signals</p>
+                    <h1 className="text-xl font-bold text-white font-mono">TACTICAL_VIEW</h1>
+                    <p className="text-xs text-slate-500">Raw data & charts — compare with Spatial color signals</p>
                 </div>
 
                 {/* Add Ticker */}
@@ -141,7 +141,7 @@ export const TraditionalView: React.FC<TraditionalViewProps> = ({ clocks = [], s
                         <p className="text-slate-500 text-xs">No Data Available</p>
                     )}
                 </div>
-                <p className="text-[10px] text-slate-600 mt-2">↑ This correlates with 3D view's color-coded sleeves</p>
+                <p className="text-[10px] text-slate-600 mt-2">↑ This correlates with Spatial view's color-coded sleeves</p>
             </div>
 
             {/* Ticker Grid - Traditional Data Cards */}
@@ -220,7 +220,7 @@ export const TraditionalView: React.FC<TraditionalViewProps> = ({ clocks = [], s
                     </div>
 
                     <p className="text-[10px] text-slate-600 mt-2">
-                        ↑ In 3D view, this ticker's market clocks show the same trend as color signals
+                        ↑ In Spatial view, this ticker's market clocks show the same trend as color signals
                     </p>
                 </div>
             )}
@@ -243,7 +243,7 @@ export const TraditionalView: React.FC<TraditionalViewProps> = ({ clocks = [], s
                     </div>
                 </div>
                 <p className="text-[10px] text-slate-600 mt-3">
-                    Toggle to 3D view to see how these traditional metrics translate into actionable color signals.
+                    Toggle to Spatial view to see how these tactical metrics translate into actionable color signals.
                 </p>
             </div>
         </div>

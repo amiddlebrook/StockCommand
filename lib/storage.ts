@@ -70,7 +70,7 @@ export const StorageService = {
         }
     },
 
-    saveSettings: (settings: { freshnessHours: number; viewMode?: '2D' | '3D' }) => {
+    saveSettings: (settings: { freshnessHours: number; viewMode?: 'TACTICAL' | 'SPATIAL' }) => {
         try {
             localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(settings));
         } catch (e) {
@@ -78,12 +78,19 @@ export const StorageService = {
         }
     },
 
-    loadSettings: (): { freshnessHours: number; viewMode?: '2D' | '3D' } => {
+    loadSettings: (): { freshnessHours: number; viewMode?: 'TACTICAL' | 'SPATIAL' } => {
         try {
             const saved = localStorage.getItem(STORAGE_KEYS.SETTINGS);
-            return saved ? JSON.parse(saved) : { freshnessHours: 24, viewMode: '3D' };
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                // Migrate legacy 2D/3D
+                if (parsed.viewMode === '2D') parsed.viewMode = 'TACTICAL';
+                if (parsed.viewMode === '3D') parsed.viewMode = 'SPATIAL';
+                return parsed;
+            }
+            return { freshnessHours: 24, viewMode: 'SPATIAL' };
         } catch (e) {
-            return { freshnessHours: 24, viewMode: '3D' };
+            return { freshnessHours: 24, viewMode: 'SPATIAL' };
         }
     },
 
