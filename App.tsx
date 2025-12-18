@@ -18,6 +18,8 @@ import { CommandPalette } from './components/CommandPalette';
 import { Icon } from './components/Icon';
 import { MarketClocksView } from './components/MarketClocksView';
 import { SocialView } from './components/SocialView';
+import { ConsoleWidget } from './components/ConsoleWidget';
+import { ChatInput } from './components/ChatInput';
 import { NewsSynthesisView } from './components/NewsSynthesisView';
 import { SettingsView } from './components/SettingsView';
 import { TraditionalView } from './components/TraditionalView';
@@ -618,10 +620,21 @@ const AppContent: React.FC = () => {
                 onStopRecording={handleStopRecording}
               />
             ) : (
-              /* Minimized State: Single Line Input / Status */
-              <div className="h-full flex items-center px-4 gap-4 cursor-pointer hover:bg-slate-900/30" onClick={() => setIsConsoleOpen(true)}>
-                <span className="text-cyan-500 animate-pulse text-xs font-mono">{'>'}</span>
-                <span className="text-slate-500 text-xs font-mono">Terminal Standby. Click to expand or start typing...</span>
+              /* Minimized State: Active Chat Input */
+              <div className="h-full flex flex-col bg-slate-950 border-t border-slate-800">
+                <div className="flex-1 px-2 pt-1">
+                  <ChatInput
+                    onSendMessage={(msg, img) => {
+                      handleSendMessage(msg, img);
+                      setIsConsoleOpen(true);
+                    }}
+                    isLoading={isChatLoading}
+                    isRecording={isRecording}
+                    onStartRecording={handleStartRecording}
+                    onStopRecording={handleStopRecording}
+                    compact={true}
+                  />
+                </div>
               </div>
             )}
           </div>

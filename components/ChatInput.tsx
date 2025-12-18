@@ -1,3 +1,4 @@
+```typescript
 import React, { useState, useRef, ChangeEvent } from 'react';
 import { Icon } from './Icon';
 
@@ -5,12 +6,13 @@ interface ChatInputProps {
   onSendMessage: (message: string, image?: File) => void;
   onStartRecording: () => void;
   onStopRecording: () => void;
+  compact?: boolean;
   isRecording: boolean;
   isLoading: boolean;
   initialInput?: string;
 }
 
-export const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, onStartRecording, onStopRecording, isRecording, isLoading, initialInput }) => {
+export const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, onStartRecording, onStopRecording, compact = false, isRecording, isLoading, initialInput }) => {
   const [input, setInput] = useState(initialInput || '');
   const [imageFile, setImageFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -70,10 +72,11 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, onStartReco
 
         <button
           onClick={isRecording ? onStopRecording : onStartRecording}
-          className={`p-2 rounded-lg transition-all ${isRecording
-              ? 'text-red-500 bg-red-500/10 animate-pulse'
-              : 'text-gray-400 hover:text-cyan-400 hover:bg-slate-800/50'
-            }`}
+          className={`p - 2 rounded - lg transition - all ${
+  isRecording
+    ? 'text-red-500 bg-red-500/10 animate-pulse'
+    : 'text-gray-400 hover:text-cyan-400 hover:bg-slate-800/50'
+} `}
           aria-label={isRecording ? 'Stop recording' : 'Start recording'}
         >
           <Icon icon="mic" className="w-5 h-5" />
@@ -83,9 +86,8 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, onStartReco
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyPress={handleKeyPress}
-          placeholder="Ask anything about the markets..."
-          className="flex-1 bg-transparent border-none focus:outline-none resize-none text-gray-200 placeholder-gray-500 px-2 py-2 max-h-40 text-sm"
-          rows={1}
+          placeholder={compact ? "Enter command..." : "Enter command or ask Agent..."}
+          className={`w - full bg - transparent text - cyan - 100 placeholder - slate - 600 focus: outline - none font - mono text - sm resize - none ${ compact ? 'h-8 py-1' : 'h-12 py-3' } `}
           disabled={isLoading}
         />
 
