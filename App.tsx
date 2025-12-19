@@ -207,7 +207,7 @@ const AppContent: React.FC = () => {
     symbols.forEach(symbol => { ensureSnapshotForSymbol(symbol); });
   }, [symbols, ensureSnapshotForSymbol]);
 
-  const executeAgentScan = async (scope: 'FULL' | 'SLEEVE' | 'TICKER' | 'TOOL', target?: string, toolName?: string) => {
+  const executeAgentScan = async (scope: 'FULL' | 'SECTOR' | 'TICKER' | 'TOOL', target?: string, toolName?: string) => {
     setScanningTarget(target || scope);
     setAgentOutput(`Initializing ${scope} scan...`);
 
@@ -279,7 +279,7 @@ const AppContent: React.FC = () => {
     return finalAnalysis;
   };
 
-  const handleRunAgentScan = async (scope: 'FULL' | 'SLEEVE' | 'TICKER' | 'TOOL', target?: string, toolName?: string) => {
+  const handleRunAgentScan = async (scope: 'FULL' | 'SECTOR' | 'TICKER' | 'TOOL', target?: string, toolName?: string) => {
     const scanLabel = scope === 'TOOL' ? (toolName || target) : (target || scope);
     const loadingMsgId = `scan-${Date.now()}`;
     const loadingMessage: ChatMessageType = {
@@ -345,7 +345,7 @@ const AppContent: React.FC = () => {
             const detectedTicker = tickerMatch[1].toUpperCase();
             if (!symbols.includes(detectedTicker)) {
               setSymbols(prev => [...prev, detectedTicker]);
-              // Auto-add to a "Watchlist" sleeve if not exists (Logic stub)
+              // Auto-add to a "Watchlist" sector if not exists (Logic stub)
               // Trigger immediate Clock Generation for this ticker
               const newClocks = getClocksForEntity('TICKER', detectedTicker);
               setMarketClocks(prev => [...prev, ...newClocks]);

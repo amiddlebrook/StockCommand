@@ -9,7 +9,7 @@ export class AgentEngine {
     }
 
     public async evaluate(
-        scope: 'FULL' | 'SLEEVE' | 'TICKER' | 'TOOL', // Updated type
+        scope: 'FULL' | 'SECTOR' | 'TICKER' | 'TOOL', // Updated type
         marketData: Record<string, MarketData>,
         portfolio: PortfolioState, // Passed but LLM currently focuses on market data + text
         target?: string,

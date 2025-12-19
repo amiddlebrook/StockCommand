@@ -31,9 +31,9 @@ export class ActionExecutor {
 
     private async createSpreadsheet(actions: AgentAction[], filename: string) {
         // Generate CSV content
-        const header = 'Type,Ticker,Sleeve,Reason,Confidence\n';
+        const header = 'Type,Ticker,Sector,Reason,Confidence\n';
         const rows = actions.map(a =>
-            `${a.type},${a.ticker || ''},${a.sleeve || ''},"${a.reason.replace(/"/g, '""')}",${a.confidence}`
+            `${a.type},${a.ticker || ''},${a.sector || ''},"${a.reason.replace(/"/g, '""')}",${a.confidence}`
         ).join('\n');
 
         const csvContent = header + rows;
