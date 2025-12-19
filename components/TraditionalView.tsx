@@ -234,19 +234,24 @@ export const TraditionalView: React.FC<TraditionalViewProps> = ({
 
             setIsLoadingQuotes(true);
             try {
-                // Batch fetch (limited to 10 at a time by API)
-                const batches = [];
+                // Batch fetch - split into groups of 10
+                const batches: string[][] = [];
                 for (let i = 0; i < allSymbols.length; i += 10) {
                     batches.push(allSymbols.slice(i, i + 10));
                 }
 
-                for (const batch of batches) {
-                    const res = await fetch(`/api/quotes?symbols=${batch.join(',')}`);
-                    if (res.ok) {
-                        const data = await res.json();
-                        setRealQuotes(prev => ({ ...prev, ...data }));
-                    }
-                }
+                // Fetch ALL batches in PARALLEL for speed
+                const results = await Promise.all(
+                    batches.map(async (batch) => {
+                        const res = await fetch(`/api/quotes?symbols=${batch.join(',')}`);
+                        if (res.ok) return res.json();
+                        return {};
+                    })
+                );
+
+                // Merge all results
+                const mergedQuotes = results.reduce((acc, data) => ({ ...acc, ...data }), {});
+                setRealQuotes(prev => ({ ...prev, ...mergedQuotes }));
             } catch (e) {
                 console.warn('Failed to fetch real quotes:', e);
             } finally {

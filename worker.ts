@@ -902,7 +902,7 @@ export default {
             }
         }
 
-        // GET /api/quotes - Get multiple stock quotes in batch
+        // GET /api/quotes - Get multiple stock quotes in batch (PARALLEL)
         if (url.pathname === "/api/quotes" && request.method === "GET") {
             try {
                 const symbols = url.searchParams.get("symbols")?.split(",") || [];
@@ -916,14 +916,24 @@ export default {
                 const { createStockAPI } = await import('./api/stock');
                 const stockAPI = createStockAPI(env);
 
+                // Fetch all quotes in PARALLEL for speed
+                const symbolList = symbols.slice(0, 10).map(s => s.toUpperCase());
+                const results = await Promise.allSettled(
+                    symbolList.map(async (symbol) => {
+                        const quote = await stockAPI.getQuote(symbol);
+                        return { symbol, quote };
+                    })
+                );
+
                 const quotes: Record<string, any> = {};
-                for (const symbol of symbols.slice(0, 10)) { // Limit to 10 symbols
-                    try {
-                        quotes[symbol.toUpperCase()] = await stockAPI.getQuote(symbol.toUpperCase());
-                    } catch (e: any) {
-                        quotes[symbol.toUpperCase()] = { error: e.message };
+                results.forEach((result, i) => {
+                    const symbol = symbolList[i];
+                    if (result.status === 'fulfilled') {
+                        quotes[symbol] = result.value.quote;
+                    } else {
+                        quotes[symbol] = { error: result.reason?.message || 'Failed to fetch' };
                     }
-                }
+                });
 
                 return new Response(JSON.stringify(quotes), {
                     headers: { ...corsHeaders, "Content-Type": "application/json" }
