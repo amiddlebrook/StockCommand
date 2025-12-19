@@ -267,5 +267,72 @@ export const CreditsService = {
         };
         localStorage.setItem(CREDITS_STORAGE_KEY, JSON.stringify(balance));
         localStorage.removeItem(CREDITS_HISTORY_KEY);
+    },
+
+    /**
+     * Get usage aggregated by category for pie chart display
+     * Returns actual usage from transaction history, or mock data if no history
+     */
+    getUsageByCategory: (): { name: string; value: number; color: string }[] => {
+        const history = CreditsService.getHistory(100);
+
+        // Define category mappings and colors
+        const categories: Record<string, { types: CreditOperationType[]; color: string }> = {
+            'Data Sync': {
+                types: ['TICKER_QUOTE_SYNC', 'TICKER_FULL_SYNC', 'MARKET_CLOCK_SYNC', 'GLOBAL_CLOCKS_REFRESH', 'AUTO_SYNC_TICKER', 'AUTO_SYNC_CLOCK'],
+                color: '#06b6d4' // cyan
+            },
+            'Chat': {
+                types: ['AGENT_CHAT_MESSAGE'],
+                color: '#22c55e' // green
+            },
+            'Analysis': {
+                types: ['AGENT_SCAN_TICKER', 'AGENT_SCAN_SECTOR', 'AGENT_SCAN_FULL', 'AGENT_GROUNDING_SEARCH'],
+                color: '#f59e0b' // amber
+            },
+            'Premium': {
+                types: ['PORTFOLIO_REPORT', 'STRATEGY_BACKTEST', 'OPTIMIZER_ITERATION'],
+                color: '#8b5cf6' // purple
+            }
+        };
+
+        // Aggregate actual usage
+        const usage: Record<string, number> = {};
+        for (const cat of Object.keys(categories)) {
+            usage[cat] = 0;
+        }
+
+        for (const txn of history) {
+            if (txn.amount <= 0) continue; // Skip credit additions
+
+            for (const [catName, catDef] of Object.entries(categories)) {
+                if (catDef.types.includes(txn.type)) {
+                    usage[catName] += txn.amount;
+                    break;
+                }
+            }
+        }
+
+        // Check if we have any usage
+        const totalUsage = Object.values(usage).reduce((a, b) => a + b, 0);
+
+        if (totalUsage === 0) {
+            // Return mock data for demo purposes
+            return [
+                { name: 'Data Sync', value: 1200, color: '#06b6d4' },
+                { name: 'Chat', value: 45, color: '#22c55e' },
+                { name: 'Analysis', value: 900, color: '#f59e0b' },
+                { name: 'Premium', value: 300, color: '#8b5cf6' }
+            ];
+        }
+
+        // Return actual usage data
+        return Object.entries(categories)
+            .map(([name, def]) => ({
+                name,
+                value: usage[name],
+                color: def.color
+            }))
+            .filter(item => item.value > 0);
     }
 };

@@ -4,6 +4,7 @@ import { GlassButton } from './ui/GlassButton';
 import { ModelSelector } from './ModelSelector';
 import { SystemHealth } from './SystemHealth';
 import { CreditsService, CREDIT_COSTS } from '../lib/credits';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 
 export const SettingsView: React.FC = () => {
     const [activeSection, setActiveSection] = useState<'GENERAL' | 'MODELS' | 'OPTIMIZER' | 'HEALTH' | 'CREDITS' | 'BILLING'>('MODELS');
@@ -17,6 +18,10 @@ export const SettingsView: React.FC = () => {
         setCreditBalance(balance.credits);
         setCreditHistory(CreditsService.getHistory(10));
     }, []);
+
+    // Get usage data for pie chart
+    const usageData = CreditsService.getUsageByCategory();
+    const totalUsage = usageData.reduce((sum, item) => sum + item.value, 0);
 
     // Mobile Navigation State
     const [showMobileSidebar, setShowMobileSidebar] = useState(true);
@@ -276,69 +281,60 @@ export const SettingsView: React.FC = () => {
                                 </button>
                             </div>
 
-                            {/* Cost Breakdown */}
+                            {/* Usage Breakdown Pie Chart */}
                             <div className="bg-slate-900/30 border border-slate-800 rounded-xl p-6">
-                                <h3 className="text-sm font-bold text-white mb-4 uppercase tracking-wider">Credit Cost Breakdown</h3>
-                                <p className="text-xs text-slate-500 mb-4">1 credit = $0.0001 USD. Credits represent the actual cost of each API operation. Platform margin is applied only at purchase.</p>
+                                <h3 className="text-sm font-bold text-white mb-2 uppercase tracking-wider">Your Credit Usage</h3>
+                                <p className="text-xs text-slate-500 mb-4">Breakdown of where your credits are being spent. 1 credit = $0.0001 USD.</p>
 
-                                <div className="space-y-4">
-                                    {/* Data Sync */}
-                                    <div>
-                                        <h4 className="text-xs font-bold text-cyan-400 mb-2 uppercase">Data Sync Operations</h4>
-                                        <div className="grid grid-cols-2 gap-2">
-                                            <div className="flex justify-between p-2 bg-slate-900/50 rounded">
-                                                <span className="text-xs text-slate-400">Ticker Quote</span>
-                                                <span className="text-xs font-mono text-amber-400">{CREDIT_COSTS.TICKER_QUOTE_SYNC} cr</span>
-                                            </div>
-                                            <div className="flex justify-between p-2 bg-slate-900/50 rounded">
-                                                <span className="text-xs text-slate-400">Full Ticker Sync</span>
-                                                <span className="text-xs font-mono text-amber-400">{CREDIT_COSTS.TICKER_FULL_SYNC} cr</span>
-                                            </div>
-                                            <div className="flex justify-between p-2 bg-slate-900/50 rounded">
-                                                <span className="text-xs text-slate-400">Clock Sync</span>
-                                                <span className="text-xs font-mono text-amber-400">{CREDIT_COSTS.MARKET_CLOCK_SYNC} cr</span>
-                                            </div>
-                                            <div className="flex justify-between p-2 bg-slate-900/50 rounded">
-                                                <span className="text-xs text-slate-400">All Clocks Refresh</span>
-                                                <span className="text-xs font-mono text-amber-400">{CREDIT_COSTS.GLOBAL_CLOCKS_REFRESH} cr</span>
-                                            </div>
-                                        </div>
+                                <div className="flex flex-col lg:flex-row gap-6">
+                                    {/* Pie Chart */}
+                                    <div className="h-64 flex-1">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <PieChart>
+                                                <Pie
+                                                    data={usageData}
+                                                    cx="50%"
+                                                    cy="50%"
+                                                    innerRadius={50}
+                                                    outerRadius={80}
+                                                    paddingAngle={2}
+                                                    dataKey="value"
+                                                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                                                    labelLine={false}
+                                                >
+                                                    {usageData.map((entry, index) => (
+                                                        <Cell key={`cell-${index}`} fill={entry.color} />
+                                                    ))}
+                                                </Pie>
+                                                <Tooltip
+                                                    formatter={(value: number) => [`${value.toLocaleString()} credits ($${(value * 0.0001).toFixed(4)})`, 'Usage']}
+                                                    contentStyle={{ background: '#0f172a', border: '1px solid #334155', borderRadius: '8px' }}
+                                                />
+                                            </PieChart>
+                                        </ResponsiveContainer>
                                     </div>
 
-                                    {/* Agent Operations */}
-                                    <div>
-                                        <h4 className="text-xs font-bold text-cyan-400 mb-2 uppercase">Agent Operations</h4>
-                                        <div className="grid grid-cols-2 gap-2">
-                                            <div className="flex justify-between p-2 bg-slate-900/50 rounded">
-                                                <span className="text-xs text-slate-400">Chat Message</span>
-                                                <span className="text-xs font-mono text-amber-400">{CREDIT_COSTS.AGENT_CHAT_MESSAGE} cr</span>
+                                    {/* Legend with values */}
+                                    <div className="flex-1 space-y-3">
+                                        {usageData.map((item, index) => (
+                                            <div key={index} className="flex items-center justify-between p-3 bg-slate-900/50 rounded-lg">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
+                                                    <span className="text-sm text-slate-300">{item.name}</span>
+                                                </div>
+                                                <div className="text-right">
+                                                    <div className="text-sm font-mono text-amber-400">{item.value.toLocaleString()} cr</div>
+                                                    <div className="text-[10px] text-slate-500">${(item.value * 0.0001).toFixed(4)}</div>
+                                                </div>
                                             </div>
-                                            <div className="flex justify-between p-2 bg-slate-900/50 rounded">
-                                                <span className="text-xs text-slate-400">Ticker Scan</span>
-                                                <span className="text-xs font-mono text-amber-400">{CREDIT_COSTS.AGENT_SCAN_TICKER} cr</span>
-                                            </div>
-                                            <div className="flex justify-between p-2 bg-slate-900/50 rounded">
-                                                <span className="text-xs text-slate-400">Sector Scan</span>
-                                                <span className="text-xs font-mono text-amber-400">{CREDIT_COSTS.AGENT_SCAN_SECTOR} cr</span>
-                                            </div>
-                                            <div className="flex justify-between p-2 bg-slate-900/50 rounded">
-                                                <span className="text-xs text-slate-400">Full Market Scan</span>
-                                                <span className="text-xs font-mono text-amber-400">{CREDIT_COSTS.AGENT_SCAN_FULL} cr</span>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Premium */}
-                                    <div>
-                                        <h4 className="text-xs font-bold text-cyan-400 mb-2 uppercase">Premium Operations</h4>
-                                        <div className="grid grid-cols-2 gap-2">
-                                            <div className="flex justify-between p-2 bg-slate-900/50 rounded">
-                                                <span className="text-xs text-slate-400">Portfolio Report</span>
-                                                <span className="text-xs font-mono text-amber-400">{CREDIT_COSTS.PORTFOLIO_REPORT} cr</span>
-                                            </div>
-                                            <div className="flex justify-between p-2 bg-slate-900/50 rounded">
-                                                <span className="text-xs text-slate-400">Strategy Backtest</span>
-                                                <span className="text-xs font-mono text-amber-400">{CREDIT_COSTS.STRATEGY_BACKTEST} cr</span>
+                                        ))}
+                                        <div className="pt-2 border-t border-slate-700">
+                                            <div className="flex items-center justify-between p-3 bg-amber-900/20 rounded-lg border border-amber-500/30">
+                                                <span className="text-sm font-bold text-amber-400">Total Usage</span>
+                                                <div className="text-right">
+                                                    <div className="text-sm font-mono font-bold text-amber-400">{totalUsage.toLocaleString()} cr</div>
+                                                    <div className="text-[10px] text-amber-500/60">${(totalUsage * 0.0001).toFixed(4)} USD</div>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
