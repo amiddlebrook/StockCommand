@@ -4,11 +4,13 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, 
 import { UNIVERSE, SECTOR_ETFS, SectorName } from '../lib/agent/universe';
 import { MarketClock } from '../lib/agent/types';
 import { getClocksForEntity } from '../lib/clockData';
+import { StorageService } from '../lib/storage';
 
 interface TraditionalViewProps {
     clocks: MarketClock[];
     symbols: string[];
     onAddSymbol: (symbol: string) => void;
+    onRemoveSymbol?: (symbol: string) => void;
 }
 
 // Types for API-ready mock data
@@ -173,7 +175,8 @@ const TickerClockDots: React.FC<{ clocks: TickerClocks }> = ({ clocks }) => (
 export const TraditionalView: React.FC<TraditionalViewProps> = ({
     clocks = [],
     symbols = [],
-    onAddSymbol
+    onAddSymbol,
+    onRemoveSymbol
 }) => {
     // Safety check
     if (!Array.isArray(clocks)) {
@@ -203,17 +206,37 @@ export const TraditionalView: React.FC<TraditionalViewProps> = ({
     // Sector performance data using ETF proxies
     const sectorPerformance = useMemo(() => generateSectorPerformance(), []);
 
-    // Handle add symbol
+    // Handle add symbol - with duplicate check
     const handleAddSymbol = () => {
         const sym = symbolInput.trim().toUpperCase();
-        if (sym && !allTickers.some(t => t.symbol === sym)) {
-            setLocalSymbols(prev => [...prev, sym]);
-            onAddSymbol(sym);
+        if (!sym) return;
+
+        // Check for duplicates
+        if (allTickers.some(t => t.symbol === sym)) {
             setSymbolInput('');
-            // Auto-select the new ticker
+            // Select existing ticker instead
             setSelectedTicker(sym);
             setIsChartOpen(true);
+            return;
         }
+
+        setLocalSymbols(prev => [...prev, sym]);
+        onAddSymbol(sym);
+        setSymbolInput('');
+        setSelectedTicker(sym);
+        setIsChartOpen(true);
+    };
+
+    // Handle remove symbol
+    const handleRemoveSymbol = (sym: string) => {
+        setLocalSymbols(prev => prev.filter(s => s !== sym));
+        if (onRemoveSymbol) onRemoveSymbol(sym);
+        if (selectedTicker === sym) setSelectedTicker(null);
+    };
+
+    // Handle add to watchlist
+    const handleAddToWatchlist = (sym: string) => {
+        StorageService.addToWatchlist(sym);
     };
 
     const selectedData = selectedTicker ? generateMockPriceData(selectedTicker) : null;
@@ -321,13 +344,33 @@ export const TraditionalView: React.FC<TraditionalViewProps> = ({
                     }
                 >
                     {/* Ticker Info Bar */}
-                    <div className="flex items-center gap-4 mb-4 p-2 bg-slate-800/50 rounded">
-                        {selectedTickerData && <TickerClockDots clocks={selectedTickerData.clocks} />}
-                        <span className="text-white font-mono font-bold">{selectedTicker}</span>
-                        <span className="text-slate-400 text-xs">{selectedTickerData?.sector}</span>
-                        <span className={`text-sm font-mono ${(selectedTickerData?.changePercent || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                            {(selectedTickerData?.changePercent || 0) >= 0 ? '+' : ''}{selectedTickerData?.changePercent.toFixed(2)}%
-                        </span>
+                    <div className="flex items-center justify-between mb-4 p-2 bg-slate-800/50 rounded">
+                        <div className="flex items-center gap-4">
+                            {selectedTickerData && <TickerClockDots clocks={selectedTickerData.clocks} />}
+                            <span className="text-white font-mono font-bold">{selectedTicker}</span>
+                            <span className="text-slate-400 text-xs">{selectedTickerData?.sector}</span>
+                            <span className={`text-sm font-mono ${(selectedTickerData?.changePercent || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                {(selectedTickerData?.changePercent || 0) >= 0 ? '+' : ''}{selectedTickerData?.changePercent.toFixed(2)}%
+                            </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={() => handleAddToWatchlist(selectedTicker)}
+                                className="flex items-center gap-1 px-2 py-1 text-xs bg-amber-600/20 text-amber-400 hover:bg-amber-600/40 rounded transition-colors"
+                                title="Add to Watchlist"
+                            >
+                                <Icon icon="star" className="w-3 h-3" />
+                                <span className="hidden sm:inline">Watchlist</span>
+                            </button>
+                            <button
+                                onClick={() => handleRemoveSymbol(selectedTicker)}
+                                className="flex items-center gap-1 px-2 py-1 text-xs bg-red-600/20 text-red-400 hover:bg-red-600/40 rounded transition-colors"
+                                title="Remove Ticker"
+                            >
+                                <Icon icon="trash" className="w-3 h-3" />
+                                <span className="hidden sm:inline">Remove</span>
+                            </button>
+                        </div>
                     </div>
 
                     {/* Price Chart */}
