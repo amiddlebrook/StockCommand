@@ -984,6 +984,23 @@ export default {
                     throw new Error("Missing OPENROUTER_DEEPSEEK_NEX_API_KEY");
                 }
 
+                // 🛑 HARD-CODED INTERCEPTION: GREETINGS
+                // The LLM is too eager to find tickers in "hi", "hey", etc.
+                // We intercept these BEFORE sending to the LLM to guarantee correct behavior.
+                const cleanMsg = message.trim().toLowerCase().replace(/[^a-z ]/g, '');
+                const greetings = new Set(['hi', 'hey', 'hello', 'yo', 'sup', 'hiya', 'heya', 'howdy', 'greetings', 'hola', 'good morning', 'good afternoon', 'good evening', 'gm', 'morning']);
+
+                if (greetings.has(cleanMsg) || cleanMsg.match(/^(hi|hey|hello) (there|stockcommand|bot|agent)$/)) {
+                    return new Response(JSON.stringify({
+                        response: "Hey! 👋 Ready to conquer the markets? Let me know which ticker to analyze or what you're looking for!"
+                    }), {
+                        headers: {
+                            "Content-Type": "application/json",
+                            "Access-Control-Allow-Origin": "*"
+                        }
+                    });
+                }
+
                 // Construct conversation - smart system prompt
                 let systemPrompt = `You are StockCommand, an elite AI financial analyst.
 

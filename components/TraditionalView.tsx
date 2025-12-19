@@ -224,34 +224,28 @@ export const TraditionalView: React.FC<TraditionalViewProps> = ({
     const [isTickersOpen, setIsTickersOpen] = useState(true);
     const [sectorPeriod, setSectorPeriod] = useState<TimePeriod>('1D');
 
-    // Fetch real quotes from API
+    // Fetch real quotes from API - PRIORITY LOADING
+    // Only fetch top 10 on initial load, fetch more on demand
     useEffect(() => {
         const fetchQuotes = async () => {
-            const universeSymbols = UNIVERSE.map(t => t.symbol);
-            const allSymbols = [...new Set([...universeSymbols, ...symbols, ...localSymbols])];
+            // Priority: open charts first, then first 10 of universe
+            const openChartSymbols = openCharts.map(c => c.symbol);
+            const universeSymbols = UNIVERSE.slice(0, 10).map(t => t.symbol); // Only first 10
+            const customSymbols = [...symbols, ...localSymbols];
 
-            if (allSymbols.length === 0) return;
+            // Combine priority symbols (no duplicates)
+            const prioritySymbols = [...new Set([...openChartSymbols, ...universeSymbols, ...customSymbols])];
+
+            if (prioritySymbols.length === 0) return;
 
             setIsLoadingQuotes(true);
             try {
-                // Batch fetch - split into groups of 10
-                const batches: string[][] = [];
-                for (let i = 0; i < allSymbols.length; i += 10) {
-                    batches.push(allSymbols.slice(i, i + 10));
+                // Single batch for priority symbols (should be ~10-15 max)
+                const res = await fetch(`/api/quotes?symbols=${prioritySymbols.slice(0, 10).join(',')}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    setRealQuotes(prev => ({ ...prev, ...data }));
                 }
-
-                // Fetch ALL batches in PARALLEL for speed
-                const results = await Promise.all(
-                    batches.map(async (batch) => {
-                        const res = await fetch(`/api/quotes?symbols=${batch.join(',')}`);
-                        if (res.ok) return res.json();
-                        return {};
-                    })
-                );
-
-                // Merge all results
-                const mergedQuotes = results.reduce((acc, data) => ({ ...acc, ...data }), {});
-                setRealQuotes(prev => ({ ...prev, ...mergedQuotes }));
             } catch (e) {
                 console.warn('Failed to fetch real quotes:', e);
             } finally {
@@ -263,7 +257,7 @@ export const TraditionalView: React.FC<TraditionalViewProps> = ({
         // Refresh every 60 seconds
         const interval = setInterval(fetchQuotes, 60000);
         return () => clearInterval(interval);
-    }, [symbols, localSymbols]);
+    }, [symbols, localSymbols, openCharts]);
 
     // Combine UNIVERSE with custom symbols, using real data when available
     const allTickers = useMemo(() => {
