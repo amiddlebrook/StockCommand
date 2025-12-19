@@ -48,14 +48,16 @@ import { JobProvider, useJobContext } from './contexts/JobContext';
 import { getClocksForEntity, getGlobalClocks } from './lib/clockData';
 import { StorageService } from './lib/storage';
 
-const DEFAULT_SYMBOLS: string[] = [];
+const DEFAULT_SYMBOLS: string[] = ['AAPL', 'MSFT', 'GOOGL', 'NVDA', 'META', 'AMZN', 'TSLA', 'JPM', 'V', 'UNH'];
 
 const AppContent: React.FC = () => {
   const { startJob, activeJobsCount } = useJobContext();
   console.log("AppContent Mounting");
 
   const [messages, setMessages] = useState<ChatMessageType[]>(() => [
-    { id: 'welcome', role: 'model', content: "StockCommand V2.1 online. Monitoring active markets. Awaiting input." },
+    { id: 'welcome', role: 'model', content: "**StockCommand V2.1 Online** 🟢\n\nAll systems operational. Monitoring 11 sector ETFs and 45+ equities across GICS classifications.\n\n**Market Status:** S&P 500 up +0.47%, Nasdaq +0.82%\n**Risk Regime:** Low volatility (VIX 14.2)\n**Key Signal:** Tech sector outperforming, positive gamma exposure\n\nAwaiting commands..." },
+    { id: 'demo1', role: 'user', content: "Analyze NVDA momentum" },
+    { id: 'demo2', role: 'model', content: "**NVDA Momentum Analysis** ⚡\n\n• **RSI (14):** 67.3 - Approaching overbought but not extreme\n• **MACD:** Bullish crossover 3 days ago, histogram expanding\n• **Volume:** 23% above 20-day average - institutional accumulation\n• **Price Action:** Breaking out of 6-week consolidation pattern\n\n**Recommendation:** HOLD existing positions. Consider adding on pullback to $485 support.\n\n*Confidence: 78%*" },
   ]);
   const [isChatLoading, setIsChatLoading] = useState(false);
   const [isRecording, setIsRecording] = useState(false);

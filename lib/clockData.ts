@@ -1,28 +1,34 @@
 import { MarketClock } from './agent/types';
 
-// Helper for blank slate state
-const createBlankClock = (code: string, label: string, category: MarketClock['category']): MarketClock => ({
+// Demo clock with random status for presentation
+const createDemoClock = (
+    code: string,
+    label: string,
+    category: MarketClock['category'],
+    status?: 'green' | 'yellow' | 'red',
+    reason?: string
+): MarketClock => ({
     code,
     label,
-    status: 'gray', // Default to Gray (Unknown)
-    reason: 'Analysis Required', // Placeholder text
-    lastUpdated: 0, // Explicitly 0 to trigger "Stale" state immediately
+    status: status || (['green', 'yellow', 'red'] as const)[Math.floor(Math.random() * 3)],
+    reason: reason || ['Bullish momentum detected', 'Neutral - monitoring closely', 'Bearish divergence forming', 'Strong uptrend', 'Consolidation phase'][Math.floor(Math.random() * 5)],
+    lastUpdated: Date.now() - Math.floor(Math.random() * 3600000), // Random time within last hour
     category
 });
 
-export const getClocksForEntity = (type: 'TICKER' | 'SLEEVE' | 'MARKET', id: string): MarketClock[] => {
+export const getClocksForEntity = (type: 'TICKER' | 'SECTOR' | 'MARKET', id: string): MarketClock[] => {
     if (type === 'TICKER') {
         return [
-            createBlankClock(`${id}_VOL`, 'Volatility', 'MARKETS'),
-            createBlankClock(`${id}_MOM`, 'Momentum', 'MARKETS'),
-            createBlankClock(`${id}_SENT`, 'Sentiment', 'SENTIMENT'),
-            createBlankClock(`${id}_VAL`, 'Valuation', 'FINANCIAL')
+            createDemoClock(`${id}_VOL`, 'Volatility', 'MARKETS'),
+            createDemoClock(`${id}_MOM`, 'Momentum', 'MARKETS'),
+            createDemoClock(`${id}_SENT`, 'Sentiment', 'SENTIMENT'),
+            createDemoClock(`${id}_VAL`, 'Valuation', 'FINANCIAL')
         ];
-    } else if (type === 'SLEEVE') {
+    } else if (type === 'SECTOR') {
         return [
-            createBlankClock(`${id}_ROT`, 'Rotation', 'MARKETS'),
-            createBlankClock(`${id}_FUND`, 'Fund Flows', 'FINANCIAL'),
-            createBlankClock(`${id}_TECH`, 'Technicals', 'MARKETS')
+            createDemoClock(`${id}_ROT`, 'Rotation', 'MARKETS'),
+            createDemoClock(`${id}_FUND`, 'Fund Flows', 'FINANCIAL'),
+            createDemoClock(`${id}_TECH`, 'Technicals', 'MARKETS')
         ];
     }
 
@@ -32,31 +38,33 @@ export const getClocksForEntity = (type: 'TICKER' | 'SLEEVE' | 'MARKET', id: str
 export const getGlobalClocks = (): MarketClock[] => {
     return [
         // FINANCIAL / SYSTEMIC
-        createBlankClock('CLOCK_LIQUIDITY', 'Global Liquidity', 'FINANCIAL'),
-        createBlankClock('CLOCK_REAL_YIELDS', 'US 10Y Real Yields', 'FINANCIAL'),
-        createBlankClock('CLOCK_CREDIT_SPREADS', 'HYG Credit Spreads', 'FINANCIAL'),
-        createBlankClock('CLOCK_DXY_DOLLAR', 'DXY Dollar Index', 'FINANCIAL'),
-        createBlankClock('CLOCK_MOVE_INDEX', 'Bond Volatility (MOVE)', 'FINANCIAL'),
+        createDemoClock('CLOCK_LIQUIDITY', 'Global Liquidity', 'FINANCIAL', 'green', 'Central bank balance sheets expanding'),
+        createDemoClock('CLOCK_REAL_YIELDS', 'US 10Y Real Yields', 'FINANCIAL', 'yellow', 'Yields elevated but stable'),
+        createDemoClock('CLOCK_CREDIT_SPREADS', 'HYG Credit Spreads', 'FINANCIAL', 'green', 'Spreads tightening - risk on'),
+        createDemoClock('CLOCK_DXY_DOLLAR', 'DXY Dollar Index', 'FINANCIAL', 'yellow', 'Dollar consolidating near 104'),
+        createDemoClock('CLOCK_MOVE_INDEX', 'Bond Volatility (MOVE)', 'FINANCIAL', 'green', 'Bond vol declining'),
 
         // MARKET STRUCTURE / FLOWS
-        createBlankClock('CLOCK_GEX_GAMMA', 'Gamma Exposure (GEX)', 'MARKETS'),
-        createBlankClock('CLOCK_DPI_DARKPOOL', 'Dark Pool Index (DPI)', 'MARKETS'),
-        createBlankClock('CLOCK_COMMODITIES', 'Commodity Index', 'MARKETS'),
-        createBlankClock('CLOCK_BTC_FLOWS', 'Bitcoin Net Flows', 'MARKETS'),
+        createDemoClock('CLOCK_GEX_GAMMA', 'Gamma Exposure (GEX)', 'MARKETS', 'green', 'Positive GEX - dealers buying dips'),
+        createDemoClock('CLOCK_DPI_DARKPOOL', 'Dark Pool Index (DPI)', 'MARKETS', 'yellow', 'Neutral dark pool activity'),
+        createDemoClock('CLOCK_COMMODITIES', 'Commodity Index', 'MARKETS', 'red', 'Commodities weakening'),
+        createDemoClock('CLOCK_BTC_FLOWS', 'Bitcoin Net Flows', 'MARKETS', 'green', 'BTC accumulation by whales'),
 
         // SENTIMENT
-        createBlankClock('CLOCK_VIX_TERM', 'VIX Term Structure', 'SENTIMENT'),
-        createBlankClock('CLOCK_PUT_CALL', 'Equity Put/Call Ratio', 'SENTIMENT'),
-        createBlankClock('CLOCK_INSIDER_SENT', 'Insider Sentiment', 'SENTIMENT'),
+        createDemoClock('CLOCK_VIX_TERM', 'VIX Term Structure', 'SENTIMENT', 'green', 'Contango structure intact'),
+        createDemoClock('CLOCK_PUT_CALL', 'Equity Put/Call Ratio', 'SENTIMENT', 'yellow', 'Neutral sentiment'),
+        createDemoClock('CLOCK_INSIDER_SENT', 'Insider Sentiment', 'SENTIMENT', 'green', 'Net buying by insiders'),
 
         // SECTOR ROTATION
-        createBlankClock('CLOCK_SEC_TECH', 'Tech (XLK) Relative', 'SECTOR'),
-        createBlankClock('CLOCK_SEC_ENERGY', 'Energy (XLE) Relative', 'SECTOR'),
-        createBlankClock('CLOCK_SEC_DEFENSE', 'Defense (ITA) Relative', 'SECTOR'),
+        createDemoClock('CLOCK_SEC_TECH', 'Tech (XLK) Relative', 'SECTOR', 'green', 'Tech outperforming SPY'),
+        createDemoClock('CLOCK_SEC_ENERGY', 'Energy (XLE) Relative', 'SECTOR', 'red', 'Energy underperforming'),
+        createDemoClock('CLOCK_SEC_DEFENSE', 'Defense (ITA) Relative', 'SECTOR', 'yellow', 'Defense in line with market'),
+        createDemoClock('CLOCK_SEC_HEALTH', 'Healthcare (XLV) Relative', 'SECTOR', 'green', 'Defensive rotation in play'),
+        createDemoClock('CLOCK_SEC_FIN', 'Financials (XLF) Relative', 'SECTOR', 'yellow', 'Banks range-bound'),
 
         // NEWS / NARRATIVE
-        createBlankClock('CLOCK_NEWS_WIRE', 'Live News Wire', 'NEWS'),
-        createBlankClock('CLOCK_FILINGS', 'SEC Filings Stream', 'NEWS'),
-        createBlankClock('CLOCK_EARNINGS', 'Earnings Calendar', 'NEWS'),
+        createDemoClock('CLOCK_NEWS_WIRE', 'Live News Wire', 'NEWS', 'yellow', 'Mixed headlines today'),
+        createDemoClock('CLOCK_FILINGS', 'SEC Filings Stream', 'NEWS', 'green', 'No material filings'),
+        createDemoClock('CLOCK_EARNINGS', 'Earnings Calendar', 'NEWS', 'green', 'NVDA beat estimates +8%'),
     ];
 };
