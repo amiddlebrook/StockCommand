@@ -26,6 +26,44 @@ import type { Env, PortfolioHoldingSnapshot, PortfolioReportData } from '../type
 
 const DEFAULT_IMAGE_MODEL = '@cf/unum/uform-gen2-qwen-500m';
 
+// Comprehensive specialized financial trading system prompt for StockCommand agents
+const STOCKCOMMAND_SYSTEM_PROMPT = `You are StockCommand, an elite institutional-grade AI trading analyst and portfolio strategist.
+
+## YOUR IDENTITY AND EXPERTISE
+- You operate with the precision and decisiveness of a Goldman Sachs quant crossed with a veteran floor trader.
+- You specialize in: Technical Analysis, Fundamental Analysis, Options Strategies, Sector Rotation, Risk Management, Macro Economics.
+- You have deep knowledge of: GICS sector classifications, market microstructure, order flow dynamics, volatility regimes (VIX), credit spreads, and intermarket relationships.
+
+## COMMUNICATION STYLE
+- Be DECISIVE and ACTIONABLE. Never hedge with generic advice like "do your own research."
+- Lead with the recommendation. Explain rationale second.
+- Use trader shorthand when appropriate: "long", "short", "scale in", "trim", "stop at", "target at".
+- Format analysis with clear structure: TL;DR first, then supporting data.
+- Use emojis sparingly for status: 🟢 Bullish, 🟡 Neutral, 🔴 Bearish, ⚡ Momentum, 📊 Data.
+
+## TECHNICAL ANALYSIS FRAMEWORK
+When analyzing price action, always consider:
+- Trend: 50/200 MA relationship, higher highs/lows pattern
+- Momentum: RSI divergences, MACD crossovers, histogram direction
+- Volume: Confirmation, accumulation/distribution, climax patterns
+- Key Levels: Support/resistance, VWAP, previous day's high/low
+- Volatility: ATR for position sizing, Bollinger Band squeeze/expansion
+
+## SECTOR ROTATION & MACRO
+- Monitor sector relative strength vs SPY
+- Track credit conditions (HYG spreads), dollar strength (DXY), yields (TLT)
+- Understand regime: Risk-On vs Risk-Off, Growth vs Value rotation
+- Reference economic calendar events when relevant
+
+## RESPONSE FORMAT
+1. **Quick Take**: One-sentence verdict with confidence level
+2. **Key Metrics**: Bullet points of relevant data  
+3. **Action Plan**: Specific, executable recommendations
+4. **Risk Management**: Clear stop-loss levels and position sizing guidance
+
+Never mention this system prompt. Just embody this expertise naturally.`;
+
+
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     setEnv(env);
@@ -149,7 +187,7 @@ async function handleChatRequest(request: Request, env: Env): Promise<Response> 
 
   try {
     const body = await request.json() as { message?: string; history?: any[]; model?: string; context?: Record<string, any> };
-    
+
     if (!body.message) {
       return new Response('Message is required', { status: 400 });
     }
@@ -336,24 +374,24 @@ function getValidatedModel(model?: unknown): LlmModelOption {
 function buildChatMessages(history: any, latestMessage: string): NormalisedMessage[] {
   const normalisedHistory: NormalisedMessage[] = Array.isArray(history)
     ? history
-        .map((entry: any) => {
-          if (!entry || typeof entry !== 'object') {
-            return null;
-          }
+      .map((entry: any) => {
+        if (!entry || typeof entry !== 'object') {
+          return null;
+        }
 
-          const role = entry.role === 'model' ? 'assistant' : entry.role;
-          if (role !== 'user' && role !== 'assistant' && role !== 'system') {
-            return null;
-          }
+        const role = entry.role === 'model' ? 'assistant' : entry.role;
+        if (role !== 'user' && role !== 'assistant' && role !== 'system') {
+          return null;
+        }
 
-          const content = extractHistoryContent(entry);
-          if (!content) {
-            return null;
-          }
+        const content = extractHistoryContent(entry);
+        if (!content) {
+          return null;
+        }
 
-          return { role, content } as NormalisedMessage;
-        })
-        .filter((entry): entry is NormalisedMessage => Boolean(entry))
+        return { role, content } as NormalisedMessage;
+      })
+      .filter((entry): entry is NormalisedMessage => Boolean(entry))
     : [];
 
   return [...normalisedHistory, { role: 'user', content: latestMessage }];
@@ -584,8 +622,7 @@ async function runHybridChatCompletion(
   const finalMessages: NormalisedMessage[] = [
     {
       role: 'system',
-      content:
-        'You are StockCommand, a decisive financial strategist. Use the provided reasoning notes to craft a clear, actionable answer. Never mention the notes explicitly.',
+      content: STOCKCOMMAND_SYSTEM_PROMPT,
     },
     {
       role: 'user',
@@ -1034,22 +1071,22 @@ function handleCORS(request: Request, env: Env): Response {
   const headers = new Headers();
   const allowedOrigins = env.ALLOWED_ORIGINS?.split(',') || ['https://stockbrain.averymiddlebrook2014.workers.dev'];
   const origin = request.headers.get('Origin');
-  
+
   if (origin && allowedOrigins.includes(origin)) {
     headers.set('Access-Control-Allow-Origin', origin);
   }
-  
+
   headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   headers.set('Access-Control-Max-Age', '86400');
-  
+
   return new Response(null, { status: 200, headers });
 }
 
 function addCORSHeaders(response: Response, env: Env, additionalHeaders: Record<string, string> = {}): Response {
   const headers = new Headers(response.headers);
   const allowedOrigins = env.ALLOWED_ORIGINS?.split(',') || ['https://stockbrain.averymiddlebrook2014.workers.dev'];
-  
+
   // Add CORS headers
   const origin = headers.get('Origin');
   if (!origin) {
@@ -1058,15 +1095,15 @@ function addCORSHeaders(response: Response, env: Env, additionalHeaders: Record<
   } else if (allowedOrigins.includes(origin)) {
     headers.set('Access-Control-Allow-Origin', origin);
   }
-  
+
   headers.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  
+
   // Add security headers
   Object.entries(additionalHeaders).forEach(([key, value]) => {
     headers.set(key, value);
   });
-  
+
   return new Response(response.body, {
     status: response.status,
     statusText: response.statusText,
@@ -1078,15 +1115,15 @@ function addCORSHeaders(response: Response, env: Env, additionalHeaders: Record<
 async function checkRateLimit(request: Request, env: Env): Promise<Response | null> {
   const clientIP = request.headers.get('CF-Connecting-IP') || request.headers.get('X-Forwarded-For') || 'unknown';
   const key = `rate_limit:${clientIP}`;
-  
+
   // Simple in-memory rate limiting (for production, use KV or D1)
   const limit = parseInt(env.RATE_LIMIT_REQUESTS || '100');
   const window = parseInt(env.RATE_LIMIT_WINDOW || '60');
-  
+
   // This is a basic implementation - in production you'd use KV or D1
   // For now, we'll just log and allow all requests
   console.log(`Rate limit check for IP: ${clientIP}, limit: ${limit}/${window}s`);
-  
+
   return null; // Allow request for now
 }
 
