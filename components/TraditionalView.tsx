@@ -187,21 +187,25 @@ export const TraditionalView: React.FC<TraditionalViewProps> = ({
     const [symbolInput, setSymbolInput] = useState('');
     const [selectedTicker, setSelectedTicker] = useState<string | null>(null);
     const [localSymbols, setLocalSymbols] = useState<string[]>([]);
+    const [hiddenSymbols, setHiddenSymbols] = useState<string[]>([]);
+    const [watchlist, setWatchlist] = useState<string[]>(() => StorageService.loadWatchlist());
 
     // Collapsible states
     const [isSectorOpen, setIsSectorOpen] = useState(true);
     const [isChartOpen, setIsChartOpen] = useState(true);
     const [isTickersOpen, setIsTickersOpen] = useState(true);
 
-    // Combine UNIVERSE with custom symbols and local additions
+    // Combine UNIVERSE with custom symbols, excluding hidden
     const allTickers = useMemo(() => {
         const universeSymbols = UNIVERSE.map(t => t.symbol);
         const customSymbols = [...symbols, ...localSymbols].filter(s => !universeSymbols.includes(s));
+        const visibleUniverse = UNIVERSE.filter(t => !hiddenSymbols.includes(t.symbol));
+        const visibleCustom = customSymbols.filter(s => !hiddenSymbols.includes(s));
         return [
-            ...UNIVERSE.map(t => generateTickerData(t.symbol, t.sector)),
-            ...customSymbols.map(s => generateTickerData(s, 'Custom'))
+            ...visibleUniverse.map(t => generateTickerData(t.symbol, t.sector)),
+            ...visibleCustom.map(s => generateTickerData(s, 'Custom'))
         ];
-    }, [symbols, localSymbols]);
+    }, [symbols, localSymbols, hiddenSymbols]);
 
     // Sector performance data using ETF proxies
     const sectorPerformance = useMemo(() => generateSectorPerformance(), []);
@@ -227,8 +231,9 @@ export const TraditionalView: React.FC<TraditionalViewProps> = ({
         setIsChartOpen(true);
     };
 
-    // Handle remove symbol
+    // Handle remove symbol (hides from view)
     const handleRemoveSymbol = (sym: string) => {
+        setHiddenSymbols(prev => [...prev, sym]);
         setLocalSymbols(prev => prev.filter(s => s !== sym));
         if (onRemoveSymbol) onRemoveSymbol(sym);
         if (selectedTicker === sym) setSelectedTicker(null);
@@ -236,8 +241,14 @@ export const TraditionalView: React.FC<TraditionalViewProps> = ({
 
     // Handle add to watchlist
     const handleAddToWatchlist = (sym: string) => {
-        StorageService.addToWatchlist(sym);
+        if (!watchlist.includes(sym)) {
+            StorageService.addToWatchlist(sym);
+            setWatchlist(prev => [...prev, sym]);
+        }
     };
+
+    // Check if ticker is in watchlist
+    const isInWatchlist = (sym: string) => watchlist.includes(sym);
 
     const selectedData = selectedTicker ? generateMockPriceData(selectedTicker) : null;
     const selectedTickerData = selectedTicker ? allTickers.find(t => t.symbol === selectedTicker) : null;
@@ -356,11 +367,15 @@ export const TraditionalView: React.FC<TraditionalViewProps> = ({
                         <div className="flex items-center gap-2">
                             <button
                                 onClick={() => handleAddToWatchlist(selectedTicker)}
-                                className="flex items-center gap-1 px-2 py-1 text-xs bg-amber-600/20 text-amber-400 hover:bg-amber-600/40 rounded transition-colors"
-                                title="Add to Watchlist"
+                                disabled={isInWatchlist(selectedTicker)}
+                                className={`flex items-center gap-1 px-2 py-1 text-xs rounded transition-colors ${isInWatchlist(selectedTicker)
+                                        ? 'bg-amber-500/30 text-amber-300 cursor-default'
+                                        : 'bg-amber-600/20 text-amber-400 hover:bg-amber-600/40'
+                                    }`}
+                                title={isInWatchlist(selectedTicker) ? 'In Watchlist' : 'Add to Watchlist'}
                             >
                                 <Icon icon="star" className="w-3 h-3" />
-                                <span className="hidden sm:inline">Watchlist</span>
+                                <span className="hidden sm:inline">{isInWatchlist(selectedTicker) ? 'Saved' : 'Watchlist'}</span>
                             </button>
                             <button
                                 onClick={() => handleRemoveSymbol(selectedTicker)}
