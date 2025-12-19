@@ -29,6 +29,7 @@ interface TickerData {
     volume: number;
     sector: string;
     clocks: TickerClocks;
+    isLoading?: boolean;
 }
 
 interface SectorPerformance {
@@ -276,18 +277,32 @@ export const TraditionalView: React.FC<TraditionalViewProps> = ({
                     changePercent: realQuote.changePercent || 0,
                     volume: realQuote.volume || 0,
                     sector,
-                    clocks: getTickerClocks(symbol)
+                    clocks: getTickerClocks(symbol),
+                    isLoading: false
                 };
             }
-            // Fallback to mock if API hasn't returned yet
-            return generateTickerData(symbol, sector);
+            // Show loading state if quotes are being fetched
+            if (isLoadingQuotes) {
+                return {
+                    symbol,
+                    price: 0,
+                    change: 0,
+                    changePercent: 0,
+                    volume: 0,
+                    sector,
+                    clocks: getTickerClocks(symbol),
+                    isLoading: true
+                };
+            }
+            // Fallback to mock if API failed or not configured
+            return { ...generateTickerData(symbol, sector), isLoading: false };
         };
 
         return [
             ...visibleUniverse.map(t => createTickerData(t.symbol, t.sector)),
             ...visibleCustom.map(s => createTickerData(s, 'Custom'))
         ];
-    }, [symbols, localSymbols, hiddenSymbols, realQuotes]);
+    }, [symbols, localSymbols, hiddenSymbols, realQuotes, isLoadingQuotes]);
 
     // Sector performance data using ETF proxies
     const sectorPerformance = useMemo(() => generateSectorPerformance(sectorPeriod), [sectorPeriod]);
@@ -388,13 +403,18 @@ export const TraditionalView: React.FC<TraditionalViewProps> = ({
         }
     }, [openCharts]);
 
-    // Get chart data - use real if available, fallback to mock
+    // Track which charts are loading
+    const isChartLoading = (symbol: string): boolean => {
+        return !realChartData[symbol] && openCharts.some(c => c.symbol === symbol);
+    };
+
+    // Get chart data - use real if available, return empty for loading
     const getChartData = (symbol: string, period: TimePeriod): PricePoint[] => {
         if (realChartData[symbol] && realChartData[symbol].length > 0) {
             return realChartData[symbol];
         }
-        // Fallback to mock while loading
-        return generateMockPriceData(symbol).slice(0, 30);
+        // Return empty array while loading (will show loading indicator)
+        return [];
     };
 
     return (
@@ -562,23 +582,34 @@ export const TraditionalView: React.FC<TraditionalViewProps> = ({
 
                         {/* Price Chart */}
                         <div className="h-48 mb-4">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <LineChart data={chartData}>
-                                    <XAxis dataKey="day" tick={{ fill: '#64748b', fontSize: 10 }} />
-                                    <YAxis tick={{ fill: '#64748b', fontSize: 10 }} domain={['auto', 'auto']} />
-                                    <Tooltip
-                                        contentStyle={{ background: '#0f172a', border: '1px solid #334155', borderRadius: '8px' }}
-                                        labelStyle={{ color: '#e2e8f0' }}
-                                    />
-                                    <Line
-                                        type="monotone"
-                                        dataKey="price"
-                                        stroke="#06b6d4"
-                                        strokeWidth={2}
-                                        dot={false}
-                                    />
-                                </LineChart>
-                            </ResponsiveContainer>
+                            {isChartLoading(chart.symbol) ? (
+                                <div className="h-full flex items-center justify-center text-cyan-400 font-mono text-sm animate-pulse">
+                                    <Icon icon="activity" className="w-4 h-4 mr-2" />
+                                    Fetching live data...
+                                </div>
+                            ) : chartData.length === 0 ? (
+                                <div className="h-full flex items-center justify-center text-slate-500 font-mono text-sm">
+                                    No data available
+                                </div>
+                            ) : (
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <LineChart data={chartData}>
+                                        <XAxis dataKey="day" tick={{ fill: '#64748b', fontSize: 10 }} />
+                                        <YAxis tick={{ fill: '#64748b', fontSize: 10 }} domain={['auto', 'auto']} />
+                                        <Tooltip
+                                            contentStyle={{ background: '#0f172a', border: '1px solid #334155', borderRadius: '8px' }}
+                                            labelStyle={{ color: '#e2e8f0' }}
+                                        />
+                                        <Line
+                                            type="monotone"
+                                            dataKey="price"
+                                            stroke="#06b6d4"
+                                            strokeWidth={2}
+                                            dot={false}
+                                        />
+                                    </LineChart>
+                                </ResponsiveContainer>
+                            )}
                         </div>
 
                         {/* Volume Chart */}
