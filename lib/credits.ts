@@ -1,54 +1,59 @@
 /**
- * Credits System - API Cost-Based Pricing
+ * Credits System - Direct API Cost Pass-Through
  * 
- * Credits are priced based on actual API usage costs plus a profit margin
- * to ensure the platform is self-sustaining at any scale.
+ * Credits are a direct reflection of actual API costs.
+ * 1 Credit = $0.0001 USD (1/100th of a cent)
+ * This means 10,000 credits = $1 USD
  * 
- * Pricing Philosophy:
- * - Base cost = Actual API cost (e.g., Gemini, Alpha Vantage, etc.)
- * - Credit price = Base cost × margin multiplier (1.5x default)
- * - 1 Credit ≈ $0.001 USD (1000 credits = $1)
+ * Actual API Pricing (as of late 2024):
+ * - Gemini 1.5 Flash: $0.075 per 1M input tokens, $0.30 per 1M output tokens
+ *   → Avg chat message (~500 tokens in, ~1000 out) ≈ $0.0003 = 3 credits
+ * - Gemini 1.5 Pro: $1.25 per 1M input, $5.00 per 1M output
+ *   → Deep analysis (~2K in, ~4K out) ≈ $0.025 = 250 credits
+ * - Alpha Vantage Premium: $0.01 per API call
+ *   → Stock quote = 100 credits
+ * - Google Search API (Custom Search): $5 per 1000 queries = $0.005/query
+ *   → Grounding search = 50 credits
+ * 
+ * The platform takes a margin on credit purchases, NOT on individual operations.
+ * Credit costs below are the RAW API costs.
  */
 
 // Storage key for credits
 const CREDITS_STORAGE_KEY = 'stockcommand_credits_v1';
 const CREDITS_HISTORY_KEY = 'stockcommand_credits_history_v1';
 
-// Default starting credits for new users (demo/free tier)
-const DEFAULT_STARTING_CREDITS = 1000;
-
-// Profit margin multiplier (1.5 = 50% margin)
-const MARGIN_MULTIPLIER = 1.5;
+// Default starting credits for new users (= $0.50 worth of API calls)
+const DEFAULT_STARTING_CREDITS = 5000;
 
 /**
- * Credit costs per operation type
- * Based on approximate API costs:
- * - Gemini Flash: ~$0.00001 per 1K tokens input, ~$0.00004 per 1K output
- * - Alpha Vantage: ~$0.01 per call (premium tier)
- * - Google Search API: ~$0.005 per query
+ * Credit costs = ACTUAL API COSTS
+ * 1 Credit = $0.0001 USD
+ * 
+ * These are calculated from real API pricing, not arbitrary values.
  */
 export const CREDIT_COSTS = {
-    // Data Sync Operations
-    TICKER_QUOTE_SYNC: 2,          // Single ticker price quote (~$0.001 API cost)
-    TICKER_FULL_SYNC: 5,           // Full ticker data (price + technicals)
-    MARKET_CLOCK_SYNC: 3,          // Single market clock refresh
-    GLOBAL_CLOCKS_REFRESH: 15,     // Refresh all global clocks
+    // Data Sync Operations (Alpha Vantage @ $0.01/call = 100 credits)
+    TICKER_QUOTE_SYNC: 100,        // Alpha Vantage quote API
+    TICKER_FULL_SYNC: 200,         // Quote + technicals (2 API calls)
+    MARKET_CLOCK_SYNC: 50,         // Internal calculation + minimal API
+    GLOBAL_CLOCKS_REFRESH: 500,    // Multiple data sources
 
-    // Agent Operations  
-    AGENT_CHAT_MESSAGE: 5,         // Single chat message (Gemini Flash)
-    AGENT_SCAN_TICKER: 25,         // Deep ticker analysis (search + LLM)
-    AGENT_SCAN_SECTOR: 50,         // Sector-wide scan
-    AGENT_SCAN_FULL: 100,          // Full market scan
-    AGENT_GROUNDING_SEARCH: 10,    // Google grounding search
+    // Agent Operations (Gemini Flash for chat, Pro for analysis)
+    AGENT_CHAT_MESSAGE: 3,         // Gemini Flash: ~500 in + 1K out tokens
+    AGENT_SCAN_TICKER: 300,        // Gemini Pro analysis + search grounding
+    AGENT_SCAN_SECTOR: 800,        // Multiple ticker analysis + aggregation  
+    AGENT_SCAN_FULL: 2000,         // Full market sweep
+    AGENT_GROUNDING_SEARCH: 50,    // Google Custom Search API
 
     // Premium Operations
-    PORTFOLIO_REPORT: 75,          // Full portfolio analysis
-    STRATEGY_BACKTEST: 50,         // Run backtest simulation
-    OPTIMIZER_ITERATION: 20,       // Single optimization iteration
+    PORTFOLIO_REPORT: 500,         // Gemini Pro deep analysis
+    STRATEGY_BACKTEST: 100,        // Compute-only, no external API
+    OPTIMIZER_ITERATION: 50,       // Gemini Flash per iteration
 
-    // Background Sync (per interval)
-    AUTO_SYNC_TICKER: 1,           // Background ticker price update
-    AUTO_SYNC_CLOCK: 2,            // Background clock update
+    // Background Sync (lightweight operations)
+    AUTO_SYNC_TICKER: 100,         // Same as quote sync
+    AUTO_SYNC_CLOCK: 25,           // Cached/calculated data
 } as const;
 
 export type CreditOperationType = keyof typeof CREDIT_COSTS;

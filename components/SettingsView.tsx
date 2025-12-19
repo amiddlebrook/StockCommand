@@ -261,7 +261,7 @@ export const SettingsView: React.FC = () => {
                                     </div>
                                     <div className="text-right">
                                         <div className="text-3xl font-bold text-amber-400 font-mono">{creditBalance.toLocaleString()}</div>
-                                        <div className="text-xs text-slate-500">≈ ${(creditBalance * 0.001).toFixed(2)} USD value</div>
+                                        <div className="text-xs text-slate-500">= ${(creditBalance * 0.0001).toFixed(2)} USD (actual API costs)</div>
                                     </div>
                                 </div>
                                 <button
@@ -279,7 +279,7 @@ export const SettingsView: React.FC = () => {
                             {/* Cost Breakdown */}
                             <div className="bg-slate-900/30 border border-slate-800 rounded-xl p-6">
                                 <h3 className="text-sm font-bold text-white mb-4 uppercase tracking-wider">Credit Cost Breakdown</h3>
-                                <p className="text-xs text-slate-500 mb-4">Credits are priced based on actual API costs + platform margin to ensure sustainable operation at any scale.</p>
+                                <p className="text-xs text-slate-500 mb-4">1 credit = $0.0001 USD. Credits represent the actual cost of each API operation. Platform margin is applied only at purchase.</p>
 
                                 <div className="space-y-4">
                                     {/* Data Sync */}
