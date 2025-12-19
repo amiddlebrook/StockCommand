@@ -81,6 +81,12 @@ export interface Env {
   OPENROUTER_GLM_45_AIR_API_KEY?: string;
   OPENROUTER_QWEN3_235B_API_KEY?: string;
 
+  // New OpenRouter models (free tier)
+  OPENROUTER_OLMO_THINK_API_KEY?: string;
+  OPENROUTER_NEMOTRON_NANO_API_KEY?: string;
+  OPENROUTER_DEEPSEEK_NEX_API_KEY?: string;
+  OPENROUTER_KATCODER_PRO_API_KEY?: string;
+  OPENROUTER_GPT_OSS_API_KEY?: string;
 
   // Stock API keys
   ALPHA_VANTAGE_API_KEY?: string;

@@ -20,7 +20,12 @@ export type APIProvider =
   | 'openrouter-deepseek-chat'
   | 'openrouter-minimax-m2'
   | 'openrouter-glm-45-air'
-  | 'openrouter-qwen3-235b';
+  | 'openrouter-qwen3-235b'
+  | 'openrouter-olmo-think'
+  | 'openrouter-nemotron-nano'
+  | 'openrouter-deepseek-nex'
+  | 'openrouter-katcoder-pro'
+  | 'openrouter-gpt-oss';
 
 export type APIConfig = {
   provider: APIProvider;
@@ -54,6 +59,26 @@ export const API_CONFIGS: { [key in APIProvider]: (env: Env) => APIConfig | unde
   'openrouter-qwen3-235b': env =>
     env.OPENROUTER_QWEN3_235B_API_KEY
       ? { provider: 'openrouter-qwen3-235b', apiKey: env.OPENROUTER_QWEN3_235B_API_KEY }
+      : undefined,
+  'openrouter-olmo-think': env =>
+    env.OPENROUTER_OLMO_THINK_API_KEY
+      ? { provider: 'openrouter-olmo-think', apiKey: env.OPENROUTER_OLMO_THINK_API_KEY }
+      : undefined,
+  'openrouter-nemotron-nano': env =>
+    env.OPENROUTER_NEMOTRON_NANO_API_KEY
+      ? { provider: 'openrouter-nemotron-nano', apiKey: env.OPENROUTER_NEMOTRON_NANO_API_KEY }
+      : undefined,
+  'openrouter-deepseek-nex': env =>
+    env.OPENROUTER_DEEPSEEK_NEX_API_KEY
+      ? { provider: 'openrouter-deepseek-nex', apiKey: env.OPENROUTER_DEEPSEEK_NEX_API_KEY }
+      : undefined,
+  'openrouter-katcoder-pro': env =>
+    env.OPENROUTER_KATCODER_PRO_API_KEY
+      ? { provider: 'openrouter-katcoder-pro', apiKey: env.OPENROUTER_KATCODER_PRO_API_KEY }
+      : undefined,
+  'openrouter-gpt-oss': env =>
+    env.OPENROUTER_GPT_OSS_API_KEY
+      ? { provider: 'openrouter-gpt-oss', apiKey: env.OPENROUTER_GPT_OSS_API_KEY }
       : undefined,
 };
 

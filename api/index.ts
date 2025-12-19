@@ -693,6 +693,11 @@ async function runChatCompletion(
     case 'openrouter-deepseek-r1t2':
     case 'openrouter-minimax-m2':
     case 'openrouter-glm-45-air':
+    case 'openrouter-olmo-think':
+    case 'openrouter-nemotron-nano':
+    case 'openrouter-deepseek-nex':
+    case 'openrouter-katcoder-pro':
+    case 'openrouter-gpt-oss':
       return runOpenRouterCompletion(providerConfig.apiKey, model.apiModelId, messages);
     default:
       throw new Error(`Unsupported provider: ${model.provider}`);
