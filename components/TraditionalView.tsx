@@ -319,8 +319,8 @@ export const TraditionalView: React.FC<TraditionalViewProps> = ({
                                 key={period}
                                 onClick={() => setSectorPeriod(period)}
                                 className={`px-2 py-0.5 text-[10px] font-mono rounded transition-colors ${sectorPeriod === period
-                                        ? 'bg-cyan-600 text-white'
-                                        : 'bg-slate-700/50 text-slate-400 hover:bg-slate-600/50'
+                                    ? 'bg-cyan-600 text-white'
+                                    : 'bg-slate-700/50 text-slate-400 hover:bg-slate-600/50'
                                     }`}
                             >
                                 {period}
@@ -335,7 +335,10 @@ export const TraditionalView: React.FC<TraditionalViewProps> = ({
                             <BarChart data={sectorPerformance} layout="vertical">
                                 <XAxis
                                     type="number"
-                                    domain={[-5, 5]}
+                                    domain={[
+                                        (dataMin: number) => Math.floor(Math.min(dataMin, -1)),
+                                        (dataMax: number) => Math.ceil(Math.max(dataMax, 1))
+                                    ]}
                                     tick={{ fill: '#64748b', fontSize: 10 }}
                                     tickFormatter={(v) => `${v > 0 ? '+' : ''}${v}%`}
                                 />
