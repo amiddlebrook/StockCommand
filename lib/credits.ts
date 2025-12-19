@@ -54,6 +54,7 @@ export const CREDIT_COSTS = {
     // Background Sync (lightweight operations)
     AUTO_SYNC_TICKER: 100,         // Same as quote sync
     AUTO_SYNC_CLOCK: 25,           // Cached/calculated data
+    AGENT_BACKGROUND_TICK: 10,     // Per-activation cost for enabling background processes
 } as const;
 
 export type CreditOperationType = keyof typeof CREDIT_COSTS;

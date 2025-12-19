@@ -58,6 +58,9 @@ const AppContent: React.FC = () => {
   // Credit balance state
   const [creditBalance, setCreditBalance] = useState(() => CreditsService.loadBalance().credits);
 
+  // Agent background processes toggle
+  const [isAgentEnabled, setIsAgentEnabled] = useState(() => StorageService.loadSettings().agentEnabled ?? false);
+
   const [messages, setMessages] = useState<ChatMessageType[]>(() => [
     { id: 'welcome', role: 'model', content: "**StockCommand V2.1 Online** 🟢\n\nAll systems operational. Awaiting commands...\n\nTry: Ask me to analyze any ticker, e.g. 'Analyze $AAPL momentum'" },
   ]);
@@ -614,11 +617,30 @@ const AppContent: React.FC = () => {
             <h1 className="font-bold tracking-widest text-lg md:hidden group-hover:text-cyan-300 transition-colors">CMD <span className="text-cyan-500 text-xs align-top">V2.1</span></h1>
           </div>
 
-          {/* ACTIVE AGENT STATUS (Top Centerish) */}
-          <div className="hidden md:flex items-center gap-2 px-3 py-1 bg-cyan-900/10 border border-cyan-500/30 rounded-full">
-            <span className="w-1.5 h-1.5 bg-cyan-500 rounded-full animate-pulse"></span>
-            <span className="text-[10px] font-mono text-cyan-400">AGENT_ACTIVE</span>
-          </div>
+          {/* AGENT TOGGLE - Controls background data generation */}
+          <button
+            onClick={() => {
+              const newState = !isAgentEnabled;
+              setIsAgentEnabled(newState);
+              StorageService.saveSettings({ ...StorageService.loadSettings(), agentEnabled: newState });
+              if (newState) {
+                // Deduct credits for enabling agent background processes
+                if (CreditsService.deduct('AGENT_BACKGROUND_TICK', 'Background Processes')) {
+                  setCreditBalance(CreditsService.loadBalance().credits);
+                }
+              }
+            }}
+            className={`hidden md:flex items-center gap-2 px-3 py-1 rounded-full cursor-pointer transition-all ${isAgentEnabled
+                ? 'bg-cyan-900/30 border border-cyan-500/50 hover:bg-cyan-800/40'
+                : 'bg-slate-800/50 border border-slate-600/50 hover:bg-slate-700/50'
+              }`}
+            title={isAgentEnabled ? 'Click to disable background data generation' : 'Click to enable background data generation (uses credits)'}
+          >
+            <span className={`w-1.5 h-1.5 rounded-full ${isAgentEnabled ? 'bg-cyan-500 animate-pulse' : 'bg-slate-500'}`}></span>
+            <span className={`text-[10px] font-mono ${isAgentEnabled ? 'text-cyan-400' : 'text-slate-400'}`}>
+              {isAgentEnabled ? 'AGENT_ACTIVE' : 'AGENT_IDLE'}
+            </span>
+          </button>
 
           {/* Agent Fuel Balance Mini-Display */}
           <div
@@ -841,14 +863,7 @@ const AppContent: React.FC = () => {
         )}
       </div>
 
-      {/* 5. FOOTER (TICKER) */}
-      <div className="hud-cell-footer justify-between">
-        <span className="flex items-center gap-2">
-          <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
-          LIVE FEED :: MARKET OPEN
-        </span>
-        <span className="opacity-50">LATE_PACKET_LOSS: 0.00%</span>
-      </div>
+      {/* Footer removed - was cutting off chat area */}
 
       {/* Overlays */}
       {

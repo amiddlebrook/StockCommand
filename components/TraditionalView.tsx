@@ -18,7 +18,7 @@ interface TickerData {
     changePercent: number;
     volume: number;
     sector: string;
-    status: 'GREEN' | 'YELLOW' | 'RED';
+    status: 'green' | 'yellow' | 'red';
 }
 
 interface SectorPerformance {
@@ -26,7 +26,7 @@ interface SectorPerformance {
     fullName: string;
     etf: string;
     changePercent: number; // ETF % change relative to SPY
-    status: 'GREEN' | 'YELLOW' | 'RED';
+    status: 'green' | 'yellow' | 'red';
 }
 
 interface PricePoint {
@@ -54,9 +54,9 @@ function generateSectorPerformance(): SectorPerformance[] {
         // Seed based on sector name for consistency
         const seed = sectorName.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
         const changePercent = ((seed % 100) - 50) / 10; // -5% to +5%
-        const status: 'GREEN' | 'YELLOW' | 'RED' =
-            changePercent > 1 ? 'GREEN' :
-                changePercent < -1 ? 'RED' : 'YELLOW';
+        const status: 'green' | 'yellow' | 'red' =
+            changePercent > 1 ? 'green' :
+                changePercent < -1 ? 'red' : 'yellow';
 
         return {
             name: sectorName.slice(0, 12),
@@ -69,19 +69,19 @@ function generateSectorPerformance(): SectorPerformance[] {
 }
 
 // Get clock status for a ticker
-function getTickerStatus(symbol: string, clocks: MarketClock[]): 'GREEN' | 'YELLOW' | 'RED' {
+function getTickerStatus(symbol: string, clocks: MarketClock[]): 'green' | 'yellow' | 'red' {
     const tickerClocks = clocks.filter(c => c?.code?.includes(symbol));
     if (tickerClocks.length === 0) {
         // Default based on symbol seed
         const seed = symbol.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-        const statuses: ('GREEN' | 'YELLOW' | 'RED')[] = ['GREEN', 'YELLOW', 'RED'];
+        const statuses: ('green' | 'yellow' | 'red')[] = ['green', 'yellow', 'red'];
         return statuses[seed % 3];
     }
-    const greenCount = tickerClocks.filter(c => c?.status === 'GREEN').length;
-    const redCount = tickerClocks.filter(c => c?.status === 'RED').length;
-    if (greenCount > redCount) return 'GREEN';
-    if (redCount > greenCount) return 'RED';
-    return 'YELLOW';
+    const greenCount = tickerClocks.filter(c => c?.status === 'green').length;
+    const redCount = tickerClocks.filter(c => c?.status === 'red').length;
+    if (greenCount > redCount) return 'green';
+    if (redCount > greenCount) return 'red';
+    return 'yellow';
 }
 
 // Generate mock ticker data
@@ -136,11 +136,11 @@ const CollapsibleSection: React.FC<{
 );
 
 // Status dot component
-const StatusDot: React.FC<{ status: 'GREEN' | 'YELLOW' | 'RED' }> = ({ status }) => {
+const StatusDot: React.FC<{ status: 'green' | 'yellow' | 'red' }> = ({ status }) => {
     const colors = {
-        GREEN: 'bg-green-500 shadow-green-500/50',
-        YELLOW: 'bg-yellow-500 shadow-yellow-500/50',
-        RED: 'bg-red-500 shadow-red-500/50'
+        green: 'bg-green-500 shadow-green-500/50',
+        yellow: 'bg-yellow-500 shadow-yellow-500/50',
+        red: 'bg-red-500 shadow-red-500/50'
     };
     return (
         <span className={`w-2 h-2 rounded-full shadow-lg ${colors[status]}`} />
@@ -261,7 +261,7 @@ export const TraditionalView: React.FC<TraditionalViewProps> = ({
                                     {sectorPerformance.map((entry, index) => (
                                         <Cell
                                             key={`cell-${index}`}
-                                            fill={entry.status === 'GREEN' ? '#22c55e' : entry.status === 'RED' ? '#ef4444' : '#eab308'}
+                                            fill={entry.status === 'green' ? '#22c55e' : entry.status === 'red' ? '#ef4444' : '#eab308'}
                                         />
                                     ))}
                                 </Bar>
@@ -293,7 +293,7 @@ export const TraditionalView: React.FC<TraditionalViewProps> = ({
                 >
                     {/* Ticker Info Bar */}
                     <div className="flex items-center gap-4 mb-4 p-2 bg-slate-800/50 rounded">
-                        <StatusDot status={selectedTickerData?.status || 'YELLOW'} />
+                        <StatusDot status={selectedTickerData?.status || 'yellow'} />
                         <span className="text-white font-mono font-bold">{selectedTicker}</span>
                         <span className="text-slate-400 text-xs">{selectedTickerData?.sector}</span>
                         <span className={`text-sm font-mono ${(selectedTickerData?.changePercent || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
