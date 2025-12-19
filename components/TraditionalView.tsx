@@ -49,6 +49,13 @@ interface PricePoint {
 const TIME_PERIODS = ['1D', '1W', '1M', '1Y', '5Y'] as const;
 type TimePeriod = typeof TIME_PERIODS[number];
 
+// Open chart state
+interface OpenChart {
+    symbol: string;
+    period: TimePeriod;
+    isOpen: boolean;
+}
+
 // Mock price data generator - structured for future API integration
 function generateMockPriceData(symbol: string): PricePoint[] {
     // Seed based on symbol for consistency across renders
@@ -202,14 +209,13 @@ export const TraditionalView: React.FC<TraditionalViewProps> = ({
     }
 
     const [symbolInput, setSymbolInput] = useState('');
-    const [selectedTicker, setSelectedTicker] = useState<string | null>(null);
+    const [openCharts, setOpenCharts] = useState<OpenChart[]>([]);
     const [localSymbols, setLocalSymbols] = useState<string[]>([]);
     const [hiddenSymbols, setHiddenSymbols] = useState<string[]>([]);
     const [watchlist, setWatchlist] = useState<string[]>(() => StorageService.loadWatchlist());
 
     // Collapsible states
     const [isSectorOpen, setIsSectorOpen] = useState(true);
-    const [isChartOpen, setIsChartOpen] = useState(true);
     const [isTickersOpen, setIsTickersOpen] = useState(true);
     const [sectorPeriod, setSectorPeriod] = useState<TimePeriod>('1D');
 
@@ -233,20 +239,43 @@ export const TraditionalView: React.FC<TraditionalViewProps> = ({
         const sym = symbolInput.trim().toUpperCase();
         if (!sym) return;
 
-        // Check for duplicates
+        // Check for duplicates - open chart for existing ticker
         if (allTickers.some(t => t.symbol === sym)) {
             setSymbolInput('');
-            // Select existing ticker instead
-            setSelectedTicker(sym);
-            setIsChartOpen(true);
+            handleOpenChart(sym);
             return;
         }
 
         setLocalSymbols(prev => [...prev, sym]);
         onAddSymbol(sym);
         setSymbolInput('');
-        setSelectedTicker(sym);
-        setIsChartOpen(true);
+        setOpenCharts(prev => [...prev, { symbol: sym, period: '1D', isOpen: true }]);
+    };
+
+    // Open a chart for a ticker
+    const handleOpenChart = (sym: string) => {
+        // If chart already open, just expand it
+        const existing = openCharts.find(c => c.symbol === sym);
+        if (existing) {
+            setOpenCharts(prev => prev.map(c => c.symbol === sym ? { ...c, isOpen: true } : c));
+        } else {
+            setOpenCharts(prev => [...prev, { symbol: sym, period: '1D', isOpen: true }]);
+        }
+    };
+
+    // Close a chart
+    const handleCloseChart = (sym: string) => {
+        setOpenCharts(prev => prev.filter(c => c.symbol !== sym));
+    };
+
+    // Toggle chart collapse
+    const handleToggleChart = (sym: string) => {
+        setOpenCharts(prev => prev.map(c => c.symbol === sym ? { ...c, isOpen: !c.isOpen } : c));
+    };
+
+    // Change chart time period
+    const handleChartPeriodChange = (sym: string, period: TimePeriod) => {
+        setOpenCharts(prev => prev.map(c => c.symbol === sym ? { ...c, period } : c));
     };
 
     // Handle remove symbol (hides from view)
@@ -254,7 +283,7 @@ export const TraditionalView: React.FC<TraditionalViewProps> = ({
         setHiddenSymbols(prev => [...prev, sym]);
         setLocalSymbols(prev => prev.filter(s => s !== sym));
         if (onRemoveSymbol) onRemoveSymbol(sym);
-        if (selectedTicker === sym) setSelectedTicker(null);
+        setOpenCharts(prev => prev.filter(c => c.symbol !== sym));
     };
 
     // Handle add to watchlist
@@ -268,8 +297,13 @@ export const TraditionalView: React.FC<TraditionalViewProps> = ({
     // Check if ticker is in watchlist
     const isInWatchlist = (sym: string) => watchlist.includes(sym);
 
-    const selectedData = selectedTicker ? generateMockPriceData(selectedTicker) : null;
-    const selectedTickerData = selectedTicker ? allTickers.find(t => t.symbol === selectedTicker) : null;
+    // Generate chart data based on period
+    const getChartData = (symbol: string, period: TimePeriod) => {
+        const baseData = generateMockPriceData(symbol);
+        // Adjust data points based on period
+        const periodPoints: Record<TimePeriod, number> = { '1D': 30, '1W': 30, '1M': 30, '1Y': 30, '5Y': 30 };
+        return baseData.slice(0, periodPoints[period]);
+    };
 
     return (
         <div className="h-full overflow-y-auto p-4 space-y-4">
@@ -376,90 +410,112 @@ export const TraditionalView: React.FC<TraditionalViewProps> = ({
                 </p>
             </CollapsibleSection>
 
-            {/* 2. Selected Ticker Detail Chart */}
-            {selectedTicker && selectedData && (
-                <CollapsibleSection
-                    title={`${selectedTicker} CHART`}
-                    isOpen={isChartOpen}
-                    onToggle={() => setIsChartOpen(!isChartOpen)}
-                    headerActions={
-                        <button
-                            onClick={() => setSelectedTicker(null)}
-                            className="text-slate-500 hover:text-white p-1"
-                        >
-                            <Icon icon="close" className="w-4 h-4" />
-                        </button>
-                    }
-                >
-                    {/* Ticker Info Bar */}
-                    <div className="flex items-center justify-between mb-4 p-2 bg-slate-800/50 rounded">
-                        <div className="flex items-center gap-4">
-                            {selectedTickerData && <TickerClockDots clocks={selectedTickerData.clocks} />}
-                            <span className="text-white font-mono font-bold">{selectedTicker}</span>
-                            <span className="text-slate-400 text-xs">{selectedTickerData?.sector}</span>
-                            <span className={`text-sm font-mono ${(selectedTickerData?.changePercent || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                {(selectedTickerData?.changePercent || 0) >= 0 ? '+' : ''}{selectedTickerData?.changePercent.toFixed(2)}%
-                            </span>
+            {/* 2. Open Ticker Charts */}
+            {openCharts.map(chart => {
+                const chartData = getChartData(chart.symbol, chart.period);
+                const tickerData = allTickers.find(t => t.symbol === chart.symbol);
+                return (
+                    <CollapsibleSection
+                        key={chart.symbol}
+                        title={`${chart.symbol} (${chart.period})`}
+                        isOpen={chart.isOpen}
+                        onToggle={() => handleToggleChart(chart.symbol)}
+                        headerActions={
+                            <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
+                                {/* Time Period Toggles */}
+                                <div className="flex items-center gap-0.5">
+                                    {TIME_PERIODS.map(period => (
+                                        <button
+                                            key={period}
+                                            onClick={() => handleChartPeriodChange(chart.symbol, period)}
+                                            className={`px-1.5 py-0.5 text-[9px] font-mono rounded transition-colors ${chart.period === period
+                                                ? 'bg-cyan-600 text-white'
+                                                : 'bg-slate-700/50 text-slate-400 hover:bg-slate-600/50'
+                                                }`}
+                                        >
+                                            {period}
+                                        </button>
+                                    ))}
+                                </div>
+                                <button
+                                    onClick={() => handleCloseChart(chart.symbol)}
+                                    className="text-slate-500 hover:text-white p-1"
+                                >
+                                    <Icon icon="close" className="w-4 h-4" />
+                                </button>
+                            </div>
+                        }
+                    >
+                        {/* Ticker Info Bar */}
+                        <div className="flex items-center justify-between mb-4 p-2 bg-slate-800/50 rounded">
+                            <div className="flex items-center gap-4">
+                                {tickerData && <TickerClockDots clocks={tickerData.clocks} />}
+                                <span className="text-white font-mono font-bold">{chart.symbol}</span>
+                                <span className="text-slate-400 text-xs">{tickerData?.sector}</span>
+                                <span className={`text-sm font-mono ${(tickerData?.changePercent || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                    {(tickerData?.changePercent || 0) >= 0 ? '+' : ''}{tickerData?.changePercent.toFixed(2)}%
+                                </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={() => handleAddToWatchlist(chart.symbol)}
+                                    disabled={isInWatchlist(chart.symbol)}
+                                    className={`flex items-center gap-1 px-2 py-1 text-xs rounded transition-colors ${isInWatchlist(chart.symbol)
+                                        ? 'bg-amber-500/30 text-amber-300 cursor-default'
+                                        : 'bg-amber-600/20 text-amber-400 hover:bg-amber-600/40'
+                                        }`}
+                                    title={isInWatchlist(chart.symbol) ? 'In Watchlist' : 'Add to Watchlist'}
+                                >
+                                    <Icon icon="star" className="w-3 h-3" />
+                                    <span className="hidden sm:inline">{isInWatchlist(chart.symbol) ? 'Saved' : 'Watchlist'}</span>
+                                </button>
+                                <button
+                                    onClick={() => handleRemoveSymbol(chart.symbol)}
+                                    className="flex items-center gap-1 px-2 py-1 text-xs bg-red-600/20 text-red-400 hover:bg-red-600/40 rounded transition-colors"
+                                    title="Remove Ticker"
+                                >
+                                    <Icon icon="trash" className="w-3 h-3" />
+                                    <span className="hidden sm:inline">Remove</span>
+                                </button>
+                            </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                            <button
-                                onClick={() => handleAddToWatchlist(selectedTicker)}
-                                disabled={isInWatchlist(selectedTicker)}
-                                className={`flex items-center gap-1 px-2 py-1 text-xs rounded transition-colors ${isInWatchlist(selectedTicker)
-                                    ? 'bg-amber-500/30 text-amber-300 cursor-default'
-                                    : 'bg-amber-600/20 text-amber-400 hover:bg-amber-600/40'
-                                    }`}
-                                title={isInWatchlist(selectedTicker) ? 'In Watchlist' : 'Add to Watchlist'}
-                            >
-                                <Icon icon="star" className="w-3 h-3" />
-                                <span className="hidden sm:inline">{isInWatchlist(selectedTicker) ? 'Saved' : 'Watchlist'}</span>
-                            </button>
-                            <button
-                                onClick={() => handleRemoveSymbol(selectedTicker)}
-                                className="flex items-center gap-1 px-2 py-1 text-xs bg-red-600/20 text-red-400 hover:bg-red-600/40 rounded transition-colors"
-                                title="Remove Ticker"
-                            >
-                                <Icon icon="trash" className="w-3 h-3" />
-                                <span className="hidden sm:inline">Remove</span>
-                            </button>
+
+                        {/* Price Chart */}
+                        <div className="h-48 mb-4">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <LineChart data={chartData}>
+                                    <XAxis dataKey="day" tick={{ fill: '#64748b', fontSize: 10 }} />
+                                    <YAxis tick={{ fill: '#64748b', fontSize: 10 }} domain={['auto', 'auto']} />
+                                    <Tooltip
+                                        contentStyle={{ background: '#0f172a', border: '1px solid #334155', borderRadius: '8px' }}
+                                        labelStyle={{ color: '#e2e8f0' }}
+                                    />
+                                    <Line
+                                        type="monotone"
+                                        dataKey="price"
+                                        stroke="#06b6d4"
+                                        strokeWidth={2}
+                                        dot={false}
+                                    />
+                                </LineChart>
+                            </ResponsiveContainer>
                         </div>
-                    </div>
 
-                    {/* Price Chart */}
-                    <div className="h-48 mb-4">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <LineChart data={selectedData}>
-                                <XAxis dataKey="day" tick={{ fill: '#64748b', fontSize: 10 }} />
-                                <YAxis tick={{ fill: '#64748b', fontSize: 10 }} domain={['auto', 'auto']} />
-                                <Tooltip
-                                    contentStyle={{ background: '#0f172a', border: '1px solid #334155', borderRadius: '8px' }}
-                                    labelStyle={{ color: '#e2e8f0' }}
-                                />
-                                <Line
-                                    type="monotone"
-                                    dataKey="price"
-                                    stroke="#06b6d4"
-                                    strokeWidth={2}
-                                    dot={false}
-                                />
-                            </LineChart>
-                        </ResponsiveContainer>
-                    </div>
-
-                    {/* Volume Chart */}
-                    <div className="h-20">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={selectedData}>
-                                <XAxis dataKey="day" tick={{ fill: '#64748b', fontSize: 8 }} />
-                                <Tooltip
-                                    contentStyle={{ background: '#0f172a', border: '1px solid #334155', borderRadius: '8px' }}
-                                />
-                                <Bar dataKey="volume" fill="#3b82f6" opacity={0.6} />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </div>
-                </CollapsibleSection>
-            )}
+                        {/* Volume Chart */}
+                        <div className="h-20">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={chartData}>
+                                    <XAxis dataKey="day" tick={{ fill: '#64748b', fontSize: 8 }} />
+                                    <Tooltip
+                                        contentStyle={{ background: '#0f172a', border: '1px solid #334155', borderRadius: '8px' }}
+                                    />
+                                    <Bar dataKey="volume" fill="#3b82f6" opacity={0.6} />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </CollapsibleSection>
+                );
+            })}
 
             {/* 3. Ticker Grid */}
             <CollapsibleSection
@@ -468,28 +524,28 @@ export const TraditionalView: React.FC<TraditionalViewProps> = ({
                 onToggle={() => setIsTickersOpen(!isTickersOpen)}
             >
                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
-                    {allTickers.slice(0, 48).map(ticker => (
-                        <div
-                            key={ticker.symbol}
-                            onClick={() => {
-                                setSelectedTicker(ticker.symbol);
-                                setIsChartOpen(true);
-                            }}
-                            className={`bg-slate-800/40 border rounded-lg p-3 cursor-pointer transition-all hover:border-cyan-500/50 ${selectedTicker === ticker.symbol ? 'border-cyan-500 bg-cyan-900/20' : 'border-slate-700/50'
-                                }`}
-                        >
-                            <div className="flex items-center justify-between mb-1">
-                                <span className="font-mono font-bold text-white text-sm">{ticker.symbol}</span>
-                                <TickerClockDots clocks={ticker.clocks} />
+                    {allTickers.slice(0, 48).map(ticker => {
+                        const isOpen = openCharts.some(c => c.symbol === ticker.symbol);
+                        return (
+                            <div
+                                key={ticker.symbol}
+                                onClick={() => handleOpenChart(ticker.symbol)}
+                                className={`bg-slate-800/40 border rounded-lg p-3 cursor-pointer transition-all hover:border-cyan-500/50 ${isOpen ? 'border-cyan-500 bg-cyan-900/20' : 'border-slate-700/50'
+                                    }`}
+                            >
+                                <div className="flex items-center justify-between mb-1">
+                                    <span className="font-mono font-bold text-white text-sm">{ticker.symbol}</span>
+                                    <TickerClockDots clocks={ticker.clocks} />
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <p className="text-[9px] text-slate-500 truncate">{ticker.sector}</p>
+                                    <span className={`text-xs font-mono ${ticker.changePercent >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                        {ticker.changePercent >= 0 ? '+' : ''}{ticker.changePercent.toFixed(2)}%
+                                    </span>
+                                </div>
                             </div>
-                            <div className="flex items-center justify-between">
-                                <p className="text-[9px] text-slate-500 truncate">{ticker.sector}</p>
-                                <span className={`text-xs font-mono ${ticker.changePercent >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                    {ticker.changePercent >= 0 ? '+' : ''}{ticker.changePercent.toFixed(2)}%
-                                </span>
-                            </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
                 {allTickers.length > 48 && (
                     <p className="text-xs text-slate-600 mt-2 text-center">+ {allTickers.length - 48} more tickers</p>
