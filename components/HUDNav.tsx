@@ -106,16 +106,6 @@ export const HUDNav: React.FC<HUDNavProps> = ({
                         </div>
                     </div>
                 )}
-
-                <button
-                    onClick={() => {
-                        const event = new KeyboardEvent('keydown', { key: 'k', metaKey: true });
-                        window.dispatchEvent(event);
-                    }}
-                    className="w-full aspect-square flex items-center justify-center border border-slate-800 hover:border-cyan-500/30 text-slate-500 hover:text-cyan-400 transition-colors"
-                >
-                    <Icon icon="search" className="w-4 h-4" />
-                </button>
             </div>
         </div>
     );

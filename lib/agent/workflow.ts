@@ -1,7 +1,7 @@
 import { AgentEngine } from './engine';
 import { ActionExecutor } from './actions';
 import { MarketData, PortfolioState, UserStrategy, AgentAction, StrategyTrigger, StrategyAction } from './types';
-import { UNIVERSE } from './universe';
+import { UNIVERSE, SECTOR_ETFS, SectorName } from './universe';
 import { MarketDataService } from './market-data';
 
 // Env variables should be passed in from the worker
@@ -16,7 +16,7 @@ const TOOL_PROXIES: Record<string, string[]> = {
 
 async function fetchMarketData(
     avKey: string,
-    scope: 'FULL' | 'SLEEVE' | 'TICKER' | 'TOOL',
+    scope: 'FULL' | 'SECTOR' | 'TICKER' | 'TOOL',
     target?: string
 ): Promise<Record<string, MarketData>> {
     console.log(`Fetching market data via MarketDataService (Scope: ${scope}, Target: ${target})...`);
@@ -25,10 +25,14 @@ async function fetchMarketData(
     let targetSymbols: string[] = [];
 
     if (scope === 'FULL') {
-        // Limited FULL scan
-        targetSymbols = UNIVERSE.filter(t => t.sleeve === 'Core Tech' || t.sleeve === 'Macro' || t.sleeve.includes("Specialized")).map(t => t.symbol);
-    } else if (scope === 'SLEEVE') {
-        targetSymbols = UNIVERSE.filter(t => t.sleeve === target).map(t => t.symbol);
+        // Fetch all sector ETFs for full scan
+        targetSymbols = Object.values(SECTOR_ETFS);
+    } else if (scope === 'SECTOR') {
+        // Fetch tickers in a specific sector
+        targetSymbols = UNIVERSE.filter(t => t.sector === target).map(t => t.symbol);
+        // Also include sector ETF
+        const sectorEtf = SECTOR_ETFS[target as SectorName];
+        if (sectorEtf) targetSymbols.push(sectorEtf);
     } else if (scope === 'TICKER') {
         if (target) targetSymbols = [target];
     } else if (scope === 'TOOL') {
@@ -68,12 +72,10 @@ function evaluateStrategies(strategies: UserStrategy[], marketData: Record<strin
 
         let triggersMet = false;
 
-        // Check triggers (OR logic for now, or AND? Usually AND for complex, OR for simple. Let's assume AND for now)
+        // Check triggers (AND logic)
         const metCount = strategy.triggers.filter(trigger => {
-            const data = marketData[trigger.metric] || marketData['SPY']; // Default to SPY if metric not found directly (e.g. VIX logic)
-            // Note: Real VIX logic needs explicit VIX symbol fetch.
+            const data = marketData[trigger.metric] || marketData['SPY'];
 
-            // Mock VIX check if metric is VIX
             let currentValue = 0;
             if (trigger.metric === 'VIX') currentValue = 20; // Mock
             else if (trigger.metric === 'RSI') currentValue = 50; // Mock
@@ -98,12 +100,13 @@ function evaluateStrategies(strategies: UserStrategy[], marketData: Record<strin
                 else if (action.type === 'BUY') agentActionType = 'BUY';
                 else if (action.type === 'SELL') agentActionType = 'SELL';
 
-                const isSleeve = action.target.includes('Tech') || action.target.includes('Macro') || action.target.length > 5;
+                // Check if target is a sector name
+                const isSector = Object.keys(SECTOR_ETFS).includes(action.target);
 
                 actions.push({
                     type: agentActionType,
-                    ticker: !isSleeve ? action.target : undefined,
-                    sleeve: isSleeve ? action.target as any : undefined,
+                    ticker: !isSector ? action.target : undefined,
+                    sector: isSector ? action.target as SectorName : undefined,
                     confidence: 1.0,
                     reason: `Strategy [${strategy.name}] triggered: ${strategy.triggers.map(t => `${t.metric} ${t.operator} ${t.value}`).join(', ')}`
                 });
@@ -116,7 +119,7 @@ function evaluateStrategies(strategies: UserStrategy[], marketData: Record<strin
 
 export async function runAgentWorkflow(
     env: any,
-    scope: 'FULL' | 'SLEEVE' | 'TICKER' | 'TOOL' = 'FULL',
+    scope: 'FULL' | 'SECTOR' | 'TICKER' | 'TOOL' = 'FULL',
     target?: string,
     tool?: string,
     strategies: UserStrategy[] = []
@@ -155,7 +158,7 @@ export async function runAgentWorkflow(
     console.log(analysis);
     if (strategyActions.length > 0) {
         console.log("--- STRATEGY OVERRIDES ---");
-        strategyActions.forEach(a => console.log(`[${a.type}] ${a.ticker || a.sleeve}: ${a.reason}`));
+        strategyActions.forEach(a => console.log(`[${a.type}] ${a.ticker || a.sector}: ${a.reason}`));
     }
     console.log("-----------------------");
 
@@ -168,9 +171,9 @@ export async function runAgentWorkflow(
     }
 
     console.log('Workflow complete.');
-    // Append strategy report to analysis (hacky but visible)
+    // Append strategy report to analysis
     const strategyReport = strategyActions.length > 0
-        ? `\n\n### STRATEGY FORGE ACTIVATION\n${strategyActions.map(a => `- **${a.ticker || a.sleeve}**: ${a.reason}`).join('\n')}`
+        ? `\n\n### STRATEGY FORGE ACTIVATION\n${strategyActions.map(a => `- **${a.ticker || a.sector}**: ${a.reason}`).join('\n')}`
         : '';
 
     return { analysis: analysis + strategyReport, actions: allActions, clocks };

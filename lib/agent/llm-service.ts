@@ -1,5 +1,5 @@
-import { MarketData, AgentAction, Ticker, MarketClock } from './types';
-import { UNIVERSE } from './universe';
+import { MarketData, AgentAction, Ticker, MarketClock, SectorName } from './types';
+import { UNIVERSE, SECTOR_ETFS } from './universe';
 import { FRAMEWORK_TEXT } from './framework-context';
 
 const TOOL_PROMPTS: Record<string, string> = {
@@ -42,7 +42,7 @@ export class LLMService {
     }
 
     public async analyze(
-        scope: 'FULL' | 'SLEEVE' | 'TICKER' | 'TOOL',
+        scope: 'FULL' | 'SECTOR' | 'TICKER' | 'TOOL',
         marketData: Record<string, MarketData>,
         target?: string,
         tool?: string
@@ -52,8 +52,8 @@ export class LLMService {
         let relevantTickers: Ticker[] = [];
         if (scope === 'FULL') {
             relevantTickers = UNIVERSE;
-        } else if (scope === 'SLEEVE') {
-            relevantTickers = UNIVERSE.filter(t => t.sleeve === target);
+        } else if (scope === 'SECTOR') {
+            relevantTickers = UNIVERSE.filter(t => t.sector === target);
         } else if (scope === 'TICKER') {
             relevantTickers = UNIVERSE.filter(t => t.symbol === target);
         } else if (scope === 'TOOL') {
@@ -66,7 +66,7 @@ export class LLMService {
                 const symbols = target.split(',').map(s => s.trim().toUpperCase());
                 relevantTickers = symbols.map(sym => {
                     const found = UNIVERSE.find(t => t.symbol === sym);
-                    return found || { symbol: sym, name: sym, sleeve: 'Rotatable Tech', role: 'Custom', allocation: 0, description: 'Custom' };
+                    return found || { symbol: sym, name: sym, sector: 'Technology' as SectorName, role: 'Custom' };
                 });
             }
         }
@@ -80,10 +80,10 @@ export class LLMService {
             const data = marketData[t.symbol];
             if (!data) return `${t.symbol}: No Data`;
             const ta = data.rsi ? ` | RSI: ${data.rsi.toFixed(1)} | MACD: ${data.macd?.histogram.toFixed(3)} | Signal: ${data.technicalSignal}` : '';
-            return `${t.symbol} (${t.sleeve}): Price $${data.price.toFixed(2)}, Change ${data.changePercent.toFixed(2)}%, Vol ${data.volume}${ta}`;
+            return `${t.symbol} (${t.sector}): Price $${data.price.toFixed(2)}, Change ${data.changePercent.toFixed(2)}%, Vol ${data.volume}${ta}`;
         }).join('\n');
 
-        const systemPrompt = `You are the "StockCommand" AI Agent, an expert portfolio manager running a specific Multi-Clock Rotation Framework.`;
+        const systemPrompt = `You are the "StockCommand" AI Agent, an expert portfolio manager running a systematic sector rotation strategy.`;
 
         let taskInstructions = '';
         if (scope === 'TOOL' && tool && TOOL_PROMPTS[tool]) {
@@ -95,10 +95,10 @@ export class LLMService {
         } else {
             taskInstructions = `
              TASK: Perform a ${scope} analysis ${target ? `specifically for ${target}` : ''}.
-             Based strictly on the Framework Document's logic (Clocks, Sleeves, Rules):
+             Based on systematic sector rotation principles:
              1. Analyze the current state of the assets provided.
              2. Identify any rotation triggers (Entry, Exit, Trim, Add).
-             3. Provide a clear rationale citing the specific "Clock" or rule from the document.
+             3. Provide a clear rationale citing sector momentum and relative strength.
              `;
         }
 
@@ -116,7 +116,7 @@ export class LLMService {
       OUTPUT FORMAT:
       Return a STRICT JSON object with these fields (do not use markdown blocks):
       - "markdown_report": A string containing a concise markdown report formatted for a trader.
-      - "recommended_actions": An array of objects matching this interface: { type: 'BUY'|'SELL'|'HOLD'|'TRIM'|'ALERT', ticker: string, sleeve: string, reason: string, confidence: number (0-1) }
+      - "recommended_actions": An array of objects matching this interface: { type: 'BUY'|'SELL'|'HOLD'|'TRIM'|'ALERT', ticker: string, sector: string, reason: string, confidence: number (0-1) }
       - "clocks": An array of objects matching: { label: string, status: 'green'|'yellow'|'red', code: string, reason: string }. 
          ${scope === 'FULL' ?
                 'Required Codes: CLOCK_LIQUIDITY_CYCLE, CLOCK_COMMODITY_CYCLE, CLOCK_VIX_REGIME, CLOCK_INFLATION_TREND, CLOCK_CREDIT_IMPULSE, CLOCK_DOLLAR_STRENGTH' :
@@ -135,7 +135,7 @@ export class LLMService {
                 headers: {
                     "Content-Type": "application/json",
                     "Authorization": `Bearer ${this.apiKey}`,
-                    "HTTP-Referer": "https://stockcommand.workers.dev", // Optional, for OpenRouter rankings
+                    "HTTP-Referer": "https://stockcommand.workers.dev",
                     "X-Title": "StockCommand Agent"
                 },
                 body: JSON.stringify({
@@ -144,8 +144,7 @@ export class LLMService {
                         { role: "system", content: systemPrompt },
                         { role: "user", content: userPrompt }
                     ],
-                    temperature: 0.2, // Low temperature for analytical precision
-                    // response_format: { type: "json_object" } // REMOVED: DeepSeek/OpenRouter strict JSON mode can be flaky
+                    temperature: 0.2,
                 })
             });
 

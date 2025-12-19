@@ -1,20 +1,16 @@
-export type SleeveName =
-  | 'Core Tech'
-  | 'Rotatable Tech'
-  | 'Specialized: Energy'
-  | 'Specialized: AI Infra'
-  | 'Specialized: Insurance'
-  | 'Specialized: Defense'
-  | 'Specialized: Utilities/Water'
-  | 'Specialized: Royalties'
-  | 'Specialized: Health Services'
-  | 'Specialized: Biotech'
-  | 'Specialized: Digital Rails'
-  | 'Specialized: Art'
-  | 'Physical Precious Metals'
-  | 'USD Cash'
-  | 'Options'
-  | 'Macro';
+// Standard Market Sectors (GICS Classification)
+export type SectorName =
+  | 'Technology'
+  | 'Healthcare'
+  | 'Financials'
+  | 'Consumer Discretionary'
+  | 'Consumer Staples'
+  | 'Industrials'
+  | 'Energy'
+  | 'Utilities'
+  | 'Materials'
+  | 'Real Estate'
+  | 'Communication Services';
 
 export interface MarketClock {
   label: string;
@@ -28,8 +24,8 @@ export interface MarketClock {
 export interface Ticker {
   symbol: string;
   name?: string;
-  sleeve: SleeveName;
-  role: string;
+  sector: SectorName;
+  role?: string;
   weight?: number; // Target weight or current weight
 }
 
@@ -46,7 +42,7 @@ export interface MarketData {
 export interface AgentAction {
   type: 'BUY' | 'SELL' | 'HOLD' | 'TRIM' | 'ALERT' | 'REPORT';
   ticker?: string;
-  sleeve?: SleeveName;
+  sector?: SectorName;
   reason: string;
   quantity?: number;
   confidence: number;
@@ -81,7 +77,7 @@ export interface StrategyTrigger {
 export interface StrategyAction {
   id: string;
   type: ActionType;
-  target: string; // Ticker, Sleeve, or "ALL"
+  target: string; // Ticker, Sector, or "ALL"
   param?: string; // e.g., "5%" or "High Priority"
 }
 

@@ -40,39 +40,39 @@ export const TraditionalView: React.FC<TraditionalViewProps> = ({ clocks = [], s
     const [symbolInput, setSymbolInput] = useState('');
     const [selectedTicker, setSelectedTicker] = useState<string | null>(null);
 
-    // Get unique sleeves
-    const sleeves = useMemo(() => {
-        const set = new Set(UNIVERSE.map(t => t.sleeve));
+    // Get unique sectors
+    const sectors = useMemo(() => {
+        const set = new Set(UNIVERSE.map(t => t.sector));
         return Array.from(set);
     }, []);
 
-    // Aggregate clock data per sleeve for traditional bar chart
-    const sleeveData = useMemo(() => {
-        return sleeves.map(sleeve => {
-            const sleeveTickers = UNIVERSE.filter(t => t.sleeve === sleeve);
-            const sleevClocks = clocks.filter(c => {
+    // Aggregate clock data per sector for traditional bar chart
+    const sectorData = useMemo(() => {
+        return sectors.map(sector => {
+            const sectorTickers = UNIVERSE.filter(t => t.sector === sector);
+            const sectorClocks = clocks.filter(c => {
                 if (!c) return false;
                 const code = c.code || '';
                 const name = c.name || '';
-                return sleeveTickers.some(t => code.includes(t.symbol) || name.toLowerCase().includes(sleeve.toLowerCase()));
+                return sectorTickers.some(t => code.includes(t.symbol) || name.toLowerCase().includes(sector.toLowerCase()));
             });
 
-            const greenCount = sleevClocks.filter(c => c?.status === 'GREEN').length;
-            const yellowCount = sleevClocks.filter(c => c?.status === 'YELLOW').length;
-            const redCount = sleevClocks.filter(c => c?.status === 'RED').length;
+            const greenCount = sectorClocks.filter(c => c?.status === 'GREEN').length;
+            const yellowCount = sectorClocks.filter(c => c?.status === 'YELLOW').length;
+            const redCount = sectorClocks.filter(c => c?.status === 'RED').length;
             const total = greenCount + yellowCount + redCount || 1;
 
             return {
-                name: sleeve.replace('Specialized: ', '').slice(0, 12),
-                fullName: sleeve,
+                name: sector.slice(0, 12),
+                fullName: sector,
                 score: ((greenCount * 100) + (yellowCount * 50) + (redCount * 0)) / total,
                 green: greenCount,
                 yellow: yellowCount,
                 red: redCount,
-                tickers: sleeveTickers.length
+                tickers: sectorTickers.length
             };
         });
-    }, [sleeves, clocks]);
+    }, [sectors, clocks]);
 
     const handleAddSymbol = () => {
         const sym = symbolInput.trim().toUpperCase();
@@ -117,9 +117,9 @@ export const TraditionalView: React.FC<TraditionalViewProps> = ({ clocks = [], s
             <div className="bg-slate-900/40 border border-slate-700/50 rounded-lg p-4">
                 <h2 className="text-sm font-bold text-cyan-400 mb-3 font-mono">SLEEVE_PERFORMANCE_INDEX</h2>
                 <div className="h-48 flex items-center justify-center border border-slate-700 rounded relative">
-                    {sleeveData.length > 0 ? (
+                    {sectorData.length > 0 ? (
                         <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={sleeveData} layout="vertical">
+                            <BarChart data={sectorData} layout="vertical">
                                 <XAxis type="number" domain={[0, 100]} tick={{ fill: '#64748b', fontSize: 10 }} />
                                 <YAxis type="category" dataKey="name" tick={{ fill: '#94a3b8', fontSize: 10 }} width={80} />
                                 <Tooltip
@@ -128,7 +128,7 @@ export const TraditionalView: React.FC<TraditionalViewProps> = ({ clocks = [], s
                                     formatter={(value: number, name: string) => [`${value.toFixed(1)}%`, 'Score']}
                                 />
                                 <Bar dataKey="score" radius={[0, 4, 4, 0]}>
-                                    {sleeveData.map((entry, index) => (
+                                    {sectorData.map((entry, index) => (
                                         <Cell
                                             key={`cell-${index}`}
                                             fill={entry.score >= 70 ? '#22c55e' : entry.score >= 40 ? '#eab308' : '#ef4444'}
@@ -141,7 +141,7 @@ export const TraditionalView: React.FC<TraditionalViewProps> = ({ clocks = [], s
                         <p className="text-slate-500 text-xs">No Data Available</p>
                     )}
                 </div>
-                <p className="text-[10px] text-slate-600 mt-2">↑ This correlates with Spatial view's color-coded sleeves</p>
+                <p className="text-[10px] text-slate-600 mt-2">↑ This correlates with sectors</p>
             </div>
 
             {/* Ticker Grid - Traditional Data Cards */}
@@ -165,7 +165,7 @@ export const TraditionalView: React.FC<TraditionalViewProps> = ({ clocks = [], s
                                         {isPositive ? '+' : ''}{mockChange.toFixed(2)}%
                                     </span>
                                 </div>
-                                <p className="text-[9px] text-slate-500 truncate">{ticker.sleeve}</p>
+                                <p className="text-[9px] text-slate-500 truncate">{ticker.sector}</p>
                             </div>
                         );
                     })}

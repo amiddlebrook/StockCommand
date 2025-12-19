@@ -446,31 +446,31 @@ const AppContent: React.FC = () => {
   }, []);
 
   // --- REAL DATA INTEGRATION FOR PORTFOLIO VIEW ---
-  const sleevesWithStats = useMemo(() => {
+  const sectorsWithStats = useMemo(() => {
     // If no symbols, return empty to show empty state
     if (!symbols || symbols.length === 0) return [];
 
-    // Group symbols by sleeve
-    const sleeveMap = new Map<string, Array<{ symbol: string, name: string, allocation: number }>>();
+    // Group symbols by sector
+    const sectorMap = new Map<string, Array<{ symbol: string, name: string, allocation: number }>>();
 
     symbols.forEach(symbol => {
       // Find metadata in UNIVERSE if available (Knowledge Base)
       const known = UNIVERSE.find(u => u.symbol === symbol);
-      const sleeveName = known ? known.sleeve : 'Unclassified';
-      const role = known ? known.role : 'Custom Ticker';
+      const sectorName = known ? known.sector : 'Unclassified';
+      const role = known ? known.role || 'Ticker' : 'Custom Ticker';
 
-      if (!sleeveMap.has(sleeveName)) {
-        sleeveMap.set(sleeveName, []);
+      if (!sectorMap.has(sectorName)) {
+        sectorMap.set(sectorName, []);
       }
-      sleeveMap.get(sleeveName)!.push({
+      sectorMap.get(sectorName)!.push({
         symbol,
         name: role,
         allocation: 0 // Mock allocation for now
       });
     });
 
-    return Array.from(sleeveMap.entries()).map(([sleeveName, items]) => ({
-      sleeveName,
+    return Array.from(sectorMap.entries()).map(([sectorName, items]) => ({
+      sectorName,
       items,
       stats: { green: 0, yellow: 0, red: 0 }
     }));
@@ -588,7 +588,7 @@ const AppContent: React.FC = () => {
               {hasBrokerConnection ? (
                 <div className="h-full overflow-hidden"><BrokerPortfolioView onOpenBrokerModal={() => setIsBrokerModalOpen(true)} /></div>
               ) : (
-                <PortfolioView sleevesWithStats={sleevesWithStats} onClockClick={() => { }} freshnessThreshold={0} totalLiquidity={0} />
+                <PortfolioView sectorsWithStats={sectorsWithStats} onTickerClick={() => { }} />
               )}
             </div>
           ) : activeTab === 'trade' ? (
