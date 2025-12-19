@@ -127,16 +127,16 @@ export async function runAgentWorkflow(
     console.log(`Starting StockCommand Agent Workflow (Scope: ${scope}, Tool: ${tool || 'None'}, Strategies: ${strategies.length})...`);
 
     const AV_KEY = env.ALPHA_VANTAGE_API_KEY || '';
-    const DEEPSEEK_KEY = env.OPENROUTER_DEEPSEEK_CHAT_API_KEY || '';
+    const AGENT_KEY = env.OPENROUTER_DEEPSEEK_NEX_API_KEY || '';
 
     if (!AV_KEY) {
         console.error("Missing ALPHA_VANTAGE_API_KEY");
         return { analysis: "Error: Missing Alpha Vantage API Key", actions: [] };
     }
 
-    if (!DEEPSEEK_KEY) {
-        console.error("Missing OPENROUTER_DEEPSEEK_CHAT_API_KEY");
-        return { analysis: "Error: Missing DeepSeek API Key", actions: [] };
+    if (!AGENT_KEY) {
+        console.error("Missing OPENROUTER_DEEPSEEK_NEX_API_KEY");
+        return { analysis: "Error: Missing Agent API Key", actions: [] };
     }
 
     // 1. Refresh Data
@@ -146,7 +146,7 @@ export async function runAgentWorkflow(
     ]);
 
     // 2. Research & Analyze (Engine with LLM)
-    const engine = new AgentEngine(DEEPSEEK_KEY);
+    const engine = new AgentEngine(AGENT_KEY);
     const { analysis, actions: engineActions, clocks } = await engine.evaluate(scope, marketData, portfolio, target, tool);
 
     // 3. Evaluate User Strategies (Strategic Overlay)

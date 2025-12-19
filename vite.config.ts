@@ -11,21 +11,12 @@ export default defineConfig(({ mode }) => {
     },
     plugins: [react()],
     define: {
-      // Legacy support
-      'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
-      'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
-      // AI Provider API Keys
-      'process.env.VITE_GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
-      'process.env.VITE_OPENAI_API_KEY': JSON.stringify(env.OPENAI_API_KEY),
-      'process.env.VITE_CLAUDE_API_KEY': JSON.stringify(env.CLAUDE_API_KEY),
-      // OpenRouter API Keys
-      'process.env.VITE_OPENROUTER_QWEN3_CODER_API_KEY': JSON.stringify(env.OPENROUTER_QWEN3_CODER_API_KEY),
-      'process.env.VITE_OPENROUTER_DEEPSEEK_R1T2_API_KEY': JSON.stringify(env.OPENROUTER_DEEPSEEK_R1T2_API_KEY),
-      'process.env.VITE_OPENROUTER_DEEPSEEK_CHAT_API_KEY': JSON.stringify(env.OPENROUTER_DEEPSEEK_CHAT_API_KEY),
-      'process.env.VITE_OPENROUTER_MINIMAX_M2_API_KEY': JSON.stringify(env.OPENROUTER_MINIMAX_M2_API_KEY),
-      'process.env.VITE_OPENROUTER_GLM_45_AIR_API_KEY': JSON.stringify(env.OPENROUTER_GLM_45_AIR_API_KEY),
-      'process.env.VITE_OPENROUTER_QWEN3_235B_API_KEY': JSON.stringify(env.OPENROUTER_QWEN3_235B_API_KEY),
-
+      // OpenRouter API Keys (5 Free Models)
+      'process.env.OPENROUTER_OLMO_THINK_API_KEY': JSON.stringify(env.OPENROUTER_OLMO_THINK_API_KEY),
+      'process.env.OPENROUTER_NEMOTRON_NANO_API_KEY': JSON.stringify(env.OPENROUTER_NEMOTRON_NANO_API_KEY),
+      'process.env.OPENROUTER_DEEPSEEK_NEX_API_KEY': JSON.stringify(env.OPENROUTER_DEEPSEEK_NEX_API_KEY),
+      'process.env.OPENROUTER_KATCODER_PRO_API_KEY': JSON.stringify(env.OPENROUTER_KATCODER_PRO_API_KEY),
+      'process.env.OPENROUTER_GPT_OSS_API_KEY': JSON.stringify(env.OPENROUTER_GPT_OSS_API_KEY),
     },
     resolve: {
       alias: {

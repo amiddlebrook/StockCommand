@@ -879,10 +879,10 @@ export default {
             try {
                 const body = await request.json() as any;
                 const { message, history, context } = body;
-                const apiKey = env.OPENROUTER_DEEPSEEK_CHAT_API_KEY;
+                const apiKey = env.OPENROUTER_DEEPSEEK_NEX_API_KEY;
 
                 if (!apiKey) {
-                    throw new Error("Missing OPENROUTER_DEEPSEEK_CHAT_API_KEY");
+                    throw new Error("Missing OPENROUTER_DEEPSEEK_NEX_API_KEY");
                 }
 
                 // Construct conversation for DeepSeek
@@ -911,7 +911,7 @@ export default {
                         "Content-Type": "application/json"
                     },
                     body: JSON.stringify({
-                        model: "deepseek/deepseek-chat",
+                        model: "nex-agi/deepseek-v3.1-nex-n1:free",
                         messages: messages,
                         max_tokens: 1000
                     })
