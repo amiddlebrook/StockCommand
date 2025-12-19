@@ -8,7 +8,7 @@
 export const STOCK_DATA_PROVIDERS = {
   ALPHA_VANTAGE: 'alphavantage',
   FINNHUB: 'finnhub',
-  IEX_CLOUD: 'iexcloud',
+  YAHOO: 'yahoo',
 } as const;
 
 /**
@@ -76,18 +76,18 @@ export const CACHE_CONFIG = {
 } as const;
 
 /**
- * API rate limits
+ * API rate limits (requests per minute unless noted)
  */
 export const RATE_LIMITS = {
+  FINNHUB: {
+    REQUESTS_PER_MINUTE: 60, // Highest - use as primary
+  },
   ALPHA_VANTAGE: {
     REQUESTS_PER_MINUTE: 5,
     REQUESTS_PER_DAY: 500,
   },
-  FINNHUB: {
-    REQUESTS_PER_MINUTE: 60,
-  },
-  IEX_CLOUD: {
-    REQUESTS_PER_SECOND: 100,
+  YAHOO: {
+    REQUESTS_PER_DAY: 100, // RapidAPI free tier
   },
 } as const;
 

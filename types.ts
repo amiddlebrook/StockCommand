@@ -80,7 +80,7 @@ export interface Env {
   // Stock API keys
   ALPHA_VANTAGE_API_KEY?: string;
   FINNHUB_API_KEY?: string;
-  IEXCLOUD_API_KEY?: string;
+  YAHOO_API_KEY?: string;
 
   // Environment variables
   APP_NAME: string;

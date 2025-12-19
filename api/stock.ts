@@ -51,7 +51,7 @@ export class StockAPIError extends Error {
 }
 
 class StockAPIService {
-  constructor(private env: Env) {}
+  constructor(private env: Env) { }
 
   /**
    * Get real-time stock quote with caching
@@ -68,7 +68,7 @@ class StockAPIService {
 
     // Fetch from API
     const quote = await this.fetchQuoteFromAPI(symbol);
-    
+
     // Cache the result
     await this.env.STOCK_CACHE_KV.put(
       cacheKey,
@@ -97,7 +97,7 @@ class StockAPIService {
 
     // Fetch from API
     const data = await this.fetchIntradayFromAPI(symbol, interval);
-    
+
     // Cache the result
     await this.env.STOCK_CACHE_KV.put(
       cacheKey,
@@ -125,7 +125,7 @@ class StockAPIService {
 
     // Fetch from API
     const profile = await this.fetchProfileFromAPI(symbol);
-    
+
     // Cache the result
     await this.env.STOCK_CACHE_KV.put(
       cacheKey,
@@ -153,7 +153,7 @@ class StockAPIService {
 
     // Fetch from API
     const results = await this.searchSymbolsFromAPI(query);
-    
+
     // Cache the result
     await this.env.STOCK_CACHE_KV.put(
       cacheKey,
@@ -186,9 +186,9 @@ class StockAPIService {
       INSERT OR REPLACE INTO user_watchlists (user_id, symbols, updated_at)
       VALUES (?, ?, ?)
     `);
-    
+
     await stmt.bind(userId, JSON.stringify(symbols), Date.now()).run();
-    
+
     await this.logAnalytics('watchlist_save', { userId, symbolCount: symbols.length });
   }
 
@@ -235,7 +235,7 @@ class StockAPIService {
    */
   async getFile(key: string): Promise<Response | null> {
     const object = await this.env.STORAGE.get(key);
-    
+
     if (object) {
       return new Response(object.body, {
         headers: {
@@ -244,25 +244,53 @@ class StockAPIService {
         }
       });
     }
-    
+
     return null;
   }
 
-  // Private methods for API calls
-
+  /**
+   * Fetch quote with cascading failover: Finnhub → Alpha Vantage → Yahoo
+   * Priority based on rate limits (highest first)
+   */
   private async fetchQuoteFromAPI(symbol: string): Promise<StockQuote> {
-    const provider = this.env.DEFAULT_STOCK_PROVIDER || 'alphavantage';
-    
-    switch (provider) {
-      case 'alphavantage':
-        return this.fetchAlphaVantageQuote(symbol);
-      case 'finnhub':
-        return this.fetchFinnhubQuote(symbol);
-      case 'iexcloud':
-        return this.fetchIEXCloudQuote(symbol);
-      default:
-        throw new Error(`Unsupported provider: ${provider}`);
+    const errors: string[] = [];
+
+    // 1. Try Finnhub first (60 req/min)
+    if (this.env.FINNHUB_API_KEY) {
+      try {
+        return await this.fetchFinnhubQuote(symbol);
+      } catch (error: any) {
+        errors.push(`Finnhub: ${error.message}`);
+        console.warn(`Finnhub failed for ${symbol}: ${error.message}`);
+      }
     }
+
+    // 2. Fallback to Alpha Vantage (5 req/min)
+    if (this.env.ALPHA_VANTAGE_API_KEY) {
+      try {
+        return await this.fetchAlphaVantageQuote(symbol);
+      } catch (error: any) {
+        errors.push(`AlphaVantage: ${error.message}`);
+        console.warn(`Alpha Vantage failed for ${symbol}: ${error.message}`);
+      }
+    }
+
+    // 3. Last resort: Yahoo Finance (100 req/day)
+    if (this.env.YAHOO_API_KEY) {
+      try {
+        return await this.fetchYahooQuote(symbol);
+      } catch (error: any) {
+        errors.push(`Yahoo: ${error.message}`);
+        console.warn(`Yahoo failed for ${symbol}: ${error.message}`);
+      }
+    }
+
+    // All providers failed
+    throw new StockAPIError(
+      `All data providers failed for ${symbol}: ${errors.join('; ')}`,
+      503,
+      'ALL_PROVIDERS_EXHAUSTED'
+    );
   }
 
   private async fetchAlphaVantageQuote(symbol: string): Promise<StockQuote> {
@@ -294,7 +322,7 @@ class StockAPIService {
         change,
         changePercent,
         volume,
-        marketCap: 0, // Alpha Vantage doesn't provide this in global quote
+        marketCap: 0,
         timestamp: Date.now()
       };
     }
@@ -311,36 +339,85 @@ class StockAPIService {
     const response = await fetch(url);
     const data = await response.json() as any;
 
-    if (data.c) {
+    // Check for rate limit (Finnhub returns empty object or 429)
+    if (response.status === 429) {
+      throw new StockAPIError('Finnhub rate limit exceeded', 429, 'FINNHUB_RATE_LIMIT');
+    }
+
+    if (data.c && data.c > 0) {
+      const price = data.c;
+      const prevClose = data.pc || price;
+      const change = data.d || (price - prevClose);
+      const changePercent = data.dp || ((change / prevClose) * 100);
+
       return {
-        symbol,
+        symbol: symbol.toUpperCase(),
         name: symbol,
-        price: data.c,
-        change: data.d,
-        changePercent: (data.d / (data.c - data.d)) * 100,
+        price,
+        change,
+        changePercent,
         volume: 0, // Not provided in quote endpoint
         marketCap: 0,
         timestamp: Date.now()
       };
     }
 
-    throw new Error('Invalid symbol or API error');
+    throw new StockAPIError(`Finnhub returned no data for ${symbol.toUpperCase()}`, 404, 'FINNHUB_NO_QUOTE');
   }
 
-  private async fetchIEXCloudQuote(symbol: string): Promise<StockQuote> {
-    // Implementation for IEX Cloud
-    throw new Error('IEX Cloud not implemented yet');
+  private async fetchYahooQuote(symbol: string): Promise<StockQuote> {
+    if (!this.env.YAHOO_API_KEY) {
+      throw new Error('Yahoo API key not configured');
+    }
+
+    // RapidAPI Yahoo Finance endpoint
+    const url = `https://yahoo-finance15.p.rapidapi.com/api/v1/markets/quote?ticker=${symbol}&type=STOCKS`;
+    const response = await fetch(url, {
+      headers: {
+        'X-RapidAPI-Key': this.env.YAHOO_API_KEY,
+        'X-RapidAPI-Host': 'yahoo-finance15.p.rapidapi.com'
+      }
+    });
+
+    if (response.status === 429) {
+      throw new StockAPIError('Yahoo rate limit exceeded', 429, 'YAHOO_RATE_LIMIT');
+    }
+
+    const data = await response.json() as any;
+
+    if (data.body?.regularMarketPrice) {
+      const body = data.body;
+      return {
+        symbol: body.symbol || symbol.toUpperCase(),
+        name: body.shortName || body.longName || symbol,
+        price: body.regularMarketPrice || 0,
+        change: body.regularMarketChange || 0,
+        changePercent: body.regularMarketChangePercent || 0,
+        volume: body.regularMarketVolume || 0,
+        marketCap: body.marketCap || 0,
+        timestamp: Date.now()
+      };
+    }
+
+    throw new StockAPIError(`Yahoo returned no data for ${symbol.toUpperCase()}`, 404, 'YAHOO_NO_QUOTE');
+  }
+
+  /**
+   * Fetch company profile (Alpha Vantage only - other providers don't have this)
+   */
+  private async fetchProfileFromAPI(symbol: string): Promise<CompanyProfile> {
+    if (!this.env.ALPHA_VANTAGE_API_KEY) {
+      throw new StockAPIError('Alpha Vantage API key required for company profiles', 400, 'PROFILE_NO_API_KEY');
+    }
+    return this.fetchAlphaVantageProfile(symbol);
   }
 
   private async fetchIntradayFromAPI(symbol: string, interval: string): Promise<IntradayData> {
-    const provider = this.env.DEFAULT_STOCK_PROVIDER || 'alphavantage';
-    
-    switch (provider) {
-      case 'alphavantage':
-        return this.fetchAlphaVantageIntraday(symbol, interval);
-      default:
-        throw new Error(`Intraday data not implemented for provider: ${provider}`);
+    // Intraday data only available from Alpha Vantage
+    if (!this.env.ALPHA_VANTAGE_API_KEY) {
+      throw new StockAPIError('Alpha Vantage API key required for intraday data', 400, 'INTRADAY_NO_API_KEY');
     }
+    return this.fetchAlphaVantageIntraday(symbol, interval);
   }
 
   private async fetchAlphaVantageIntraday(symbol: string, interval: string): Promise<IntradayData> {
@@ -412,7 +489,7 @@ class StockAPIService {
 
   private async searchSymbolsFromAPI(query: string): Promise<Array<{ symbol: string; name: string }>> {
     const provider = this.env.DEFAULT_STOCK_PROVIDER || 'alphavantage';
-    
+
     switch (provider) {
       case 'alphavantage':
         return this.fetchAlphaVantageSearch(query);
