@@ -329,6 +329,11 @@ const AppContent: React.FC = () => {
         responseText = response.response ?? '';
       } else {
         const lowerMsg = message.toLowerCase().trim();
+        const trimmedMsg = message.trim().toUpperCase();
+
+        // Check if this looks like a ticker (1-5 letters only)
+        const isPotentialTicker = /^[A-Za-z]{1,5}$/.test(message.trim());
+
         if (lowerMsg.startsWith('analyze ') || lowerMsg.startsWith('scan ')) {
           const parts = message.split(' ');
           const target = parts.length > 1 ? parts[1].toUpperCase() : null;
@@ -338,8 +343,33 @@ const AppContent: React.FC = () => {
           } else {
             responseText = "Please specify a target to analyze.";
           }
+        } else if (isPotentialTicker) {
+          // TICKER-FIRST APPROACH: Treat any 1-5 letter input as a ticker
+          const potentialTicker = trimmedMsg;
+
+          // Add to symbols if not already there
+          if (!symbols.includes(potentialTicker)) {
+            setSymbols(prev => [...prev, potentialTicker]);
+            const newClocks = getClocksForEntity('TICKER', potentialTicker);
+            setMarketClocks(prev => [...prev, ...newClocks]);
+          }
+
+          // Send to LLM with explicit ticker context
+          const context = {
+            latestReport: agentOutput,
+            activeTickers: [potentialTicker, ...selectedSymbols],
+            currentView: activeTab,
+            activeTarget: potentialTicker,
+            // Explicit instruction that this is a ticker
+            tickerHint: potentialTicker
+          };
+          const history = messages.filter(m => !m.isLoading).map(m => ({ role: m.role as 'user' | 'model', parts: [{ text: m.content }] }));
+          // Enhance the message to make it clear it's a ticker query
+          const enhancedMessage = `Analyze the stock ticker ${potentialTicker}. The user typed "${message}" which is a stock symbol.`;
+          const response = await sendMessage(enhancedMessage, history, context);
+          responseText = response.response ?? '';
         } else {
-          // DYNAMIC TICKER DETECTION
+          // DYNAMIC TICKER DETECTION for messages with $ prefix
           const tickerMatch = message.match(/\$([A-Za-z]{2,5})/);
           if (tickerMatch) {
             const detectedTicker = tickerMatch[1].toUpperCase();
