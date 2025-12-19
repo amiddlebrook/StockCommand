@@ -24,6 +24,12 @@ import { SettingsView } from './components/SettingsView';
 import { BrokerConnectionModal } from './components/BrokerConnectionModal';
 import { TradeExecutionPanel } from './components/TradeExecutionPanel';
 import { BrokerPortfolioView } from './components/BrokerPortfolioView';
+import { ScreenerView } from './components/ScreenerView';
+import { CalendarView } from './components/CalendarView';
+import { LeaderboardsView } from './components/LeaderboardsView';
+import { DuelsView } from './components/DuelsView';
+import { TeamsView } from './components/TeamsView';
+import { MarketplaceView } from './components/MarketplaceView';
 
 import type { ChatMessage as ChatMessageType, Source } from './types';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -599,6 +605,18 @@ const AppContent: React.FC = () => {
             <div className="h-full overflow-y-auto"><CompetitionsView clocks={marketClocks} onSubmitPortfolio={() => { }} /></div>
           ) : activeTab === 'creator' ? (
             <div className="h-full overflow-y-auto"><CreatorModeView clocks={marketClocks} /></div>
+          ) : activeTab === 'screener' ? (
+            <div className="h-full overflow-hidden"><ScreenerView /></div>
+          ) : activeTab === 'calendar' ? (
+            <div className="h-full overflow-hidden"><CalendarView /></div>
+          ) : activeTab === 'leaderboards' ? (
+            <div className="h-full overflow-hidden"><LeaderboardsView /></div>
+          ) : activeTab === 'duels' ? (
+            <div className="h-full overflow-hidden"><DuelsView /></div>
+          ) : activeTab === 'teams' ? (
+            <div className="h-full overflow-hidden"><TeamsView /></div>
+          ) : activeTab === 'marketplace' ? (
+            <div className="h-full overflow-hidden"><MarketplaceView /></div>
           ) : activeTab === 'features' ? (
             <div className="h-full overflow-y-auto p-4">
               <h2 className="text-xl font-bold mb-4 font-mono text-cyan-400">AVAILABLE_MODULES</h2>
