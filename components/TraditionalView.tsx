@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Icon } from './Icon';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, Cell } from 'recharts';
 import { UNIVERSE, SECTOR_ETFS, SectorName } from '../lib/agent/universe';
@@ -214,22 +214,80 @@ export const TraditionalView: React.FC<TraditionalViewProps> = ({
     const [hiddenSymbols, setHiddenSymbols] = useState<string[]>([]);
     const [watchlist, setWatchlist] = useState<string[]>(() => StorageService.loadWatchlist());
 
+    // Real-time quote data from API
+    const [realQuotes, setRealQuotes] = useState<Record<string, any>>({});
+    const [isLoadingQuotes, setIsLoadingQuotes] = useState(false);
+
     // Collapsible states
     const [isSectorOpen, setIsSectorOpen] = useState(true);
     const [isTickersOpen, setIsTickersOpen] = useState(true);
     const [sectorPeriod, setSectorPeriod] = useState<TimePeriod>('1D');
 
-    // Combine UNIVERSE with custom symbols, excluding hidden
+    // Fetch real quotes from API
+    useEffect(() => {
+        const fetchQuotes = async () => {
+            const universeSymbols = UNIVERSE.map(t => t.symbol);
+            const allSymbols = [...new Set([...universeSymbols, ...symbols, ...localSymbols])];
+
+            if (allSymbols.length === 0) return;
+
+            setIsLoadingQuotes(true);
+            try {
+                // Batch fetch (limited to 10 at a time by API)
+                const batches = [];
+                for (let i = 0; i < allSymbols.length; i += 10) {
+                    batches.push(allSymbols.slice(i, i + 10));
+                }
+
+                for (const batch of batches) {
+                    const res = await fetch(`/api/quotes?symbols=${batch.join(',')}`);
+                    if (res.ok) {
+                        const data = await res.json();
+                        setRealQuotes(prev => ({ ...prev, ...data }));
+                    }
+                }
+            } catch (e) {
+                console.warn('Failed to fetch real quotes:', e);
+            } finally {
+                setIsLoadingQuotes(false);
+            }
+        };
+
+        fetchQuotes();
+        // Refresh every 60 seconds
+        const interval = setInterval(fetchQuotes, 60000);
+        return () => clearInterval(interval);
+    }, [symbols, localSymbols]);
+
+    // Combine UNIVERSE with custom symbols, using real data when available
     const allTickers = useMemo(() => {
         const universeSymbols = UNIVERSE.map(t => t.symbol);
         const customSymbols = [...symbols, ...localSymbols].filter(s => !universeSymbols.includes(s));
         const visibleUniverse = UNIVERSE.filter(t => !hiddenSymbols.includes(t.symbol));
         const visibleCustom = customSymbols.filter(s => !hiddenSymbols.includes(s));
+
+        const createTickerData = (symbol: string, sector: string): TickerData => {
+            const realQuote = realQuotes[symbol];
+            if (realQuote && !realQuote.error && realQuote.price) {
+                return {
+                    symbol,
+                    price: realQuote.price,
+                    change: realQuote.change || 0,
+                    changePercent: realQuote.changePercent || 0,
+                    volume: realQuote.volume || 0,
+                    sector,
+                    clocks: getTickerClocks(symbol)
+                };
+            }
+            // Fallback to mock if API hasn't returned yet
+            return generateTickerData(symbol, sector);
+        };
+
         return [
-            ...visibleUniverse.map(t => generateTickerData(t.symbol, t.sector)),
-            ...visibleCustom.map(s => generateTickerData(s, 'Custom'))
+            ...visibleUniverse.map(t => createTickerData(t.symbol, t.sector)),
+            ...visibleCustom.map(s => createTickerData(s, 'Custom'))
         ];
-    }, [symbols, localSymbols, hiddenSymbols]);
+    }, [symbols, localSymbols, hiddenSymbols, realQuotes]);
 
     // Sector performance data using ETF proxies
     const sectorPerformance = useMemo(() => generateSectorPerformance(sectorPeriod), [sectorPeriod]);

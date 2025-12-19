@@ -875,6 +875,67 @@ export default {
             });
         }
 
+        // GET /api/quote - Get real-time stock quote with failover
+        if (url.pathname === "/api/quote" && request.method === "GET") {
+            try {
+                const symbol = url.searchParams.get("symbol");
+                if (!symbol) {
+                    return new Response(JSON.stringify({ error: "Missing symbol parameter" }), {
+                        status: 400,
+                        headers: { ...corsHeaders, "Content-Type": "application/json" }
+                    });
+                }
+
+                // Use the failover stock API service
+                const { createStockAPI } = await import('./api/stock');
+                const stockAPI = createStockAPI(env);
+                const quote = await stockAPI.getQuote(symbol.toUpperCase());
+
+                return new Response(JSON.stringify(quote), {
+                    headers: { ...corsHeaders, "Content-Type": "application/json" }
+                });
+            } catch (e: any) {
+                return new Response(JSON.stringify({ error: e.message }), {
+                    status: 500,
+                    headers: { ...corsHeaders, "Content-Type": "application/json" }
+                });
+            }
+        }
+
+        // GET /api/quotes - Get multiple stock quotes in batch
+        if (url.pathname === "/api/quotes" && request.method === "GET") {
+            try {
+                const symbols = url.searchParams.get("symbols")?.split(",") || [];
+                if (symbols.length === 0) {
+                    return new Response(JSON.stringify({ error: "Missing symbols parameter" }), {
+                        status: 400,
+                        headers: { ...corsHeaders, "Content-Type": "application/json" }
+                    });
+                }
+
+                const { createStockAPI } = await import('./api/stock');
+                const stockAPI = createStockAPI(env);
+
+                const quotes: Record<string, any> = {};
+                for (const symbol of symbols.slice(0, 10)) { // Limit to 10 symbols
+                    try {
+                        quotes[symbol.toUpperCase()] = await stockAPI.getQuote(symbol.toUpperCase());
+                    } catch (e: any) {
+                        quotes[symbol.toUpperCase()] = { error: e.message };
+                    }
+                }
+
+                return new Response(JSON.stringify(quotes), {
+                    headers: { ...corsHeaders, "Content-Type": "application/json" }
+                });
+            } catch (e: any) {
+                return new Response(JSON.stringify({ error: e.message }), {
+                    status: 500,
+                    headers: { ...corsHeaders, "Content-Type": "application/json" }
+                });
+            }
+        }
+
         if (url.pathname === "/api/chat" && request.method === "POST") {
             try {
                 const body = await request.json() as any;
@@ -928,12 +989,15 @@ Only interpret input as a ticker when:
                     method: "POST",
                     headers: {
                         "Authorization": `Bearer ${apiKey}`,
-                        "Content-Type": "application/json"
+                        "Content-Type": "application/json",
+                        "HTTP-Referer": "https://stockcommand.workers.dev",
+                        "X-Title": "StockCommand"
                     },
                     body: JSON.stringify({
                         model: "nex-agi/deepseek-v3.1-nex-n1:free",
                         messages: messages,
-                        max_tokens: 1000
+                        max_tokens: 1500,
+                        plugins: [{ id: "web" }] // Enable web search for real-time data
                     })
                 });
 
