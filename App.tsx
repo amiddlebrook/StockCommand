@@ -65,6 +65,51 @@ const AppContent: React.FC = () => {
 
   // Console Drawer State
   const [isConsoleOpen, setIsConsoleOpen] = useState(false);
+  const [consoleHeight, setConsoleHeight] = useState(350); // Default height in pixels
+  const [isDraggingConsole, setIsDraggingConsole] = useState(false);
+  const dragStartY = useRef(0);
+  const dragStartHeight = useRef(350);
+
+  // Console drag resize handlers
+  const handleConsoleDragStart = (e: React.MouseEvent | React.TouchEvent) => {
+    if (!isConsoleOpen) return;
+    setIsDraggingConsole(true);
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+    dragStartY.current = clientY;
+    dragStartHeight.current = consoleHeight;
+    e.preventDefault();
+  };
+
+  useEffect(() => {
+    if (!isDraggingConsole) return;
+
+    const handleMouseMove = (e: MouseEvent | TouchEvent) => {
+      const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+      const deltaY = dragStartY.current - clientY; // Dragging up increases height
+      const newHeight = Math.min(
+        Math.max(dragStartHeight.current + deltaY, 150), // Min 150px
+        window.innerHeight - 100 // Max: window height minus header space
+      );
+      setConsoleHeight(newHeight);
+    };
+
+    const handleMouseUp = () => {
+      setIsDraggingConsole(false);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    window.addEventListener('touchmove', handleMouseMove);
+    window.addEventListener('touchend', handleMouseUp);
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('touchmove', handleMouseMove);
+      window.removeEventListener('touchend', handleMouseUp);
+    };
+  }, [isDraggingConsole]);
+
   // Mobile Menu State
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -670,24 +715,41 @@ const AppContent: React.FC = () => {
         {(
           <div
             className={`
-                  flex-shrink-0 relative z-20 shadow-[0_-5px_20px_rgba(0,0,0,0.5)] border-t border-slate-800 bg-slate-950 transition-all duration-300 ease-in-out
-                  ${isConsoleOpen ? 'h-[350px]' : 'h-[48px]'}
+                  flex-shrink-0 relative z-20 shadow-[0_-5px_20px_rgba(0,0,0,0.5)] border-t border-slate-800 bg-slate-950
+                  ${isDraggingConsole ? '' : 'transition-all duration-300 ease-in-out'}
               `}
+            style={{ height: isConsoleOpen ? `${consoleHeight}px` : '48px' }}
           >
             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-900 via-cyan-500 to-cyan-900 opacity-20"></div>
+
+            {/* Resize Handle - visible when open */}
+            {isConsoleOpen && (
+              <div
+                className="absolute top-0 left-0 w-full h-2 cursor-ns-resize hover:bg-cyan-500/20 transition-colors z-40"
+                onMouseDown={handleConsoleDragStart}
+                onTouchStart={handleConsoleDragStart}
+              >
+                <div className="absolute top-0.5 left-1/2 -translate-x-1/2 w-12 h-1 bg-slate-600 rounded-full" />
+              </div>
+            )}
 
             {/* Toggle Handle */}
             <div
               className={`
-                absolute -top-5 left-1/2 -translate-x-1/2 w-48 h-8 rounded-t-xl flex items-center justify-center cursor-pointer z-30 transition-all
+                absolute -top-5 left-1/2 -translate-x-1/2 w-48 h-8 rounded-t-xl flex items-center justify-center z-30 transition-all
                 ${isConsoleOpen
-                  ? 'bg-slate-900 border-t border-x border-slate-700 shadow-[0_-4px_10px_rgba(0,0,0,0.5)]'
-                  : 'bg-cyan-900/80 border-t border-x border-cyan-500/50 shadow-[0_-4px_10px_rgba(6,182,212,0.3)] hover:bg-cyan-600'}
+                  ? 'bg-slate-900 border-t border-x border-slate-700 shadow-[0_-4px_10px_rgba(0,0,0,0.5)] cursor-ns-resize'
+                  : 'bg-cyan-900/80 border-t border-x border-cyan-500/50 shadow-[0_-4px_10px_rgba(6,182,212,0.3)] hover:bg-cyan-600 cursor-pointer'}
               `}
-              onClick={() => setIsConsoleOpen(!isConsoleOpen)}
+              onClick={() => !isConsoleOpen && setIsConsoleOpen(true)}
+              onMouseDown={(e) => isConsoleOpen && handleConsoleDragStart(e)}
+              onTouchStart={(e) => isConsoleOpen && handleConsoleDragStart(e)}
+              onDoubleClick={() => isConsoleOpen && setIsConsoleOpen(false)}
             >
               <div className="flex items-center gap-2">
-                <span className="text-[10px] font-bold text-white tracking-widest uppercase">{isConsoleOpen ? 'Minimize' : 'Terminal'}</span>
+                <span className="text-[10px] font-bold text-white tracking-widest uppercase">
+                  {isConsoleOpen ? 'Drag to resize' : 'Terminal'}
+                </span>
                 <Icon icon="chevron-down" className={`w-4 h-4 text-white transition-transform duration-300 ${isConsoleOpen ? '' : 'rotate-180'}`} />
               </div>
             </div>
