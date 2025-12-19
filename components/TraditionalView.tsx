@@ -3,6 +3,7 @@ import { Icon } from './Icon';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, Cell } from 'recharts';
 import { UNIVERSE, SECTOR_ETFS, SectorName } from '../lib/agent/universe';
 import { MarketClock } from '../lib/agent/types';
+import { getClocksForEntity } from '../lib/clockData';
 
 interface TraditionalViewProps {
     clocks: MarketClock[];
@@ -11,6 +12,13 @@ interface TraditionalViewProps {
 }
 
 // Types for API-ready mock data
+interface TickerClocks {
+    vol: 'green' | 'yellow' | 'red';  // Volatility
+    mom: 'green' | 'yellow' | 'red';  // Momentum
+    sent: 'green' | 'yellow' | 'red'; // Sentiment
+    val: 'green' | 'yellow' | 'red';  // Valuation
+}
+
 interface TickerData {
     symbol: string;
     price: number;
@@ -18,7 +26,7 @@ interface TickerData {
     changePercent: number;
     volume: number;
     sector: string;
-    status: 'green' | 'yellow' | 'red';
+    clocks: TickerClocks;
 }
 
 interface SectorPerformance {
@@ -68,24 +76,26 @@ function generateSectorPerformance(): SectorPerformance[] {
     });
 }
 
-// Get clock status for a ticker
-function getTickerStatus(symbol: string, clocks: MarketClock[]): 'green' | 'yellow' | 'red' {
-    const tickerClocks = clocks.filter(c => c?.code?.includes(symbol));
-    if (tickerClocks.length === 0) {
-        // Default based on symbol seed
-        const seed = symbol.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-        const statuses: ('green' | 'yellow' | 'red')[] = ['green', 'yellow', 'red'];
-        return statuses[seed % 3];
-    }
-    const greenCount = tickerClocks.filter(c => c?.status === 'green').length;
-    const redCount = tickerClocks.filter(c => c?.status === 'red').length;
-    if (greenCount > redCount) return 'green';
-    if (redCount > greenCount) return 'red';
-    return 'yellow';
+// Get all clock statuses for a ticker (4 metrics)
+function getTickerClocks(symbol: string): TickerClocks {
+    const clocks = getClocksForEntity('TICKER', symbol);
+
+    // Map clock codes to their statuses
+    const findClockStatus = (suffix: string): 'green' | 'yellow' | 'red' => {
+        const clock = clocks.find(c => c.code.endsWith(suffix));
+        return clock?.status === 'gray' ? 'yellow' : (clock?.status || 'yellow');
+    };
+
+    return {
+        vol: findClockStatus('_VOL'),
+        mom: findClockStatus('_MOM'),
+        sent: findClockStatus('_SENT'),
+        val: findClockStatus('_VAL')
+    };
 }
 
 // Generate mock ticker data
-function generateTickerData(symbol: string, sector: string, clocks: MarketClock[]): TickerData {
+function generateTickerData(symbol: string, sector: string): TickerData {
     const seed = symbol.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
     const changePercent = ((seed % 100) - 50) / 10;
     const price = (seed % 300) + 50;
@@ -97,7 +107,7 @@ function generateTickerData(symbol: string, sector: string, clocks: MarketClock[
         changePercent,
         volume: (seed * 1000) % 10000000 + 100000,
         sector,
-        status: getTickerStatus(symbol, clocks)
+        clocks: getTickerClocks(symbol)
     };
 }
 
@@ -135,17 +145,30 @@ const CollapsibleSection: React.FC<{
     </div>
 );
 
-// Status dot component
-const StatusDot: React.FC<{ status: 'green' | 'yellow' | 'red' }> = ({ status }) => {
+// Status dot component with optional tooltip
+const StatusDot: React.FC<{ status: 'green' | 'yellow' | 'red'; label?: string }> = ({ status, label }) => {
     const colors = {
-        green: 'bg-green-500 shadow-green-500/50',
-        yellow: 'bg-yellow-500 shadow-yellow-500/50',
-        red: 'bg-red-500 shadow-red-500/50'
+        green: 'bg-green-500',
+        yellow: 'bg-yellow-500',
+        red: 'bg-red-500'
     };
     return (
-        <span className={`w-2 h-2 rounded-full shadow-lg ${colors[status]}`} />
+        <span
+            className={`w-2 h-2 rounded-full ${colors[status]}`}
+            title={label}
+        />
     );
 };
+
+// Multi-clock display for tickers
+const TickerClockDots: React.FC<{ clocks: TickerClocks }> = ({ clocks }) => (
+    <div className="flex items-center gap-0.5" title="VOL · MOM · SENT · VAL">
+        <StatusDot status={clocks.vol} label="Volatility" />
+        <StatusDot status={clocks.mom} label="Momentum" />
+        <StatusDot status={clocks.sent} label="Sentiment" />
+        <StatusDot status={clocks.val} label="Valuation" />
+    </div>
+);
 
 export const TraditionalView: React.FC<TraditionalViewProps> = ({
     clocks = [],
@@ -166,17 +189,16 @@ export const TraditionalView: React.FC<TraditionalViewProps> = ({
     const [isSectorOpen, setIsSectorOpen] = useState(true);
     const [isChartOpen, setIsChartOpen] = useState(true);
     const [isTickersOpen, setIsTickersOpen] = useState(true);
-    const [isLegendOpen, setIsLegendOpen] = useState(false);
 
     // Combine UNIVERSE with custom symbols and local additions
     const allTickers = useMemo(() => {
         const universeSymbols = UNIVERSE.map(t => t.symbol);
         const customSymbols = [...symbols, ...localSymbols].filter(s => !universeSymbols.includes(s));
         return [
-            ...UNIVERSE.map(t => generateTickerData(t.symbol, t.sector, clocks)),
-            ...customSymbols.map(s => generateTickerData(s, 'Custom', clocks))
+            ...UNIVERSE.map(t => generateTickerData(t.symbol, t.sector)),
+            ...customSymbols.map(s => generateTickerData(s, 'Custom'))
         ];
-    }, [symbols, localSymbols, clocks]);
+    }, [symbols, localSymbols]);
 
     // Sector performance data using ETF proxies
     const sectorPerformance = useMemo(() => generateSectorPerformance(), []);
@@ -199,30 +221,37 @@ export const TraditionalView: React.FC<TraditionalViewProps> = ({
 
     return (
         <div className="h-full overflow-y-auto p-4 space-y-4">
-            {/* Header */}
-            <div className="flex items-center justify-between">
+            {/* Header with inline legend */}
+            <div className="flex items-center justify-between flex-wrap gap-2">
                 <div>
                     <h1 className="text-xl font-bold text-white font-mono">DASHBOARD</h1>
                     <p className="text-xs text-slate-500">Market data & analysis — live feed with clock signals</p>
                 </div>
 
-                {/* Add Ticker */}
-                <div className="flex gap-2">
-                    <input
-                        type="text"
-                        value={symbolInput}
-                        onChange={(e) => setSymbolInput(e.target.value.toUpperCase())}
-                        onKeyPress={(e) => e.key === 'Enter' && handleAddSymbol()}
-                        placeholder="Add ticker..."
-                        className="bg-slate-900/50 border border-slate-700 rounded px-3 py-1.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 w-28"
-                    />
-                    <button
-                        onClick={handleAddSymbol}
-                        disabled={!symbolInput.trim()}
-                        className="bg-cyan-600 hover:bg-cyan-500 disabled:bg-slate-700 disabled:cursor-not-allowed text-white px-3 py-1.5 rounded text-sm font-medium transition-colors"
-                    >
-                        Add
-                    </button>
+                {/* Inline Legend + Add Ticker */}
+                <div className="flex items-center gap-3">
+                    <div className="hidden md:flex items-center gap-2 text-[10px] text-slate-400">
+                        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500"></span>Bull</span>
+                        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-yellow-500"></span>Hold</span>
+                        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500"></span>Bear</span>
+                    </div>
+                    <div className="flex gap-2">
+                        <input
+                            type="text"
+                            value={symbolInput}
+                            onChange={(e) => setSymbolInput(e.target.value.toUpperCase())}
+                            onKeyPress={(e) => e.key === 'Enter' && handleAddSymbol()}
+                            placeholder="Add ticker..."
+                            className="bg-slate-900/50 border border-slate-700 rounded px-3 py-1.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 w-28"
+                        />
+                        <button
+                            onClick={handleAddSymbol}
+                            disabled={!symbolInput.trim()}
+                            className="bg-cyan-600 hover:bg-cyan-500 disabled:bg-slate-700 disabled:cursor-not-allowed text-white px-3 py-1.5 rounded text-sm font-medium transition-colors"
+                        >
+                            Add
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -293,7 +322,7 @@ export const TraditionalView: React.FC<TraditionalViewProps> = ({
                 >
                     {/* Ticker Info Bar */}
                     <div className="flex items-center gap-4 mb-4 p-2 bg-slate-800/50 rounded">
-                        <StatusDot status={selectedTickerData?.status || 'yellow'} />
+                        {selectedTickerData && <TickerClockDots clocks={selectedTickerData.clocks} />}
                         <span className="text-white font-mono font-bold">{selectedTicker}</span>
                         <span className="text-slate-400 text-xs">{selectedTickerData?.sector}</span>
                         <span className={`text-sm font-mono ${(selectedTickerData?.changePercent || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
@@ -355,15 +384,15 @@ export const TraditionalView: React.FC<TraditionalViewProps> = ({
                                 }`}
                         >
                             <div className="flex items-center justify-between mb-1">
-                                <div className="flex items-center gap-2">
-                                    <StatusDot status={ticker.status} />
-                                    <span className="font-mono font-bold text-white text-sm">{ticker.symbol}</span>
-                                </div>
+                                <span className="font-mono font-bold text-white text-sm">{ticker.symbol}</span>
+                                <TickerClockDots clocks={ticker.clocks} />
+                            </div>
+                            <div className="flex items-center justify-between">
+                                <p className="text-[9px] text-slate-500 truncate">{ticker.sector}</p>
                                 <span className={`text-xs font-mono ${ticker.changePercent >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                                     {ticker.changePercent >= 0 ? '+' : ''}{ticker.changePercent.toFixed(2)}%
                                 </span>
                             </div>
-                            <p className="text-[9px] text-slate-500 truncate">{ticker.sector}</p>
                         </div>
                     ))}
                 </div>
@@ -372,30 +401,7 @@ export const TraditionalView: React.FC<TraditionalViewProps> = ({
                 )}
             </CollapsibleSection>
 
-            {/* 4. Correlation Legend */}
-            <CollapsibleSection
-                title="SIGNAL_LEGEND"
-                isOpen={isLegendOpen}
-                onToggle={() => setIsLegendOpen(!isLegendOpen)}
-            >
-                <div className="grid grid-cols-3 gap-4 text-xs">
-                    <div className="flex items-center gap-2">
-                        <StatusDot status="GREEN" />
-                        <span className="text-slate-300">GREEN = Outperforming / Bullish</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <StatusDot status="YELLOW" />
-                        <span className="text-slate-300">YELLOW = Neutral / Range-bound</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <StatusDot status="RED" />
-                        <span className="text-slate-300">RED = Underperforming / Bearish</span>
-                    </div>
-                </div>
-                <p className="text-[10px] text-slate-600 mt-3">
-                    Clock colors reflect market clock signals. Sector performance shows ETF % change relative to SPY benchmark.
-                </p>
-            </CollapsibleSection>
+
         </div>
     );
 };
