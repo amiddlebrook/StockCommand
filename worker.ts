@@ -936,6 +936,34 @@ export default {
             }
         }
 
+        // GET /api/intraday - Get intraday price data for charts
+        if (url.pathname === "/api/intraday" && request.method === "GET") {
+            try {
+                const symbol = url.searchParams.get("symbol");
+                const interval = url.searchParams.get("interval") || "5min";
+
+                if (!symbol) {
+                    return new Response(JSON.stringify({ error: "Missing symbol parameter" }), {
+                        status: 400,
+                        headers: { ...corsHeaders, "Content-Type": "application/json" }
+                    });
+                }
+
+                const { createStockAPI } = await import('./api/stock');
+                const stockAPI = createStockAPI(env);
+                const data = await stockAPI.getIntradayData(symbol.toUpperCase(), interval);
+
+                return new Response(JSON.stringify(data), {
+                    headers: { ...corsHeaders, "Content-Type": "application/json" }
+                });
+            } catch (e: any) {
+                return new Response(JSON.stringify({ error: e.message }), {
+                    status: 500,
+                    headers: { ...corsHeaders, "Content-Type": "application/json" }
+                });
+            }
+        }
+
         if (url.pathname === "/api/chat" && request.method === "POST") {
             try {
                 const body = await request.json() as any;

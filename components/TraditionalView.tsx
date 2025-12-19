@@ -355,12 +355,46 @@ export const TraditionalView: React.FC<TraditionalViewProps> = ({
     // Check if ticker is in watchlist
     const isInWatchlist = (sym: string) => watchlist.includes(sym);
 
-    // Generate chart data based on period
-    const getChartData = (symbol: string, period: TimePeriod) => {
-        const baseData = generateMockPriceData(symbol);
-        // Adjust data points based on period
-        const periodPoints: Record<TimePeriod, number> = { '1D': 30, '1W': 30, '1M': 30, '1Y': 30, '5Y': 30 };
-        return baseData.slice(0, periodPoints[period]);
+    // Real chart data from API
+    const [realChartData, setRealChartData] = useState<Record<string, PricePoint[]>>({});
+
+    // Fetch chart data when a chart is opened
+    useEffect(() => {
+        const fetchChartData = async () => {
+            for (const chart of openCharts) {
+                if (realChartData[chart.symbol]) continue; // Already fetched
+
+                try {
+                    const res = await fetch(`/api/intraday?symbol=${chart.symbol}&interval=5min`);
+                    if (res.ok) {
+                        const data = await res.json() as { data?: Array<{ close?: number; price?: number; volume?: number }> };
+                        if (data.data && Array.isArray(data.data)) {
+                            const points: PricePoint[] = data.data.slice(-30).map((d, i: number) => ({
+                                day: i + 1,
+                                price: d.close || d.price || 0,
+                                volume: d.volume || 0
+                            }));
+                            setRealChartData(prev => ({ ...prev, [chart.symbol]: points }));
+                        }
+                    }
+                } catch (e) {
+                    console.warn(`Failed to fetch chart data for ${chart.symbol}:`, e);
+                }
+            }
+        };
+
+        if (openCharts.length > 0) {
+            fetchChartData();
+        }
+    }, [openCharts]);
+
+    // Get chart data - use real if available, fallback to mock
+    const getChartData = (symbol: string, period: TimePeriod): PricePoint[] => {
+        if (realChartData[symbol] && realChartData[symbol].length > 0) {
+            return realChartData[symbol];
+        }
+        // Fallback to mock while loading
+        return generateMockPriceData(symbol).slice(0, 30);
     };
 
     return (
