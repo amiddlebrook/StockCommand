@@ -47,12 +47,16 @@ import { MarketClock, UserStrategy } from './lib/agent/types';
 import { JobProvider, useJobContext } from './contexts/JobContext';
 import { getClocksForEntity, getGlobalClocks } from './lib/clockData';
 import { StorageService } from './lib/storage';
+import { CreditsService, CREDIT_COSTS } from './lib/credits';
 
 const DEFAULT_SYMBOLS: string[] = ['AAPL', 'MSFT', 'GOOGL', 'NVDA', 'META', 'AMZN', 'TSLA', 'JPM', 'V', 'UNH'];
 
 const AppContent: React.FC = () => {
   const { startJob, activeJobsCount } = useJobContext();
   console.log("AppContent Mounting");
+
+  // Credit balance state
+  const [creditBalance, setCreditBalance] = useState(() => CreditsService.loadBalance().credits);
 
   const [messages, setMessages] = useState<ChatMessageType[]>(() => [
     { id: 'welcome', role: 'model', content: "**StockCommand V2.1 Online** 🟢\n\nAll systems operational. Awaiting commands...\n\nTry: Ask me to analyze any ticker, e.g. 'Analyze $AAPL momentum'" },
@@ -253,6 +257,17 @@ const AppContent: React.FC = () => {
   }, [symbols, ensureSnapshotForSymbol]);
 
   const executeAgentScan = async (scope: 'FULL' | 'SECTOR' | 'TICKER' | 'TOOL', target?: string, toolName?: string) => {
+    // Deduct credits based on scan scope
+    const creditType = scope === 'FULL' ? 'AGENT_SCAN_FULL'
+      : scope === 'SECTOR' ? 'AGENT_SCAN_SECTOR'
+        : 'AGENT_SCAN_TICKER';
+
+    if (!CreditsService.deduct(creditType, target)) {
+      setAgentOutput(`⚠️ Insufficient credits for ${scope} scan. Please add more credits in Settings.`);
+      return null;
+    }
+    setCreditBalance(CreditsService.loadBalance().credits);
+
     setScanningTarget(target || scope);
     setAgentOutput(`Initializing ${scope} scan...`);
 
@@ -357,6 +372,18 @@ const AppContent: React.FC = () => {
 
   const handleSendMessage = async (message: string, image?: File) => {
     if (!message.trim() && !image) return;
+
+    // Deduct credits for chat message
+    if (!CreditsService.deduct('AGENT_CHAT_MESSAGE', undefined)) {
+      setMessages(prev => [...prev, {
+        id: `error-${Date.now()}`,
+        role: 'model',
+        content: '⚠️ **Insufficient credits** for chat. Please add more credits in Settings → Credits & Usage.'
+      }]);
+      return;
+    }
+    setCreditBalance(CreditsService.loadBalance().credits);
+
     setIsConsoleOpen(true); // Auto-open on interaction
     const userMessage: ChatMessageType = { id: `user-${Date.now()}`, role: 'user', content: message };
     const modelMessageId = `model-${Date.now() + 1}`;
@@ -588,9 +615,13 @@ const AppContent: React.FC = () => {
           </div>
 
           {/* Agent Fuel Balance Mini-Display */}
-          <div className="hidden md:flex items-center gap-2 px-3 py-1 bg-slate-800/50 border border-slate-700/50 rounded-full">
+          <div
+            className="hidden md:flex items-center gap-2 px-3 py-1 bg-slate-800/50 border border-slate-700/50 rounded-full cursor-pointer hover:border-amber-500/50 transition-colors"
+            onClick={() => setActiveTab('settings')}
+            title="View Credits & Usage"
+          >
             <Icon icon="zap" className="w-3 h-3 text-amber-400" />
-            <span className="text-[10px] font-mono text-amber-400">FUEL: 100%</span>
+            <span className="text-[10px] font-mono text-amber-400">{creditBalance.toLocaleString()} CR</span>
           </div>
         </div>
 

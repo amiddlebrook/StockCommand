@@ -13,7 +13,7 @@ interface MarketClocksViewProps {
 
 export const MarketClocksView: React.FC<MarketClocksViewProps> = ({ clocks, onClockClick, onPinClock }) => {
 
-    // Group clocks by category
+    // Group clocks by category - EXCLUDE ticker-specific clocks (those with tickerSymbol)
     const groupedClocks = useMemo(() => {
         const groups: Record<string, MarketClock[]> = {
             'FINANCIAL': [],
@@ -21,10 +21,17 @@ export const MarketClocksView: React.FC<MarketClocksViewProps> = ({ clocks, onCl
             'SENTIMENT': [],
             'SECTOR': [],
             'NEWS': [],
+            'MACRO': [],
             'OTHER': []
         };
 
         clocks.forEach(clock => {
+            // Skip clocks that belong to a specific ticker - they're shown under ticker dropdowns
+            if (clock.tickerSymbol) return;
+
+            // Skip TICKER category clocks entirely from global view
+            if (clock.category === 'TICKER') return;
+
             const cat = clock.category || 'OTHER';
             if (!groups[cat]) groups[cat] = [];
             groups[cat].push(clock);

@@ -18,17 +18,18 @@ const createDemoClock = (
 
 export const getClocksForEntity = (type: 'TICKER' | 'SECTOR' | 'MARKET', id: string): MarketClock[] => {
     if (type === 'TICKER') {
+        // Ticker-specific clocks - marked with tickerSymbol so they don't appear in global categories
         return [
-            createDemoClock(`${id}_VOL`, 'Volatility', 'MARKETS'),
-            createDemoClock(`${id}_MOM`, 'Momentum', 'MARKETS'),
-            createDemoClock(`${id}_SENT`, 'Sentiment', 'SENTIMENT'),
-            createDemoClock(`${id}_VAL`, 'Valuation', 'FINANCIAL')
+            { ...createDemoClock(`${id}_VOL`, 'Volatility', 'TICKER'), tickerSymbol: id },
+            { ...createDemoClock(`${id}_MOM`, 'Momentum', 'TICKER'), tickerSymbol: id },
+            { ...createDemoClock(`${id}_SENT`, 'Sentiment', 'TICKER'), tickerSymbol: id },
+            { ...createDemoClock(`${id}_VAL`, 'Valuation', 'TICKER'), tickerSymbol: id }
         ];
     } else if (type === 'SECTOR') {
         return [
-            createDemoClock(`${id}_ROT`, 'Rotation', 'MARKETS'),
-            createDemoClock(`${id}_FUND`, 'Fund Flows', 'FINANCIAL'),
-            createDemoClock(`${id}_TECH`, 'Technicals', 'MARKETS')
+            createDemoClock(`${id}_ROT`, 'Rotation', 'SECTOR'),
+            createDemoClock(`${id}_FUND`, 'Fund Flows', 'SECTOR'),
+            createDemoClock(`${id}_TECH`, 'Technicals', 'SECTOR')
         ];
     }
 

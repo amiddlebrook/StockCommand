@@ -8,10 +8,6 @@ interface TraditionalViewProps {
     clocks: MarketClock[];
     symbols: string[];
     onAddSymbol: (symbol: string) => void;
-    // Chat terminal props
-    chatMessages?: Array<{ role: 'user' | 'assistant'; content: string }>;
-    onSendMessage?: (message: string) => void;
-    isLoading?: boolean;
 }
 
 // Mock price data generator - in production, this would come from Alpha Vantage/etc
@@ -37,10 +33,7 @@ function clockToPercentage(status: string): number {
 export const TraditionalView: React.FC<TraditionalViewProps> = ({
     clocks = [],
     symbols = [],
-    onAddSymbol,
-    chatMessages = [],
-    onSendMessage,
-    isLoading = false
+    onAddSymbol
 }) => {
     // Safety check just in case
     if (!Array.isArray(clocks)) {
@@ -50,7 +43,6 @@ export const TraditionalView: React.FC<TraditionalViewProps> = ({
     console.log("TraditionalView mounting", { clocksCount: clocks.length, symbolsCount: symbols.length });
     const [symbolInput, setSymbolInput] = useState('');
     const [selectedTicker, setSelectedTicker] = useState<string | null>(null);
-    const [chatInput, setChatInput] = useState('');
 
     // Get unique sectors
     const sectors = useMemo(() => {
@@ -236,73 +228,6 @@ export const TraditionalView: React.FC<TraditionalViewProps> = ({
                     </p>
                 </div>
             )}
-
-            {/* Chat Terminal */}
-            <div className="bg-slate-900/40 border border-slate-700/50 rounded-lg p-4">
-                <h2 className="text-sm font-bold text-cyan-400 mb-3 font-mono flex items-center gap-2">
-                    <Icon icon="terminal" className="w-4 h-4" />
-                    AGENT_TERMINAL
-                </h2>
-
-                {/* Messages */}
-                <div className="h-48 overflow-y-auto border border-slate-700 rounded p-3 mb-3 space-y-2 scrollbar-thin scrollbar-thumb-slate-700">
-                    {chatMessages.length === 0 ? (
-                        <div className="h-full flex items-center justify-center">
-                            <p className="text-slate-500 text-xs">Ask the AI agent about market conditions, sectors, or strategies...</p>
-                        </div>
-                    ) : (
-                        chatMessages.map((msg, idx) => (
-                            <div
-                                key={idx}
-                                className={`text-sm ${msg.role === 'user' ? 'text-cyan-400' : 'text-slate-300'}`}
-                            >
-                                <span className="text-slate-500 font-mono text-xs">
-                                    {msg.role === 'user' ? '> ' : '$ '}
-                                </span>
-                                {msg.content}
-                            </div>
-                        ))
-                    )}
-                    {isLoading && (
-                        <div className="flex items-center gap-2 text-slate-400 text-sm">
-                            <Icon icon="loader" className="w-4 h-4 animate-spin" />
-                            <span>Analyzing...</span>
-                        </div>
-                    )}
-                </div>
-
-                {/* Input */}
-                {onSendMessage && (
-                    <div className="flex gap-2">
-                        <input
-                            type="text"
-                            value={chatInput}
-                            onChange={(e) => setChatInput(e.target.value)}
-                            onKeyPress={(e) => {
-                                if (e.key === 'Enter' && chatInput.trim()) {
-                                    onSendMessage(chatInput);
-                                    setChatInput('');
-                                }
-                            }}
-                            placeholder="Ask the agent..."
-                            disabled={isLoading}
-                            className="flex-1 bg-slate-900/50 border border-slate-700 rounded px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 disabled:opacity-50"
-                        />
-                        <button
-                            onClick={() => {
-                                if (chatInput.trim()) {
-                                    onSendMessage(chatInput);
-                                    setChatInput('');
-                                }
-                            }}
-                            disabled={isLoading || !chatInput.trim()}
-                            className="bg-cyan-600 hover:bg-cyan-500 disabled:bg-slate-700 text-white px-4 py-2 rounded text-sm font-medium transition-colors"
-                        >
-                            <Icon icon="send" className="w-4 h-4" />
-                        </button>
-                    </div>
-                )}
-            </div>
 
             {/* Correlation Legend */}
             <div className="bg-slate-800/30 border border-slate-700/30 rounded-lg p-4">

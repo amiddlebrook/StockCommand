@@ -18,7 +18,8 @@ export interface MarketClock {
   code: string;
   reason?: string;
   lastUpdated?: number;
-  category?: 'FINANCIAL' | 'MARKETS' | 'SENTIMENT' | 'NEWS' | 'SECTOR' | 'MACRO';
+  category?: 'FINANCIAL' | 'MARKETS' | 'SENTIMENT' | 'NEWS' | 'SECTOR' | 'MACRO' | 'TICKER';
+  tickerSymbol?: string; // If set, this clock belongs to a specific ticker
 }
 
 export interface Ticker {

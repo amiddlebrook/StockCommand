@@ -1,12 +1,22 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Icon } from './Icon';
 import { GlassButton } from './ui/GlassButton';
 import { ModelSelector } from './ModelSelector';
 import { SystemHealth } from './SystemHealth';
+import { CreditsService, CREDIT_COSTS } from '../lib/credits';
 
 export const SettingsView: React.FC = () => {
-    const [activeSection, setActiveSection] = useState<'GENERAL' | 'MODELS' | 'OPTIMIZER' | 'HEALTH' | 'BILLING'>('MODELS');
+    const [activeSection, setActiveSection] = useState<'GENERAL' | 'MODELS' | 'OPTIMIZER' | 'HEALTH' | 'CREDITS' | 'BILLING'>('MODELS');
     const [isPro, setIsPro] = useState(false); // Mock User State
+    const [creditBalance, setCreditBalance] = useState(0);
+    const [creditHistory, setCreditHistory] = useState<any[]>([]);
+
+    // Load credits on mount
+    useEffect(() => {
+        const balance = CreditsService.loadBalance();
+        setCreditBalance(balance.credits);
+        setCreditHistory(CreditsService.getHistory(10));
+    }, []);
 
     // Mobile Navigation State
     const [showMobileSidebar, setShowMobileSidebar] = useState(true);
@@ -33,6 +43,7 @@ export const SettingsView: React.FC = () => {
         { id: 'MODELS', label: 'Default Models', icon: 'cpu' },
         { id: 'OPTIMIZER', label: 'Agent Optimizer', icon: 'zap' },
         { id: 'HEALTH', label: 'System Health', icon: 'activity' },
+        { id: 'CREDITS', label: 'Credits & Usage', icon: 'zap' },
         { id: 'BILLING', label: 'Plan & Billing', icon: 'credit-card' },
     ];
 
@@ -234,6 +245,131 @@ export const SettingsView: React.FC = () => {
 
                     {activeSection === 'HEALTH' && (
                         <SystemHealth />
+                    )}
+
+                    {activeSection === 'CREDITS' && (
+                        <div className="space-y-6">
+                            {/* Credit Balance Card */}
+                            <div className="p-6 bg-gradient-to-r from-amber-900/20 to-slate-900 border border-amber-500/30 rounded-xl">
+                                <div className="flex items-center justify-between mb-4">
+                                    <div>
+                                        <h3 className="text-lg font-bold text-amber-400 flex items-center gap-2">
+                                            <Icon icon="zap" className="w-5 h-5" />
+                                            CREDIT BALANCE
+                                        </h3>
+                                        <p className="text-sm text-amber-500/60 mt-1">Available for API operations</p>
+                                    </div>
+                                    <div className="text-right">
+                                        <div className="text-3xl font-bold text-amber-400 font-mono">{creditBalance.toLocaleString()}</div>
+                                        <div className="text-xs text-slate-500">≈ ${(creditBalance * 0.001).toFixed(2)} USD value</div>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => {
+                                        CreditsService.addCredits(500, 'Demo Purchase');
+                                        setCreditBalance(CreditsService.loadBalance().credits);
+                                        setCreditHistory(CreditsService.getHistory(10));
+                                    }}
+                                    className="w-full py-2 bg-amber-500 hover:bg-amber-400 text-black font-bold text-sm rounded transition-all"
+                                >
+                                    + Add 500 Credits (Demo)
+                                </button>
+                            </div>
+
+                            {/* Cost Breakdown */}
+                            <div className="bg-slate-900/30 border border-slate-800 rounded-xl p-6">
+                                <h3 className="text-sm font-bold text-white mb-4 uppercase tracking-wider">Credit Cost Breakdown</h3>
+                                <p className="text-xs text-slate-500 mb-4">Credits are priced based on actual API costs + platform margin to ensure sustainable operation at any scale.</p>
+
+                                <div className="space-y-4">
+                                    {/* Data Sync */}
+                                    <div>
+                                        <h4 className="text-xs font-bold text-cyan-400 mb-2 uppercase">Data Sync Operations</h4>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <div className="flex justify-between p-2 bg-slate-900/50 rounded">
+                                                <span className="text-xs text-slate-400">Ticker Quote</span>
+                                                <span className="text-xs font-mono text-amber-400">{CREDIT_COSTS.TICKER_QUOTE_SYNC} cr</span>
+                                            </div>
+                                            <div className="flex justify-between p-2 bg-slate-900/50 rounded">
+                                                <span className="text-xs text-slate-400">Full Ticker Sync</span>
+                                                <span className="text-xs font-mono text-amber-400">{CREDIT_COSTS.TICKER_FULL_SYNC} cr</span>
+                                            </div>
+                                            <div className="flex justify-between p-2 bg-slate-900/50 rounded">
+                                                <span className="text-xs text-slate-400">Clock Sync</span>
+                                                <span className="text-xs font-mono text-amber-400">{CREDIT_COSTS.MARKET_CLOCK_SYNC} cr</span>
+                                            </div>
+                                            <div className="flex justify-between p-2 bg-slate-900/50 rounded">
+                                                <span className="text-xs text-slate-400">All Clocks Refresh</span>
+                                                <span className="text-xs font-mono text-amber-400">{CREDIT_COSTS.GLOBAL_CLOCKS_REFRESH} cr</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Agent Operations */}
+                                    <div>
+                                        <h4 className="text-xs font-bold text-cyan-400 mb-2 uppercase">Agent Operations</h4>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <div className="flex justify-between p-2 bg-slate-900/50 rounded">
+                                                <span className="text-xs text-slate-400">Chat Message</span>
+                                                <span className="text-xs font-mono text-amber-400">{CREDIT_COSTS.AGENT_CHAT_MESSAGE} cr</span>
+                                            </div>
+                                            <div className="flex justify-between p-2 bg-slate-900/50 rounded">
+                                                <span className="text-xs text-slate-400">Ticker Scan</span>
+                                                <span className="text-xs font-mono text-amber-400">{CREDIT_COSTS.AGENT_SCAN_TICKER} cr</span>
+                                            </div>
+                                            <div className="flex justify-between p-2 bg-slate-900/50 rounded">
+                                                <span className="text-xs text-slate-400">Sector Scan</span>
+                                                <span className="text-xs font-mono text-amber-400">{CREDIT_COSTS.AGENT_SCAN_SECTOR} cr</span>
+                                            </div>
+                                            <div className="flex justify-between p-2 bg-slate-900/50 rounded">
+                                                <span className="text-xs text-slate-400">Full Market Scan</span>
+                                                <span className="text-xs font-mono text-amber-400">{CREDIT_COSTS.AGENT_SCAN_FULL} cr</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Premium */}
+                                    <div>
+                                        <h4 className="text-xs font-bold text-cyan-400 mb-2 uppercase">Premium Operations</h4>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <div className="flex justify-between p-2 bg-slate-900/50 rounded">
+                                                <span className="text-xs text-slate-400">Portfolio Report</span>
+                                                <span className="text-xs font-mono text-amber-400">{CREDIT_COSTS.PORTFOLIO_REPORT} cr</span>
+                                            </div>
+                                            <div className="flex justify-between p-2 bg-slate-900/50 rounded">
+                                                <span className="text-xs text-slate-400">Strategy Backtest</span>
+                                                <span className="text-xs font-mono text-amber-400">{CREDIT_COSTS.STRATEGY_BACKTEST} cr</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Recent Usage */}
+                            <div className="bg-slate-900/30 border border-slate-800 rounded-xl p-6">
+                                <h3 className="text-sm font-bold text-white mb-4 uppercase tracking-wider">Recent Usage</h3>
+                                {creditHistory.length === 0 ? (
+                                    <p className="text-xs text-slate-500 text-center py-4">No recent transactions</p>
+                                ) : (
+                                    <div className="space-y-2">
+                                        {creditHistory.slice(0, 5).map((txn) => (
+                                            <div key={txn.id} className="flex items-center justify-between p-2 bg-slate-900/50 rounded">
+                                                <div className="flex items-center gap-2">
+                                                    <Icon icon="zap" className="w-3 h-3 text-amber-400" />
+                                                    <span className="text-xs text-slate-400">{txn.type.replace(/_/g, ' ')}</span>
+                                                    {txn.target && <span className="text-xs text-slate-600">({txn.target})</span>}
+                                                </div>
+                                                <div className="text-right">
+                                                    <span className={`text-xs font-mono ${txn.amount > 0 ? 'text-red-400' : 'text-green-400'}`}>
+                                                        {txn.amount > 0 ? `-${txn.amount}` : `+${Math.abs(txn.amount)}`} cr
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
                     )}
 
                     {activeSection === 'BILLING' && (
