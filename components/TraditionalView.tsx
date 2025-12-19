@@ -458,18 +458,6 @@ export const TraditionalView: React.FC<TraditionalViewProps> = ({
                             </div>
                             <div className="flex items-center gap-2">
                                 <button
-                                    onClick={() => handleAddToWatchlist(chart.symbol)}
-                                    disabled={isInWatchlist(chart.symbol)}
-                                    className={`flex items-center gap-1 px-2 py-1 text-xs rounded transition-colors ${isInWatchlist(chart.symbol)
-                                        ? 'bg-amber-500/30 text-amber-300 cursor-default'
-                                        : 'bg-amber-600/20 text-amber-400 hover:bg-amber-600/40'
-                                        }`}
-                                    title={isInWatchlist(chart.symbol) ? 'In Watchlist' : 'Add to Watchlist'}
-                                >
-                                    <Icon icon="star" className="w-3 h-3" />
-                                    <span className="hidden sm:inline">{isInWatchlist(chart.symbol) ? 'Saved' : 'Watchlist'}</span>
-                                </button>
-                                <button
                                     onClick={() => handleRemoveSymbol(chart.symbol)}
                                     className="flex items-center gap-1 px-2 py-1 text-xs bg-red-600/20 text-red-400 hover:bg-red-600/40 rounded transition-colors"
                                     title="Remove Ticker"
