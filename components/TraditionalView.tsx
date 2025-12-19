@@ -232,7 +232,7 @@ export const TraditionalView: React.FC<TraditionalViewProps> = ({
                 <div className="flex items-center gap-3">
                     <div className="hidden md:flex items-center gap-2 text-[10px] text-slate-400">
                         <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500"></span>Bull</span>
-                        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-yellow-500"></span>Hold</span>
+                        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-yellow-500"></span>Neutral</span>
                         <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500"></span>Bear</span>
                     </div>
                     <div className="flex gap-2">
