@@ -7,7 +7,7 @@ import { MarketClock } from '../lib/agent/types';
 const ARENA_NAV_ITEMS = [
     { id: 'competitions', label: 'COMPETE', icon: 'trophy', angle: 0 },
     { id: 'leaderboards', label: 'RANKS', icon: 'award', angle: 45 },
-    { id: 'duels', label: 'DUELS', icon: 'swords', angle: 90 },
+    { id: 'duels', label: 'DUELS', icon: 'zap', angle: 90 },
     { id: 'comms', label: 'COMMS', icon: 'message', angle: 135 },
     { id: 'teams', label: 'TEAMS', icon: 'users', angle: 180 },
     { id: 'creator', label: 'CREATOR', icon: 'code', angle: 225 },
