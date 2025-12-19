@@ -736,22 +736,41 @@ const AppContent: React.FC = () => {
             {/* Toggle Handle */}
             <div
               className={`
-                absolute -top-5 left-1/2 -translate-x-1/2 w-48 h-8 rounded-t-xl flex items-center justify-center z-30 transition-all
+                absolute -top-5 left-1/2 -translate-x-1/2 h-8 rounded-t-xl flex items-center justify-center z-30 transition-all
                 ${isConsoleOpen
-                  ? 'bg-slate-900 border-t border-x border-slate-700 shadow-[0_-4px_10px_rgba(0,0,0,0.5)] cursor-ns-resize'
-                  : 'bg-cyan-900/80 border-t border-x border-cyan-500/50 shadow-[0_-4px_10px_rgba(6,182,212,0.3)] hover:bg-cyan-600 cursor-pointer'}
+                  ? 'w-56 bg-slate-900 border-t border-x border-slate-700 shadow-[0_-4px_10px_rgba(0,0,0,0.5)]'
+                  : 'w-48 bg-cyan-900/80 border-t border-x border-cyan-500/50 shadow-[0_-4px_10px_rgba(6,182,212,0.3)] hover:bg-cyan-600 cursor-pointer'}
               `}
               onClick={() => !isConsoleOpen && setIsConsoleOpen(true)}
-              onMouseDown={(e) => isConsoleOpen && handleConsoleDragStart(e)}
-              onTouchStart={(e) => isConsoleOpen && handleConsoleDragStart(e)}
-              onDoubleClick={() => isConsoleOpen && setIsConsoleOpen(false)}
             >
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-bold text-white tracking-widest uppercase">
-                  {isConsoleOpen ? 'Drag to resize' : 'Terminal'}
-                </span>
-                <Icon icon="chevron-down" className={`w-4 h-4 text-white transition-transform duration-300 ${isConsoleOpen ? '' : 'rotate-180'}`} />
-              </div>
+              {isConsoleOpen ? (
+                /* Open state: drag handle + close button */
+                <div className="flex items-center justify-between w-full px-3">
+                  <div
+                    className="flex items-center gap-2 cursor-ns-resize flex-1"
+                    onMouseDown={handleConsoleDragStart}
+                    onTouchStart={handleConsoleDragStart}
+                  >
+                    <span className="text-[9px] font-bold text-slate-400 tracking-widest uppercase">Drag to resize</span>
+                  </div>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsConsoleOpen(false);
+                    }}
+                    className="flex items-center gap-1 px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 cursor-pointer transition-colors"
+                  >
+                    <span className="text-[9px] font-bold text-cyan-400 tracking-wider uppercase">Close</span>
+                    <Icon icon="chevron-down" className="w-3 h-3 text-cyan-400" />
+                  </button>
+                </div>
+              ) : (
+                /* Closed state */
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-bold text-white tracking-widest uppercase">Terminal</span>
+                  <Icon icon="chevron-down" className="w-4 h-4 text-white rotate-180" />
+                </div>
+              )}
             </div>
 
             {isConsoleOpen ? (
