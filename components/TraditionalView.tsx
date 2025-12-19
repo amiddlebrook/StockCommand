@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Icon } from './Icon';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, Cell } from 'recharts';
-import { UNIVERSE } from '../lib/agent/universe';
+import { UNIVERSE, SECTOR_ETFS, SectorName } from '../lib/agent/universe';
 import { MarketClock } from '../lib/agent/types';
 
 interface TraditionalViewProps {
@@ -10,91 +10,200 @@ interface TraditionalViewProps {
     onAddSymbol: (symbol: string) => void;
 }
 
-// Mock price data generator - in production, this would come from Alpha Vantage/etc
-function generateMockPriceData(symbol: string) {
-    const basePrice = Math.random() * 200 + 50;
+// Types for API-ready mock data
+interface TickerData {
+    symbol: string;
+    price: number;
+    change: number;
+    changePercent: number;
+    volume: number;
+    sector: string;
+    status: 'GREEN' | 'YELLOW' | 'RED';
+}
+
+interface SectorPerformance {
+    name: string;
+    fullName: string;
+    etf: string;
+    changePercent: number; // ETF % change relative to SPY
+    status: 'GREEN' | 'YELLOW' | 'RED';
+}
+
+interface PricePoint {
+    day: number;
+    price: number;
+    volume: number;
+}
+
+// Mock price data generator - structured for future API integration
+function generateMockPriceData(symbol: string): PricePoint[] {
+    // Seed based on symbol for consistency across renders
+    const seed = symbol.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    const basePrice = (seed % 200) + 50;
     return Array.from({ length: 30 }, (_, i) => ({
         day: i + 1,
-        price: basePrice + Math.sin(i / 3) * 10 + Math.random() * 5,
-        volume: Math.floor(Math.random() * 1000000) + 100000,
+        price: basePrice + Math.sin((i + seed) / 3) * 10 + ((seed * i) % 5),
+        volume: Math.floor(((seed * (i + 1)) % 900000) + 100000),
     }));
 }
 
-// Convert clock status to percentage for correlation display
-function clockToPercentage(status: string): number {
-    switch (status) {
-        case 'GREEN': return 75 + Math.random() * 25;
-        case 'YELLOW': return 40 + Math.random() * 30;
-        case 'RED': return Math.random() * 35;
-        default: return 50;
-    }
+// Generate mock sector performance (ETF % change relative to SPY)
+function generateSectorPerformance(): SectorPerformance[] {
+    const sectors = Object.entries(SECTOR_ETFS) as [SectorName, string][];
+    return sectors.map(([sectorName, etf]) => {
+        // Seed based on sector name for consistency
+        const seed = sectorName.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+        const changePercent = ((seed % 100) - 50) / 10; // -5% to +5%
+        const status: 'GREEN' | 'YELLOW' | 'RED' =
+            changePercent > 1 ? 'GREEN' :
+                changePercent < -1 ? 'RED' : 'YELLOW';
+
+        return {
+            name: sectorName.slice(0, 12),
+            fullName: sectorName,
+            etf,
+            changePercent,
+            status
+        };
+    });
 }
+
+// Get clock status for a ticker
+function getTickerStatus(symbol: string, clocks: MarketClock[]): 'GREEN' | 'YELLOW' | 'RED' {
+    const tickerClocks = clocks.filter(c => c?.code?.includes(symbol));
+    if (tickerClocks.length === 0) {
+        // Default based on symbol seed
+        const seed = symbol.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+        const statuses: ('GREEN' | 'YELLOW' | 'RED')[] = ['GREEN', 'YELLOW', 'RED'];
+        return statuses[seed % 3];
+    }
+    const greenCount = tickerClocks.filter(c => c?.status === 'GREEN').length;
+    const redCount = tickerClocks.filter(c => c?.status === 'RED').length;
+    if (greenCount > redCount) return 'GREEN';
+    if (redCount > greenCount) return 'RED';
+    return 'YELLOW';
+}
+
+// Generate mock ticker data
+function generateTickerData(symbol: string, sector: string, clocks: MarketClock[]): TickerData {
+    const seed = symbol.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    const changePercent = ((seed % 100) - 50) / 10;
+    const price = (seed % 300) + 50;
+
+    return {
+        symbol,
+        price,
+        change: price * (changePercent / 100),
+        changePercent,
+        volume: (seed * 1000) % 10000000 + 100000,
+        sector,
+        status: getTickerStatus(symbol, clocks)
+    };
+}
+
+// Collapsible section component
+const CollapsibleSection: React.FC<{
+    title: string;
+    isOpen: boolean;
+    onToggle: () => void;
+    children: React.ReactNode;
+    headerActions?: React.ReactNode;
+}> = ({ title, isOpen, onToggle, children, headerActions }) => (
+    <div className="bg-slate-900/40 border border-slate-700/50 rounded-lg overflow-hidden">
+        <div
+            className="flex items-center justify-between p-3 cursor-pointer hover:bg-slate-800/30 transition-colors"
+            onClick={onToggle}
+        >
+            <h2 className="text-sm font-bold text-cyan-400 font-mono flex items-center gap-2">
+                <Icon
+                    icon="chevron-down"
+                    className={`w-4 h-4 transition-transform ${isOpen ? '' : '-rotate-90'}`}
+                />
+                {title}
+            </h2>
+            {headerActions && (
+                <div onClick={e => e.stopPropagation()}>
+                    {headerActions}
+                </div>
+            )}
+        </div>
+        <div className={`transition-all duration-300 ease-in-out ${isOpen ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0 overflow-hidden'}`}>
+            <div className="p-4 pt-0">
+                {children}
+            </div>
+        </div>
+    </div>
+);
+
+// Status dot component
+const StatusDot: React.FC<{ status: 'GREEN' | 'YELLOW' | 'RED' }> = ({ status }) => {
+    const colors = {
+        GREEN: 'bg-green-500 shadow-green-500/50',
+        YELLOW: 'bg-yellow-500 shadow-yellow-500/50',
+        RED: 'bg-red-500 shadow-red-500/50'
+    };
+    return (
+        <span className={`w-2 h-2 rounded-full shadow-lg ${colors[status]}`} />
+    );
+};
 
 export const TraditionalView: React.FC<TraditionalViewProps> = ({
     clocks = [],
     symbols = [],
     onAddSymbol
 }) => {
-    // Safety check just in case
+    // Safety check
     if (!Array.isArray(clocks)) {
         console.error("TraditionalView: clocks prop is not an array", clocks);
         return <div className="p-4 text-red-500">Error: Invalid Market Data</div>;
     }
-    console.log("TraditionalView mounting", { clocksCount: clocks.length, symbolsCount: symbols.length });
+
     const [symbolInput, setSymbolInput] = useState('');
     const [selectedTicker, setSelectedTicker] = useState<string | null>(null);
+    const [localSymbols, setLocalSymbols] = useState<string[]>([]);
 
-    // Get unique sectors
-    const sectors = useMemo(() => {
-        const set = new Set(UNIVERSE.map(t => t.sector));
-        return Array.from(set);
-    }, []);
+    // Collapsible states
+    const [isSectorOpen, setIsSectorOpen] = useState(true);
+    const [isChartOpen, setIsChartOpen] = useState(true);
+    const [isTickersOpen, setIsTickersOpen] = useState(true);
+    const [isLegendOpen, setIsLegendOpen] = useState(false);
 
-    // Aggregate clock data per sector for traditional bar chart
-    const sectorData = useMemo(() => {
-        return sectors.map(sector => {
-            const sectorTickers = UNIVERSE.filter(t => t.sector === sector);
-            const sectorClocks = clocks.filter(c => {
-                if (!c) return false;
-                const code = c.code || '';
-                const name = c.name || '';
-                return sectorTickers.some(t => code.includes(t.symbol) || name.toLowerCase().includes(sector.toLowerCase()));
-            });
+    // Combine UNIVERSE with custom symbols and local additions
+    const allTickers = useMemo(() => {
+        const universeSymbols = UNIVERSE.map(t => t.symbol);
+        const customSymbols = [...symbols, ...localSymbols].filter(s => !universeSymbols.includes(s));
+        return [
+            ...UNIVERSE.map(t => generateTickerData(t.symbol, t.sector, clocks)),
+            ...customSymbols.map(s => generateTickerData(s, 'Custom', clocks))
+        ];
+    }, [symbols, localSymbols, clocks]);
 
-            const greenCount = sectorClocks.filter(c => c?.status === 'GREEN').length;
-            const yellowCount = sectorClocks.filter(c => c?.status === 'YELLOW').length;
-            const redCount = sectorClocks.filter(c => c?.status === 'RED').length;
-            const total = greenCount + yellowCount + redCount || 1;
+    // Sector performance data using ETF proxies
+    const sectorPerformance = useMemo(() => generateSectorPerformance(), []);
 
-            return {
-                name: sector.slice(0, 12),
-                fullName: sector,
-                score: ((greenCount * 100) + (yellowCount * 50) + (redCount * 0)) / total,
-                green: greenCount,
-                yellow: yellowCount,
-                red: redCount,
-                tickers: sectorTickers.length
-            };
-        });
-    }, [sectors, clocks]);
-
+    // Handle add symbol
     const handleAddSymbol = () => {
         const sym = symbolInput.trim().toUpperCase();
-        if (sym) {
+        if (sym && !allTickers.some(t => t.symbol === sym)) {
+            setLocalSymbols(prev => [...prev, sym]);
             onAddSymbol(sym);
             setSymbolInput('');
+            // Auto-select the new ticker
+            setSelectedTicker(sym);
+            setIsChartOpen(true);
         }
     };
 
     const selectedData = selectedTicker ? generateMockPriceData(selectedTicker) : null;
+    const selectedTickerData = selectedTicker ? allTickers.find(t => t.symbol === selectedTicker) : null;
 
     return (
-        <div className="h-full overflow-y-auto p-4 space-y-6">
+        <div className="h-full overflow-y-auto p-4 space-y-4">
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-xl font-bold text-white font-mono">CHART_VIEW</h1>
-                    <p className="text-xs text-slate-500">Raw data & charts — compare with Spatial color signals</p>
+                    <h1 className="text-xl font-bold text-white font-mono">DASHBOARD</h1>
+                    <p className="text-xs text-slate-500">Market data & analysis — live feed with clock signals</p>
                 </div>
 
                 {/* Add Ticker */}
@@ -102,40 +211,57 @@ export const TraditionalView: React.FC<TraditionalViewProps> = ({
                     <input
                         type="text"
                         value={symbolInput}
-                        onChange={(e) => setSymbolInput(e.target.value)}
+                        onChange={(e) => setSymbolInput(e.target.value.toUpperCase())}
                         onKeyPress={(e) => e.key === 'Enter' && handleAddSymbol()}
-                        placeholder="Add any ticker..."
-                        className="bg-slate-900/50 border border-slate-700 rounded px-3 py-1.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+                        placeholder="Add ticker..."
+                        className="bg-slate-900/50 border border-slate-700 rounded px-3 py-1.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 w-28"
                     />
                     <button
                         onClick={handleAddSymbol}
                         disabled={!symbolInput.trim()}
-                        className="bg-cyan-600 hover:bg-cyan-500 disabled:bg-slate-700 text-white px-3 py-1.5 rounded text-sm font-medium transition-colors"
+                        className="bg-cyan-600 hover:bg-cyan-500 disabled:bg-slate-700 disabled:cursor-not-allowed text-white px-3 py-1.5 rounded text-sm font-medium transition-colors"
                     >
                         Add
                     </button>
                 </div>
             </div>
 
-            {/* Sector Performance Bar Chart */}
-            <div className="bg-slate-900/40 border border-slate-700/50 rounded-lg p-4">
-                <h2 className="text-sm font-bold text-cyan-400 mb-3 font-mono">SECTOR_PERFORMANCE_INDEX</h2>
-                <div className="h-48 flex items-center justify-center border border-slate-700 rounded relative">
-                    {sectorData.length > 0 ? (
+            {/* 1. Sector Performance Index (ETF % change relative to SPY) */}
+            <CollapsibleSection
+                title={`SECTOR_PERFORMANCE (vs SPY)`}
+                isOpen={isSectorOpen}
+                onToggle={() => setIsSectorOpen(!isSectorOpen)}
+            >
+                <div className="h-56">
+                    {sectorPerformance.length > 0 ? (
                         <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={sectorData} layout="vertical">
-                                <XAxis type="number" domain={[0, 100]} tick={{ fill: '#64748b', fontSize: 10 }} />
-                                <YAxis type="category" dataKey="name" tick={{ fill: '#94a3b8', fontSize: 10 }} width={80} />
+                            <BarChart data={sectorPerformance} layout="vertical">
+                                <XAxis
+                                    type="number"
+                                    domain={[-5, 5]}
+                                    tick={{ fill: '#64748b', fontSize: 10 }}
+                                    tickFormatter={(v) => `${v > 0 ? '+' : ''}${v}%`}
+                                />
+                                <YAxis
+                                    type="category"
+                                    dataKey="name"
+                                    tick={{ fill: '#94a3b8', fontSize: 10 }}
+                                    width={100}
+                                />
                                 <Tooltip
                                     contentStyle={{ background: '#0f172a', border: '1px solid #334155', borderRadius: '8px' }}
                                     labelStyle={{ color: '#e2e8f0' }}
-                                    formatter={(value: number, name: string) => [`${value.toFixed(1)}%`, 'Score']}
+                                    formatter={(value: number) => [`${value > 0 ? '+' : ''}${value.toFixed(2)}% vs SPY`, 'Performance']}
+                                    labelFormatter={(label) => {
+                                        const sector = sectorPerformance.find(s => s.name === label);
+                                        return `${sector?.fullName} (${sector?.etf})`;
+                                    }}
                                 />
-                                <Bar dataKey="score" radius={[0, 4, 4, 0]}>
-                                    {sectorData.map((entry, index) => (
+                                <Bar dataKey="changePercent" radius={[0, 4, 4, 0]}>
+                                    {sectorPerformance.map((entry, index) => (
                                         <Cell
                                             key={`cell-${index}`}
-                                            fill={entry.score >= 70 ? '#22c55e' : entry.score >= 40 ? '#eab308' : '#ef4444'}
+                                            fill={entry.status === 'GREEN' ? '#22c55e' : entry.status === 'RED' ? '#ef4444' : '#eab308'}
                                         />
                                     ))}
                                 </Bar>
@@ -145,52 +271,38 @@ export const TraditionalView: React.FC<TraditionalViewProps> = ({
                         <p className="text-slate-500 text-xs">No Data Available</p>
                     )}
                 </div>
-                <p className="text-[10px] text-slate-600 mt-2">↑ This correlates with sectors</p>
-            </div>
+                <p className="text-[10px] text-slate-600 mt-2">
+                    ↑ Sector ETF performance relative to SPY benchmark (outperformance = green, underperformance = red)
+                </p>
+            </CollapsibleSection>
 
-            {/* Ticker Grid - Traditional Data Cards */}
-            <div>
-                <h2 className="text-sm font-bold text-cyan-400 mb-3 font-mono">UNIVERSE_TICKERS ({UNIVERSE.length})</h2>
-                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
-                    {UNIVERSE.slice(0, 24).map(ticker => {
-                        const mockChange = (Math.random() - 0.5) * 10;
-                        const isPositive = mockChange >= 0;
-
-                        return (
-                            <div
-                                key={ticker.symbol}
-                                onClick={() => setSelectedTicker(ticker.symbol)}
-                                className={`bg-slate-900/40 border rounded-lg p-3 cursor-pointer transition-all hover:border-cyan-500/50 ${selectedTicker === ticker.symbol ? 'border-cyan-500 bg-cyan-900/20' : 'border-slate-700/50'
-                                    }`}
-                            >
-                                <div className="flex items-center justify-between mb-1">
-                                    <span className="font-mono font-bold text-white text-sm">{ticker.symbol}</span>
-                                    <span className={`text-xs font-mono ${isPositive ? 'text-green-400' : 'text-red-400'}`}>
-                                        {isPositive ? '+' : ''}{mockChange.toFixed(2)}%
-                                    </span>
-                                </div>
-                                <p className="text-[9px] text-slate-500 truncate">{ticker.sector}</p>
-                            </div>
-                        );
-                    })}
-                </div>
-                {UNIVERSE.length > 24 && (
-                    <p className="text-xs text-slate-600 mt-2 text-center">+ {UNIVERSE.length - 24} more tickers</p>
-                )}
-            </div>
-
-            {/* Selected Ticker Detail Chart */}
+            {/* 2. Selected Ticker Detail Chart */}
             {selectedTicker && selectedData && (
-                <div className="bg-slate-900/40 border border-cyan-500/30 rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-lg font-bold text-white font-mono">{selectedTicker}</h2>
-                        <button onClick={() => setSelectedTicker(null)} className="text-slate-500 hover:text-white">
+                <CollapsibleSection
+                    title={`${selectedTicker} CHART`}
+                    isOpen={isChartOpen}
+                    onToggle={() => setIsChartOpen(!isChartOpen)}
+                    headerActions={
+                        <button
+                            onClick={() => setSelectedTicker(null)}
+                            className="text-slate-500 hover:text-white p-1"
+                        >
                             <Icon icon="close" className="w-4 h-4" />
                         </button>
+                    }
+                >
+                    {/* Ticker Info Bar */}
+                    <div className="flex items-center gap-4 mb-4 p-2 bg-slate-800/50 rounded">
+                        <StatusDot status={selectedTickerData?.status || 'YELLOW'} />
+                        <span className="text-white font-mono font-bold">{selectedTicker}</span>
+                        <span className="text-slate-400 text-xs">{selectedTickerData?.sector}</span>
+                        <span className={`text-sm font-mono ${(selectedTickerData?.changePercent || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                            {(selectedTickerData?.changePercent || 0) >= 0 ? '+' : ''}{selectedTickerData?.changePercent.toFixed(2)}%
+                        </span>
                     </div>
 
                     {/* Price Chart */}
-                    <div className="h-48 mb-4 flex items-center justify-center border border-slate-700 rounded">
+                    <div className="h-48 mb-4">
                         <ResponsiveContainer width="100%" height="100%">
                             <LineChart data={selectedData}>
                                 <XAxis dataKey="day" tick={{ fill: '#64748b', fontSize: 10 }} />
@@ -211,7 +323,7 @@ export const TraditionalView: React.FC<TraditionalViewProps> = ({
                     </div>
 
                     {/* Volume Chart */}
-                    <div className="h-24 flex items-center justify-center border border-slate-700 rounded">
+                    <div className="h-20">
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={selectedData}>
                                 <XAxis dataKey="day" tick={{ fill: '#64748b', fontSize: 8 }} />
@@ -222,34 +334,68 @@ export const TraditionalView: React.FC<TraditionalViewProps> = ({
                             </BarChart>
                         </ResponsiveContainer>
                     </div>
-
-                    <p className="text-[10px] text-slate-600 mt-2">
-                        ↑ In Spatial view, this ticker's market clocks show the same trend as color signals
-                    </p>
-                </div>
+                </CollapsibleSection>
             )}
 
-            {/* Correlation Legend */}
-            <div className="bg-slate-800/30 border border-slate-700/30 rounded-lg p-4">
-                <h3 className="text-xs font-bold text-slate-400 mb-2 uppercase">Understanding the Correlation</h3>
+            {/* 3. Ticker Grid */}
+            <CollapsibleSection
+                title={`UNIVERSE_TICKERS (${allTickers.length})`}
+                isOpen={isTickersOpen}
+                onToggle={() => setIsTickersOpen(!isTickersOpen)}
+            >
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
+                    {allTickers.slice(0, 48).map(ticker => (
+                        <div
+                            key={ticker.symbol}
+                            onClick={() => {
+                                setSelectedTicker(ticker.symbol);
+                                setIsChartOpen(true);
+                            }}
+                            className={`bg-slate-800/40 border rounded-lg p-3 cursor-pointer transition-all hover:border-cyan-500/50 ${selectedTicker === ticker.symbol ? 'border-cyan-500 bg-cyan-900/20' : 'border-slate-700/50'
+                                }`}
+                        >
+                            <div className="flex items-center justify-between mb-1">
+                                <div className="flex items-center gap-2">
+                                    <StatusDot status={ticker.status} />
+                                    <span className="font-mono font-bold text-white text-sm">{ticker.symbol}</span>
+                                </div>
+                                <span className={`text-xs font-mono ${ticker.changePercent >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                    {ticker.changePercent >= 0 ? '+' : ''}{ticker.changePercent.toFixed(2)}%
+                                </span>
+                            </div>
+                            <p className="text-[9px] text-slate-500 truncate">{ticker.sector}</p>
+                        </div>
+                    ))}
+                </div>
+                {allTickers.length > 48 && (
+                    <p className="text-xs text-slate-600 mt-2 text-center">+ {allTickers.length - 48} more tickers</p>
+                )}
+            </CollapsibleSection>
+
+            {/* 4. Correlation Legend */}
+            <CollapsibleSection
+                title="SIGNAL_LEGEND"
+                isOpen={isLegendOpen}
+                onToggle={() => setIsLegendOpen(!isLegendOpen)}
+            >
                 <div className="grid grid-cols-3 gap-4 text-xs">
                     <div className="flex items-center gap-2">
-                        <span className="w-3 h-3 rounded-full bg-green-500"></span>
-                        <span className="text-slate-300">GREEN = Uptrend / Bullish signals</span>
+                        <StatusDot status="GREEN" />
+                        <span className="text-slate-300">GREEN = Outperforming / Bullish</span>
                     </div>
                     <div className="flex items-center gap-2">
-                        <span className="w-3 h-3 rounded-full bg-yellow-500"></span>
-                        <span className="text-slate-300">YELLOW = Neutral / Consolidation</span>
+                        <StatusDot status="YELLOW" />
+                        <span className="text-slate-300">YELLOW = Neutral / Range-bound</span>
                     </div>
                     <div className="flex items-center gap-2">
-                        <span className="w-3 h-3 rounded-full bg-red-500"></span>
-                        <span className="text-slate-300">RED = Downtrend / Bearish signals</span>
+                        <StatusDot status="RED" />
+                        <span className="text-slate-300">RED = Underperforming / Bearish</span>
                     </div>
                 </div>
                 <p className="text-[10px] text-slate-600 mt-3">
-                    Toggle to Spatial view to see how these tactical metrics translate into actionable color signals.
+                    Clock colors reflect market clock signals. Sector performance shows ETF % change relative to SPY benchmark.
                 </p>
-            </div>
+            </CollapsibleSection>
         </div>
     );
 };
