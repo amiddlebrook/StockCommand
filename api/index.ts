@@ -610,8 +610,8 @@ function selectModelAndProvider(model?: unknown): { selectedModel: LlmModelOptio
   return { selectedModel, providerConfig };
 }
 
-const HYBRID_REASONING_MODEL_ID = 'openrouter-deepseek-r1';
-const HYBRID_RESPONSE_MODEL_ID = 'openrouter-minimax-m2';
+const HYBRID_REASONING_MODEL_ID = 'openrouter-olmo-think';
+const HYBRID_RESPONSE_MODEL_ID = 'openrouter-gpt-oss';
 
 type HybridCompletionOptions = {
   finalInstruction?: string;
@@ -635,7 +635,7 @@ async function runHybridChatCompletion(
     },
     {
       role: 'user',
-      content: `Conversation so far:\n${conversationSummary}\n\nDeepSeek R1 reasoning notes:\n${reasoningOutput}\n\n${finalInstruction}`,
+      content: `Conversation so far:\n${conversationSummary}\n\nOLMo Think reasoning notes:\n${reasoningOutput}\n\n${finalInstruction}`,
     },
   ];
 
@@ -681,18 +681,6 @@ async function runChatCompletion(
   messages: NormalisedMessage[],
 ): Promise<string> {
   switch (model.provider) {
-    case 'gemini':
-      return runGeminiCompletion(providerConfig.apiKey, model.apiModelId, messages);
-    case 'openai':
-      return runOpenAICompletion(providerConfig.apiKey, model.apiModelId, messages);
-    case 'claude':
-      return runAnthropicCompletion(providerConfig.apiKey, model.apiModelId, messages);
-    case 'openrouter-deepseek-chat':
-    case 'openrouter-qwen3-235b':
-    case 'openrouter-qwen3-coder':
-    case 'openrouter-deepseek-r1t2':
-    case 'openrouter-minimax-m2':
-    case 'openrouter-glm-45-air':
     case 'openrouter-olmo-think':
     case 'openrouter-nemotron-nano':
     case 'openrouter-deepseek-nex':

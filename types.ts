@@ -70,18 +70,7 @@ export interface Env {
   // Assets binding for static files
   ASSETS: Fetcher;
 
-  // External API keys (secrets)
-  OPENAI_API_KEY?: string;
-  GEMINI_API_KEY?: string;
-  CLAUDE_API_KEY?: string;
-  OPENROUTER_QWEN3_CODER_API_KEY?: string;
-  OPENROUTER_DEEPSEEK_R1T2_API_KEY?: string;
-  OPENROUTER_DEEPSEEK_CHAT_API_KEY?: string;
-  OPENROUTER_MINIMAX_M2_API_KEY?: string;
-  OPENROUTER_GLM_45_AIR_API_KEY?: string;
-  OPENROUTER_QWEN3_235B_API_KEY?: string;
-
-  // New OpenRouter models (free tier)
+  // External API keys (secrets) - Only 5 OpenRouter models
   OPENROUTER_OLMO_THINK_API_KEY?: string;
   OPENROUTER_NEMOTRON_NANO_API_KEY?: string;
   OPENROUTER_DEEPSEEK_NEX_API_KEY?: string;

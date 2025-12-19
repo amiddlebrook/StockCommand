@@ -9,11 +9,6 @@ export interface ModelOption {
 }
 
 export const AVAILABLE_MODELS: ModelOption[] = [
-  { id: 'claude-3-5-sonnet', name: 'Claude 3.5 Sonnet', provider: 'ANTHROPIC', costPer1k: 0.015 },
-  { id: 'gemini-1-5-pro', name: 'Gemini 1.5 Pro', provider: 'GOOGLE', costPer1k: 0.007 },
-  { id: 'gemini-2-0-flash', name: 'Gemini 2.0 Flash', provider: 'GOOGLE', costPer1k: 0.001 },
-  { id: 'gpt-4o', name: 'GPT-4o', provider: 'OPENAI', costPer1k: 0.010 },
-  { id: 'deepseek-v3', name: 'DeepSeek V3', provider: 'OPENROUTER', costPer1k: 0.002 },
   { id: 'olmo-think', name: 'OLMo 3.1 Think (32B)', provider: 'OPENROUTER', costPer1k: 0 },
   { id: 'nemotron-nano', name: 'Nemotron 3 Nano', provider: 'OPENROUTER', costPer1k: 0 },
   { id: 'deepseek-nex', name: 'DeepSeek V3.1 Nex', provider: 'OPENROUTER', costPer1k: 0 },
