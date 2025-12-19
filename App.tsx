@@ -604,9 +604,15 @@ const AppContent: React.FC = () => {
             <Icon icon="menu" className="w-5 h-5" />
           </button>
 
-          <Icon icon="command" className="w-5 h-5 text-cyan-400 animate-spin-slow" />
-          <h1 className="font-bold tracking-widest text-lg hidden md:block">STOCK_COMMAND <span className="text-cyan-500 text-xs align-top">V2.1</span></h1>
-          <h1 className="font-bold tracking-widest text-lg md:hidden">CMD <span className="text-cyan-500 text-xs align-top">V2.1</span></h1>
+          <div
+            className="flex items-center gap-2 cursor-pointer group"
+            onClick={() => setActiveTab(viewMode === 'DATA' ? 'dashboard' : 'command-center')}
+            title="Return to Home"
+          >
+            <Icon icon="command" className="w-5 h-5 text-cyan-400 animate-spin-slow group-hover:text-cyan-300 transition-colors" />
+            <h1 className="font-bold tracking-widest text-lg hidden md:block group-hover:text-cyan-300 transition-colors">STOCK_COMMAND <span className="text-cyan-500 text-xs align-top">V2.1</span></h1>
+            <h1 className="font-bold tracking-widest text-lg md:hidden group-hover:text-cyan-300 transition-colors">CMD <span className="text-cyan-500 text-xs align-top">V2.1</span></h1>
+          </div>
 
           {/* ACTIVE AGENT STATUS (Top Centerish) */}
           <div className="hidden md:flex items-center gap-2 px-3 py-1 bg-cyan-900/10 border border-cyan-500/30 rounded-full">
