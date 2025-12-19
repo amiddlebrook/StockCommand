@@ -613,8 +613,8 @@ const AppContent: React.FC = () => {
             title="Return to Home"
           >
             <Icon icon="command" className="w-5 h-5 text-cyan-400 animate-spin-slow group-hover:text-cyan-300 transition-colors" />
-            <h1 className="font-bold tracking-widest text-lg hidden md:block group-hover:text-cyan-300 transition-colors">STOCK_COMMAND <span className="text-cyan-500 text-xs align-top">V2.1</span></h1>
-            <h1 className="font-bold tracking-widest text-lg md:hidden group-hover:text-cyan-300 transition-colors">CMD <span className="text-cyan-500 text-xs align-top">V2.1</span></h1>
+            <h1 className="font-bold tracking-widest text-lg hidden md:block group-hover:text-cyan-300 transition-colors">STOCK_COMMAND</h1>
+            <h1 className="font-bold tracking-widest text-lg md:hidden group-hover:text-cyan-300 transition-colors">CMD</h1>
           </div>
 
           {/* AGENT TOGGLE - Controls background data generation */}
@@ -631,8 +631,8 @@ const AppContent: React.FC = () => {
               }
             }}
             className={`hidden md:flex items-center gap-2 px-3 py-1 rounded-full cursor-pointer transition-all ${isAgentEnabled
-                ? 'bg-cyan-900/30 border border-cyan-500/50 hover:bg-cyan-800/40'
-                : 'bg-slate-800/50 border border-slate-600/50 hover:bg-slate-700/50'
+              ? 'bg-cyan-900/30 border border-cyan-500/50 hover:bg-cyan-800/40'
+              : 'bg-slate-800/50 border border-slate-600/50 hover:bg-slate-700/50'
               }`}
             title={isAgentEnabled ? 'Click to disable background data generation' : 'Click to enable background data generation (uses credits)'}
           >
@@ -777,7 +777,7 @@ const AppContent: React.FC = () => {
                   flex-shrink-0 relative z-20 shadow-[0_-5px_20px_rgba(0,0,0,0.5)] border-t border-slate-800 bg-slate-950
                   ${isDraggingConsole ? '' : 'transition-all duration-300 ease-in-out'}
               `}
-            style={{ height: isConsoleOpen ? `${consoleHeight}px` : '48px' }}
+            style={{ height: isConsoleOpen ? `${consoleHeight}px` : '64px' }}
           >
             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-900 via-cyan-500 to-cyan-900 opacity-20"></div>
 
