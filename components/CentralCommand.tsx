@@ -24,6 +24,10 @@ interface CentralCommandProps {
     clocks?: MarketClock[];
     symbols?: string[];
     onAddSymbol?: (symbol: string) => void;
+    // Chat terminal props
+    chatMessages?: Array<{ role: 'user' | 'assistant'; content: string }>;
+    onSendMessage?: (message: string) => void;
+    isLoading?: boolean;
 }
 
 export const CentralCommand: React.FC<CentralCommandProps> = ({
@@ -34,7 +38,10 @@ export const CentralCommand: React.FC<CentralCommandProps> = ({
     onNavigate = () => { },
     clocks = [],
     symbols = [],
-    onAddSymbol = () => { }
+    onAddSymbol = () => { },
+    chatMessages = [],
+    onSendMessage,
+    isLoading = false
 }) => {
     const [hoveredNode, setHoveredNode] = useState<string | null>(null);
     const colorClass = status === 'optimal' ? 'text-cyan-400' : status === 'warning' ? 'text-orange-400' : 'text-red-500';
@@ -48,6 +55,9 @@ export const CentralCommand: React.FC<CentralCommandProps> = ({
                     clocks={clocks}
                     symbols={symbols}
                     onAddSymbol={onAddSymbol}
+                    chatMessages={chatMessages}
+                    onSendMessage={onSendMessage}
+                    isLoading={isLoading}
                 />
             </div>
         );
