@@ -606,7 +606,7 @@ const AppContent: React.FC = () => {
 
           <div
             className="flex items-center gap-2 cursor-pointer group"
-            onClick={() => setActiveTab(viewMode === 'DATA' ? 'dashboard' : 'command-center')}
+            onClick={() => setActiveTab('command-center')}
             title="Return to Home"
           >
             <Icon icon="command" className="w-5 h-5 text-cyan-400 animate-spin-slow group-hover:text-cyan-300 transition-colors" />
