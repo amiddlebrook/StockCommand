@@ -45,6 +45,10 @@ interface PricePoint {
     volume: number;
 }
 
+// Time period options
+const TIME_PERIODS = ['1D', '1W', '1M', '1Y', '5Y'] as const;
+type TimePeriod = typeof TIME_PERIODS[number];
+
 // Mock price data generator - structured for future API integration
 function generateMockPriceData(symbol: string): PricePoint[] {
     // Seed based on symbol for consistency across renders
@@ -58,12 +62,25 @@ function generateMockPriceData(symbol: string): PricePoint[] {
 }
 
 // Generate mock sector performance (ETF % change relative to SPY)
-function generateSectorPerformance(): SectorPerformance[] {
+// Scale values based on time period
+function generateSectorPerformance(period: TimePeriod): SectorPerformance[] {
     const sectors = Object.entries(SECTOR_ETFS) as [SectorName, string][];
+
+    // Scale factor based on period (longer periods = larger swings)
+    const periodMultiplier: Record<TimePeriod, number> = {
+        '1D': 1,
+        '1W': 2,
+        '1M': 3,
+        '1Y': 5,
+        '5Y': 8
+    };
+    const multiplier = periodMultiplier[period];
+
     return sectors.map(([sectorName, etf]) => {
-        // Seed based on sector name for consistency
-        const seed = sectorName.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-        const changePercent = ((seed % 100) - 50) / 10; // -5% to +5%
+        // Seed based on sector name + period for varied results
+        const seed = sectorName.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) + period.charCodeAt(0);
+        const baseChange = ((seed % 100) - 50) / 10; // -5% to +5%
+        const changePercent = baseChange * multiplier;
         const status: 'green' | 'yellow' | 'red' =
             changePercent > 1 ? 'green' :
                 changePercent < -1 ? 'red' : 'yellow';
@@ -72,7 +89,7 @@ function generateSectorPerformance(): SectorPerformance[] {
             name: sectorName.slice(0, 12),
             fullName: sectorName,
             etf,
-            changePercent,
+            changePercent: Math.round(changePercent * 100) / 100, // Round to 2 decimals
             status
         };
     });
@@ -194,6 +211,7 @@ export const TraditionalView: React.FC<TraditionalViewProps> = ({
     const [isSectorOpen, setIsSectorOpen] = useState(true);
     const [isChartOpen, setIsChartOpen] = useState(true);
     const [isTickersOpen, setIsTickersOpen] = useState(true);
+    const [sectorPeriod, setSectorPeriod] = useState<TimePeriod>('1D');
 
     // Combine UNIVERSE with custom symbols, excluding hidden
     const allTickers = useMemo(() => {
@@ -208,7 +226,7 @@ export const TraditionalView: React.FC<TraditionalViewProps> = ({
     }, [symbols, localSymbols, hiddenSymbols]);
 
     // Sector performance data using ETF proxies
-    const sectorPerformance = useMemo(() => generateSectorPerformance(), []);
+    const sectorPerformance = useMemo(() => generateSectorPerformance(sectorPeriod), [sectorPeriod]);
 
     // Handle add symbol - with duplicate check
     const handleAddSymbol = () => {
@@ -291,9 +309,25 @@ export const TraditionalView: React.FC<TraditionalViewProps> = ({
 
             {/* 1. Sector Performance Index (ETF % change relative to SPY) */}
             <CollapsibleSection
-                title={`SECTOR_PERFORMANCE (vs SPY)`}
+                title={`SECTOR_PERFORMANCE (${sectorPeriod})`}
                 isOpen={isSectorOpen}
                 onToggle={() => setIsSectorOpen(!isSectorOpen)}
+                headerActions={
+                    <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+                        {TIME_PERIODS.map(period => (
+                            <button
+                                key={period}
+                                onClick={() => setSectorPeriod(period)}
+                                className={`px-2 py-0.5 text-[10px] font-mono rounded transition-colors ${sectorPeriod === period
+                                        ? 'bg-cyan-600 text-white'
+                                        : 'bg-slate-700/50 text-slate-400 hover:bg-slate-600/50'
+                                    }`}
+                            >
+                                {period}
+                            </button>
+                        ))}
+                    </div>
+                }
             >
                 <div className="h-56">
                     {sectorPerformance.length > 0 ? (
@@ -369,8 +403,8 @@ export const TraditionalView: React.FC<TraditionalViewProps> = ({
                                 onClick={() => handleAddToWatchlist(selectedTicker)}
                                 disabled={isInWatchlist(selectedTicker)}
                                 className={`flex items-center gap-1 px-2 py-1 text-xs rounded transition-colors ${isInWatchlist(selectedTicker)
-                                        ? 'bg-amber-500/30 text-amber-300 cursor-default'
-                                        : 'bg-amber-600/20 text-amber-400 hover:bg-amber-600/40'
+                                    ? 'bg-amber-500/30 text-amber-300 cursor-default'
+                                    : 'bg-amber-600/20 text-amber-400 hover:bg-amber-600/40'
                                     }`}
                                 title={isInWatchlist(selectedTicker) ? 'In Watchlist' : 'Add to Watchlist'}
                             >
