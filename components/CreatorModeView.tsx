@@ -55,7 +55,7 @@ export const CreatorModeView: React.FC<CreatorModeViewProps> = ({ clocks = [] })
                 {
                     id: 'ARCH_TREND', name: 'TREND PILOT', active: true, createdAt: Date.now(),
                     triggers: [{ id: 't2', metric: 'MA_50', operator: 'CROSSES_ABOVE', value: 200 }],
-                    actions: [{ id: 'a2', type: 'REBALANCE', target: 'Momentum Sleeve' }]
+                    actions: [{ id: 'a2', type: 'REBALANCE', target: 'Momentum Sector' }]
                 },
                 {
                     id: 'ARCH_SENT', name: 'SENTIMENT SCOUT', active: true, createdAt: Date.now(),
@@ -318,7 +318,7 @@ export const CreatorModeView: React.FC<CreatorModeViewProps> = ({ clocks = [] })
                                                             type="text"
                                                             value={block.target}
                                                             onChange={(e) => handleUpdateBlock(block.id, { target: e.target.value })}
-                                                            placeholder="Target (e.g. Tech Sleeve)"
+                                                            placeholder="Target (e.g. Tech Sector)"
                                                             className="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-white font-mono text-sm focus:border-green-500 outline-none"
                                                         />
                                                     </div>

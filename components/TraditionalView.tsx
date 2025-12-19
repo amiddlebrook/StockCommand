@@ -125,9 +125,9 @@ export const TraditionalView: React.FC<TraditionalViewProps> = ({
                 </div>
             </div>
 
-            {/* Sleeve Performance Bar Chart */}
+            {/* Sector Performance Bar Chart */}
             <div className="bg-slate-900/40 border border-slate-700/50 rounded-lg p-4">
-                <h2 className="text-sm font-bold text-cyan-400 mb-3 font-mono">SLEEVE_PERFORMANCE_INDEX</h2>
+                <h2 className="text-sm font-bold text-cyan-400 mb-3 font-mono">SECTOR_PERFORMANCE_INDEX</h2>
                 <div className="h-48 flex items-center justify-center border border-slate-700 rounded relative">
                     {sectorData.length > 0 ? (
                         <ResponsiveContainer width="100%" height="100%">
