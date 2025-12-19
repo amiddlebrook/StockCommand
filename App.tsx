@@ -636,8 +636,8 @@ const AppContent: React.FC = () => {
           ) : null}
         </div>
 
-        {/* BOTTOM: Collapsible Console Drawer (Hidden on Command Center View) */}
-        {activeTab !== 'command-center' && (
+        {/* BOTTOM: Collapsible Console Drawer */}
+        {(
           <div
             className={`
                   flex-shrink-0 relative z-20 shadow-[0_-5px_20px_rgba(0,0,0,0.5)] border-t border-slate-800 bg-slate-950 transition-all duration-300 ease-in-out
