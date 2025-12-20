@@ -5,26 +5,55 @@ export class MacroCore implements AgentCore {
     name = "Macro Core";
 
     public async process(context: CoreContext): Promise<CoreOutput> {
-        const { scope, target, marketData, timeline } = context;
+        const { scope, target, marketData, timeline, apiKey } = context;
 
         // Macro Core only runs on FULL, SECTOR, or TOOL scopes, or specific macro tickers
-        if (scope === 'TICKER' && !['SPY', 'QQQ', 'IWM', 'BTC', 'GLD'].includes(target || '')) {
+        if (scope === 'TICKER' && !['SPY', 'QQQ', 'IWM', 'BTC', 'GLD', 'VIX', 'TLT'].includes(target || '')) {
             return { analysis: "", actions: [] }; // Silent for random stocks
         }
 
-        let analysis = `### 🌍 Macro Regime (${timeline})\n`;
-        const clocks: MarketClock[] = [];
+        const systemPrompt = `You are the Macro Core of StockCommand.
+Analyze the Global Macro Regime.
+Context: User is looking at ${target} on a ${timeline} timeline.
+Focus: Inflation, Rate Expectations, Geopolitics, and Liquidity.
+Output: Markdown. Start with "### 🌍 Macro Regime (${timeline})"`;
 
-        // Logic to update clocks based on data
-        // e.g. if VIX is high, verify Deflation/Inflation regimes
+        const userPrompt = `Assess the current macro environment.
+Target: ${target}
+Timeline: ${timeline}
+Market Data: ${JSON.stringify(marketData)}
 
-        analysis += `- **Global Liquidity**: Neutral\n`;
-        analysis += `- **Risk Environment**: Risk-On\n\n`;
+Provide a strategic outlook (Risk-On / Risk-Off) and key regime drivers.`;
 
-        return {
-            analysis,
-            actions: [],
-            clocks
-        };
+        try {
+            const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+                method: "POST",
+                headers: {
+                    "Authorization": `Bearer ${apiKey}`,
+                    "Content-Type": "application/json",
+                    "HTTP-Referer": "https://stockcommand.workers.dev",
+                    "X-Title": "StockCommand Macro"
+                },
+                body: JSON.stringify({
+                    model: "nex-agi/deepseek-v3.1-nex-n1:free",
+                    messages: [
+                        { role: "system", content: systemPrompt },
+                        { role: "user", content: userPrompt }
+                    ],
+                    max_tokens: 300
+                })
+            });
+
+            const llmData: any = await response.json();
+            const analysis = llmData.choices?.[0]?.message?.content || "Macro Analysis Unavailable.";
+
+            return {
+                analysis,
+                actions: [],
+                clocks: [] // Clocks would be derived from parsing the analysis in a more advanced version
+            };
+        } catch (e: any) {
+            return { analysis: `### 🌍 Macro Regime\nAnalysis Failed: ${e.message}\n`, actions: [] };
+        }
     }
 }

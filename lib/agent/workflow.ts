@@ -129,11 +129,16 @@ export async function runAgentWorkflow(
     console.log(`Starting StockCommand Multi-Core Workflow (Scope: ${scope}, Timeline: ${timeline})...`);
 
     const AV_KEY = env.ALPHA_VANTAGE_API_KEY || '';
-    // const AGENT_KEY = env.OPENROUTER_DEEPSEEK_NEX_API_KEY || ''; // Legacy Key
+    const AGENT_KEY = env.OPENROUTER_DEEPSEEK_NEX_API_KEY || '';
 
     if (!AV_KEY) {
         console.error("Missing ALPHA_VANTAGE_API_KEY");
         return { analysis: "Error: Missing Alpha Vantage API Key", actions: [] };
+    }
+
+    if (!AGENT_KEY) {
+        console.error("Missing OPENROUTER_DEEPSEEK_NEX_API_KEY");
+        return { analysis: "Error: Missing LLM API Key", actions: [] };
     }
 
     // 1. Refresh Data
@@ -151,7 +156,8 @@ export async function runAgentWorkflow(
         tool,
         marketData,
         portfolio,
-        timeline: timeline as any
+        timeline: timeline as any,
+        apiKey: AGENT_KEY
     };
 
     const coreResult = await router.dispatch(coreContext);

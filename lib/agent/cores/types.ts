@@ -9,6 +9,7 @@ export interface CoreContext {
     timeline: Timeline;
     marketData: Record<string, MarketData>;
     portfolio?: PortfolioState;
+    apiKey: string;
 }
 
 export interface CoreOutput {

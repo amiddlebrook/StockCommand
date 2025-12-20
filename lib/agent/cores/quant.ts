@@ -4,41 +4,75 @@ export class QuantCore implements AgentCore {
     name = "Quant Core";
 
     public async process(context: CoreContext): Promise<CoreOutput> {
-        const { target, marketData, timeline } = context;
-        let analysis = "";
-        let signal: 'BUY' | 'SELL' | 'NEUTRAL' = 'NEUTRAL';
-
-        console.log(`[Quant Core] Analyzing ${target} on ${timeline} timeline...`);
+        const { target, marketData, timeline, apiKey } = context;
+        console.log(`[Quant Core] Analyzing ${target} on ${timeline} timeline using LLM...`);
 
         if (!target || !marketData[target]) {
             return { analysis: "Quant Core: No data available.", actions: [] };
         }
 
         const data = marketData[target];
-        const price = data.price;
-        const change = data.changePercent;
-        const rsi = data.rsi || 50;
+        const { price, changePercent, rsi, volume, technicalSignal } = data;
 
-        // Simple logic stub - In real life this would check 1d vs 1m data arrays
-        analysis += `### 📐 Technical Analysis (${timeline})\n`;
-        analysis += `- **Price**: $${price.toFixed(2)} (${change > 0 ? '+' : ''}${change.toFixed(2)}%)\n`;
-        analysis += `- **RSI**: ${rsi.toFixed(2)} (${rsi > 70 ? 'Overbought' : rsi < 30 ? 'Oversold' : 'Neutral'})\n`;
+        // 1. Construct Prompt
+        const systemPrompt = `You are the Quant Core of StockCommand.
+Your job is to analyze technical indicators and price action for ${target} on a ${timeline} timeframe.
+Be concise, data-driven, and professional.
+Focus on: Trend direction, Momentum (RSI), and Volume profile.
+Output format: Markdown bullet points. Start with "### 📐 Technical Analysis (${timeline})"`;
 
-        if (rsi > 75) signal = 'SELL';
-        else if (rsi < 25) signal = 'BUY';
+        const userPrompt = `Analyze this data:
+Ticker: ${target}
+Price: ${price}
+Change: ${changePercent}%
+RSI: ${rsi || 'N/A'}
+Signal: ${technicalSignal || 'Neutral'}
+Volume: ${volume}
 
-        if (timeline === '1m' || timeline === '1h') {
-            analysis += `- **Intraday Trend**: ${change > 0 ? 'Bullish' : 'Bearish'} momentum detected.\n`;
-        } else if (timeline === '1M' || timeline === '1Y') {
-            analysis += `- **Long-Term Trend**: ${change > 10 ? 'Strong Uptrend' : change < -10 ? 'Downtrend' : 'Consolidation'}.\n`;
+Provide a 3-bullet summary of the technical setup and a final trading signal (BUY/SELL/NEUTRAL).`;
+
+        try {
+            // 2. Call LLM
+            const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+                method: "POST",
+                headers: {
+                    "Authorization": `Bearer ${apiKey}`,
+                    "Content-Type": "application/json",
+                    "HTTP-Referer": "https://stockcommand.workers.dev",
+                    "X-Title": "StockCommand Quant"
+                },
+                body: JSON.stringify({
+                    model: "nex-agi/deepseek-v3.1-nex-n1:free", // Using DeepSeek for analytical depth
+                    messages: [
+                        { role: "system", content: systemPrompt },
+                        { role: "user", content: userPrompt }
+                    ],
+                    max_tokens: 300,
+                    temperature: 0.3
+                })
+            });
+
+            const llmData: any = await response.json();
+            const analysis = llmData.choices?.[0]?.message?.content || "Analysis unavailable.";
+
+            // Simple parsing for signal (LLM usually puts it at the end)
+            let signal: 'BUY' | 'SELL' | 'NEUTRAL' = 'NEUTRAL';
+            if (analysis.includes('Signal: BUY') || analysis.includes('Signal: **BUY**')) signal = 'BUY';
+            if (analysis.includes('Signal: SELL') || analysis.includes('Signal: **SELL**')) signal = 'SELL';
+
+            return {
+                analysis,
+                actions: [],
+                technicalSignal: signal
+            };
+
+        } catch (e: any) {
+            console.error("Quant Core LLM Failed:", e);
+            return {
+                analysis: `### 📐 Technical Analysis (${timeline})\n- **Error**: AI Analysis failed (${e.message}).\n- **Data**: $${price} (${changePercent}%)\n`,
+                actions: [],
+                technicalSignal: 'NEUTRAL'
+            };
         }
-
-        analysis += `- **Signal**: **${signal}**\n\n`;
-
-        return {
-            analysis,
-            actions: [], // Quant Core generates signals, usually Strategy Layer turns them into Actions
-            technicalSignal: signal
-        };
     }
 }

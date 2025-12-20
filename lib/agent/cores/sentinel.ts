@@ -4,31 +4,59 @@ export class SentinelCore implements AgentCore {
     name = "Sentinel Core";
 
     public async process(context: CoreContext): Promise<CoreOutput> {
-        const { target, timeline } = context;
-        console.log(`[Sentinel Core] Scanning news for ${target} (${timeline})...`);
+        const { target, timeline, apiKey } = context;
+        console.log(`[Sentinel Core] Scanning intelligence for ${target} (${timeline})...`);
 
-        let analysis = `### 📡 Sentinel Intelligence\n`;
-        let sentiment = 50;
+        // Prompt for Sentinel
+        const systemPrompt = `You are the Sentinel Core of StockCommand.
+Your mission: Aggregate sentiment and identify narrative drivers for ${target}.
+Context: Timeframe is ${timeline}.
+Style: "Black Ops" intelligence briefing. Concise. High stakes.
+Output: Markdown. Start with "### 📡 Sentinel Intelligence"`;
 
-        // In a real implementation, this would query a News API filtered by timeline
-        // e.g. "news from last 1 hour" if timeline === '1h'
+        const userPrompt = `Scan target: ${target}
+Sector: Technology/Market
+Timeline: ${timeline}
 
-        if (target === 'AAPL') {
-            analysis += `- **News**: Apple Vision Pro demand stabilizing.\n`;
-            sentiment = 65;
-        } else if (target === 'TSLA') {
-            analysis += `- **Social**: High volume of tweets regarding Cybercab.\n`;
-            sentiment = 45;
-        } else {
-            analysis += `- **Scan**: No major breaking news detected for ${target} in the last ${timeline}.\n`;
+Identify potential news drivers, market sentiment, and crowd psychology ranking (0-100).
+If no specific news is available, infer sentiment from general market conditions for this sector.`;
+
+        try {
+            const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+                method: "POST",
+                headers: {
+                    "Authorization": `Bearer ${apiKey}`,
+                    "Content-Type": "application/json",
+                    "HTTP-Referer": "https://stockcommand.workers.dev",
+                    "X-Title": "StockCommand Sentinel"
+                },
+                body: JSON.stringify({
+                    model: "nex-agi/deepseek-v3.1-nex-n1:free",
+                    messages: [
+                        { role: "system", content: systemPrompt },
+                        { role: "user", content: userPrompt }
+                    ],
+                    max_tokens: 300,
+                    temperature: 0.7 // Higher temp for narrative generation
+                })
+            });
+
+            const llmData: any = await response.json();
+            const analysis = llmData.choices?.[0]?.message?.content || "Sentinel Uplink Failed.";
+
+            // Extract sentiment score if possible (mock parsing logic for now)
+            return {
+                analysis,
+                actions: [],
+                sentimentScore: 50 // TODO: parse from LLM
+            };
+
+        } catch (e: any) {
+            return {
+                analysis: `### 📡 Sentinel Intelligence\n- **Status**: Uplink Failed (${e.message})\n`,
+                actions: [],
+                sentimentScore: 50
+            };
         }
-
-        analysis += `- **Sentiment Score**: ${sentiment}/100\n\n`;
-
-        return {
-            analysis,
-            actions: [],
-            sentimentScore: sentiment
-        };
     }
 }
