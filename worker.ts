@@ -1042,12 +1042,35 @@ Communication style:
 - Use 🟢 for bullish, 🟡 for neutral, 🔴 for bearish
 - Be concise and actionable`;
 
-                if (context) {
-                    if (context.activeTickers && context.activeTickers.length > 0) {
-                        systemPrompt += `\n\nCURRENT ACTIVE TICKERS: ${context.activeTickers.join(', ')}\nFocus your answers on these tickers unless the user explicitly asks about others.`;
-                    }
-                    if (context.latestReport) {
-                        systemPrompt += `\n\nLATEST PORTFOLIO REPORT:\n${JSON.stringify(context.latestReport)}`;
+
+                // ROUTER AGENT (Multi-Agent Dispatch)
+                // Determine user intent to select the best specialist model
+                const { routeUserMessage } = await import('./lib/agent/router');
+                const agentType = await routeUserMessage(env, message);
+                console.log(`[Router] Dispatched to: ${agentType}`);
+
+                // Select Model & Tools based on Agent Type
+                let selectedModel = "nex-agi/deepseek-v3.1-nex-n1:free"; // Default Analyst
+                let useTools = true;
+
+                if (agentType === 'CODER') {
+                    selectedModel = "kwaipilot/kat-coder-pro:free";
+                    systemPrompt = "You are StockCommand Coder. You help the user write code and fix bugs. Use markdown for code blocks.";
+                    useTools = false; // Coder doesn't need stock tools usually
+                } else if (agentType === 'CHAT') {
+                    selectedModel = "openai/gpt-oss-120b:free"; // Good general chat model
+                    useTools = false; // Pure chat, no heavy tools for speed
+                }
+
+                // Append context if Analyst
+                if (agentType === 'ANALYST') {
+                    if (context) {
+                        if (context.activeTickers && context.activeTickers.length > 0) {
+                            systemPrompt += `\n\nCURRENT ACTIVE TICKERS: ${context.activeTickers.join(', ')}\nFocus your answers on these tickers.`;
+                        }
+                        if (context.latestReport) {
+                            systemPrompt += `\n\nLATEST PORTFOLIO REPORT:\n${JSON.stringify(context.latestReport)}`;
+                        }
                     }
                 }
 
@@ -1057,11 +1080,12 @@ Communication style:
                     { role: "user", content: message }
                 ];
 
-                // Dynamic Web Search Toggle
+                // Dynamic Web Search Toggle (Only for Analyst/Chat, maybe Coder needs it? Let's limit to Analyst for now)
                 const searchKeywords = ['analyze', 'stock', 'price', 'market', 'news', 'ticker', 'buying', 'selling', 'chart', 'trend', 'value', 'earnings', 'dividend', 'forecast', 'prediction', 'latest', 'today', '$'];
                 // Only use web plugin if strictly needed AND not a ticker lookup (which uses the tool below)
-                const shouldSearch = (searchKeywords.some(kw => cleanMsg.includes(kw)) || cleanMsg.includes('$')) && !cleanMsg.match(/^(price|quote) of [a-z]+$/i);
+                const shouldSearch = (agentType === 'ANALYST') && ((searchKeywords.some(kw => cleanMsg.includes(kw)) || cleanMsg.includes('$')) && !cleanMsg.match(/^(price|quote) of [a-z]+$/i));
                 const plugins = shouldSearch ? [{ id: "web" }] : [];
+
 
                 // MCP TOOLS DEFINITION
                 const tools = [
@@ -1084,7 +1108,19 @@ Communication style:
                     }
                 ];
 
-                // 1st Call: Ask LLM (with Tools enabled)
+                // 1st Call: Ask LLM (with Tools enabled if applicable)
+                const llmBody: any = {
+                    model: selectedModel,
+                    messages: messages,
+                    max_tokens: 1500,
+                    plugins: plugins
+                };
+
+                if (useTools) {
+                    llmBody.tools = tools;
+                    llmBody.tool_choice = "auto";
+                }
+
                 const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
                     method: "POST",
                     headers: {
@@ -1093,14 +1129,7 @@ Communication style:
                         "HTTP-Referer": "https://stockcommand.workers.dev",
                         "X-Title": "StockCommand"
                     },
-                    body: JSON.stringify({
-                        model: "nex-agi/deepseek-v3.1-nex-n1:free",
-                        messages: messages,
-                        max_tokens: 1500,
-                        plugins: plugins,
-                        tools: tools,
-                        tool_choice: "auto"
-                    })
+                    body: JSON.stringify(llmBody)
                 });
 
                 const data: any = await response.json();
