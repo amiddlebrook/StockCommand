@@ -14,17 +14,7 @@ const TOOL_PROXIES: Record<string, string[]> = {
     'CLOCK_DOLLAR_STRENGTH': ['UUP', 'GLD', 'SPY']
 };
 
-import { MarketDataService } from './market-data';
 
-// Env variables should be passed in from the worker
-const TOOL_PROXIES: Record<string, string[]> = {
-    'CLOCK_LIQUIDITY_CYCLE': ['BTC', 'HYG', 'SPY'],
-    'CLOCK_COMMODITY_CYCLE': ['DBC', 'USO', 'DBB'],
-    'CLOCK_VIX_REGIME': ['VIX', 'SPY'],
-    'CLOCK_INFLATION_TREND': ['TIP', 'IEF', 'USO'],
-    'CLOCK_CREDIT_IMPULSE': ['HYG', 'LQD'],
-    'CLOCK_DOLLAR_STRENGTH': ['UUP', 'GLD', 'SPY']
-};
 
 async function fetchMarketData(
     avKey: string,
