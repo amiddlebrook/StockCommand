@@ -332,7 +332,7 @@ const AppContent: React.FC = () => {
       }, 5000); // 5s pacing (slightly slower for full scans)
       return () => clearTimeout(timer);
     }
-  }, [isAgentEnabled, symbols, analysisData, marketClocks, executeAgentScan]);
+  }, [symbols, analysisData, marketClocks, executeAgentScan, timeline]);
 
   // VIEW MODE: DATA = 2D Charts/Data, ARENA = 3D Agentic Universe (HUD)
   type ViewMode = 'DATA' | 'ARENA';
