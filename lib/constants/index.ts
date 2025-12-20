@@ -3,12 +3,11 @@
  */
 
 /**
- * Available stock market data providers
+ * Data provider - LLM-only via OpenRouter
  */
-export const STOCK_DATA_PROVIDERS = {
-  ALPHA_VANTAGE: 'alphavantage',
-  FINNHUB: 'finnhub',
-  YAHOO: 'yahoo',
+export const DATA_PROVIDER = {
+  TYPE: 'llm',
+  SERVICE: 'openrouter',
 } as const;
 
 /**
@@ -76,19 +75,12 @@ export const CACHE_CONFIG = {
 } as const;
 
 /**
- * API rate limits (requests per minute unless noted)
+ * LLM call configuration
  */
-export const RATE_LIMITS = {
-  FINNHUB: {
-    REQUESTS_PER_MINUTE: 60, // Highest - use as primary
-  },
-  ALPHA_VANTAGE: {
-    REQUESTS_PER_MINUTE: 5,
-    REQUESTS_PER_DAY: 500,
-  },
-  YAHOO: {
-    REQUESTS_PER_DAY: 100, // RapidAPI free tier
-  },
+export const LLM_CONFIG = {
+  MAX_RETRIES: 3,
+  TIMEOUT_MS: 30000,
+  CACHE_TTL_MS: 60 * 1000, // 1 minute for real-time data
 } as const;
 
 /**

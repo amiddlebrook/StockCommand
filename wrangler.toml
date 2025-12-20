@@ -34,24 +34,12 @@ RATE_LIMIT_WINDOW = "60"
 # Cache configuration
 CACHE_TTL = "3600"
 
-# Stock API configuration
-DEFAULT_STOCK_PROVIDER = "alphavantage"
-STOCK_API_TIMEOUT = "5000"
-
-# The following secrets need to be configured in Cloudflare dashboard or via CLI:
-# - OPENAI_API_KEY
-# - GEMINI_API_KEY  
-# - CLAUDE_API_KEY
-# - OPENROUTER_QWEN3_CODER_API_KEY
-# - OPENROUTER_DEEPSEEK_R1T2_API_KEY
-# - OPENROUTER_DEEPSEEK_CHAT_API_KEY
-# - OPENROUTER_MINIMAX_M2_API_KEY
-# - OPENROUTER_GLM_45_AIR_API_KEY
-# - OPENROUTER_QWEN3_235B_API_KEY
-
-# - ALPHA_VANTAGE_API_KEY
-# - FINNHUB_API_KEY
-# - IEXCLOUD_API_KEY
+# The following OpenRouter API keys need to be configured in Cloudflare dashboard or via CLI:
+# - OPENROUTER_OLMO_THINK_API_KEY
+# - OPENROUTER_NEMOTRON_NANO_API_KEY
+# - OPENROUTER_DEEPSEEK_NEX_API_KEY
+# - OPENROUTER_KATCODER_PRO_API_KEY
+# - OPENROUTER_GPT_OSS_API_KEY
 
 # KV Namespaces for caching
 [[kv_namespaces]]

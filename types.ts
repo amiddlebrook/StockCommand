@@ -77,11 +77,6 @@ export interface Env {
   OPENROUTER_KATCODER_PRO_API_KEY?: string;
   OPENROUTER_GPT_OSS_API_KEY?: string;
 
-  // Stock API keys
-  ALPHA_VANTAGE_API_KEY?: string;
-  FINNHUB_API_KEY?: string;
-  YAHOO_API_KEY?: string;
-
   // Environment variables
   APP_NAME: string;
   APP_VERSION: string;
@@ -90,8 +85,6 @@ export interface Env {
   RATE_LIMIT_REQUESTS: string;
   RATE_LIMIT_WINDOW: string;
   CACHE_TTL: string;
-  DEFAULT_STOCK_PROVIDER: string;
-  STOCK_API_TIMEOUT: string;
 
   // KV Namespaces
   STOCK_CACHE_KV: KVNamespace;

@@ -21,7 +21,8 @@ import {
   LLM_MODEL_LOOKUP,
   DEFAULT_CHAT_MODEL,
 } from '../lib/constants/llmModels';
-import { createStockAPI, StockAPIError } from './stock';
+import { SwarmDataService } from '../lib/agent/market-data';
+import type { MarketData } from '../lib/agent/types';
 import type { Env, PortfolioHoldingSnapshot, PortfolioReportData } from '../types';
 
 const DEFAULT_IMAGE_MODEL = '@cf/unum/uform-gen2-qwen-500m';
@@ -343,25 +344,21 @@ async function handlePortfolioReportRequest(request: Request, env: Env): Promise
       return new Response('At least one ticker is required', { status: 400 });
     }
 
-    const stockAPI = createStockAPI(env);
-    const holdings: PortfolioHoldingSnapshot[] = [];
+    // Use SwarmDataService for LLM-based data
+    const swarmService = new SwarmDataService(env.OPENROUTER_DEEPSEEK_NEX_API_KEY || '');
+    const swarmData = await swarmService.querySwarm(cleanedTickers, '1d');
 
-    for (const symbol of cleanedTickers) {
-      try {
-        const quote = await stockAPI.getQuote(symbol);
-        const profile = await stockAPI.getCompanyProfile(symbol).catch(() => null);
-        holdings.push({
-          symbol: quote.symbol,
-          name: profile?.name ?? quote.symbol,
-          price: quote.price,
-          changePercent: quote.changePercent,
-          sector: profile?.sector,
-          industry: profile?.industry,
-        });
-      } catch (error) {
-        console.warn(`Failed to load portfolio snapshot for ${symbol}:`, error);
-      }
-    }
+    const holdings: PortfolioHoldingSnapshot[] = cleanedTickers.map(symbol => {
+      const data = swarmData[symbol] as MarketData | undefined;
+      return {
+        symbol,
+        name: symbol,
+        price: data?.price || 0,
+        changePercent: data?.changePercent || 0,
+        sector: undefined,
+        industry: undefined,
+      };
+    }).filter(h => h.price > 0);
 
     if (holdings.length === 0) {
       return new Response('Unable to fetch live data for the requested symbols', { status: 502 });
@@ -541,16 +538,8 @@ function jsonResponse(payload: any, init: ResponseInit = {}): Response {
 }
 
 function handleStockApiError(error: unknown): Response {
-  if (error instanceof StockAPIError) {
-    const status = error.status ?? 500;
-    const body = {
-      error: error.message,
-      code: error.code ?? 'STOCK_API_ERROR',
-    };
-    return jsonResponse(body, { status });
-  }
-
-  return new Response('Internal server error', { status: 500 });
+  const message = error instanceof Error ? error.message : 'Unknown error';
+  return jsonResponse({ error: message, code: 'LLM_DATA_ERROR' }, { status: 500 });
 }
 
 async function handleStaticAssetRequest(request: Request, env: Env): Promise<Response> {
@@ -885,18 +874,23 @@ async function buildChatContextMessage(context: Record<string, any> | undefined,
     return null;
   }
 
-  const stockAPI = createStockAPI(env);
+  // Use SwarmDataService for LLM-based market data
+  const swarmService = new SwarmDataService(env.OPENROUTER_DEEPSEEK_NEX_API_KEY || '');
   const snapshots: string[] = [];
 
-  for (const symbol of symbols) {
-    try {
-      const quote = await stockAPI.getQuote(symbol);
-      snapshots.push(
-        `${quote.symbol}: $${quote.price.toFixed(2)} (${quote.changePercent.toFixed(2)}%), volume ${quote.volume.toLocaleString()}`,
-      );
-    } catch (error) {
-      console.warn('Failed to load context quote for chat:', symbol, error);
+  try {
+    const swarmData = await swarmService.querySwarm(Array.from(symbols), '1d');
+
+    for (const symbol of symbols) {
+      const data = swarmData[symbol] as MarketData | undefined;
+      if (data) {
+        snapshots.push(
+          `${symbol}: $${(data.price || 0).toFixed(2)} (${(data.changePercent || 0).toFixed(2)}%), volume ${(data.volume || 0).toLocaleString()}`,
+        );
+      }
     }
+  } catch (error) {
+    console.warn('Failed to load context quotes for chat:', error);
   }
 
   if (snapshots.length === 0) {
@@ -1149,10 +1143,19 @@ async function handleStockQuoteRequest(request: Request, env: Env): Promise<Resp
       return new Response('Symbol is required', { status: 400 });
     }
 
-    const stockAPI = createStockAPI(env);
-    const quote = await stockAPI.getQuote(symbol);
+    // LLM-based data via SwarmDataService
+    const swarmService = new SwarmDataService(env.OPENROUTER_DEEPSEEK_NEX_API_KEY || '');
+    const swarmData = await swarmService.querySwarm([symbol.toUpperCase()], '1d');
+    const data = swarmData[symbol.toUpperCase()] as MarketData | undefined;
 
-    return jsonResponse(quote);
+    return jsonResponse({
+      symbol: symbol.toUpperCase(),
+      price: data?.price || 0,
+      change: 0, // Calculate from previous close if needed
+      changePercent: data?.changePercent || 0,
+      volume: data?.volume || 0,
+      timestamp: Date.now(),
+    });
   } catch (error) {
     console.error('Error in stock quote request:', error);
     return handleStockApiError(error);
@@ -1167,16 +1170,17 @@ async function handleStockIntradayRequest(request: Request, env: Env): Promise<R
   try {
     const url = new URL(request.url);
     const symbol = url.searchParams.get('symbol');
-    const interval = url.searchParams.get('interval') || '1min';
+    const interval = url.searchParams.get('interval') || '5min';
 
     if (!symbol) {
       return new Response('Symbol is required', { status: 400 });
     }
 
-    const stockAPI = createStockAPI(env);
-    const data = await stockAPI.getIntradayData(symbol, interval);
+    // LLM-based intraday data via SwarmDataService
+    const swarmService = new SwarmDataService(env.OPENROUTER_DEEPSEEK_NEX_API_KEY || '');
+    const history = await swarmService.generateIntradayHistory(symbol.toUpperCase(), interval);
 
-    return jsonResponse(data);
+    return jsonResponse({ symbol: symbol.toUpperCase(), interval, data: history });
   } catch (error) {
     console.error('Error in intraday request:', error);
     return handleStockApiError(error);
@@ -1196,10 +1200,18 @@ async function handleStockProfileRequest(request: Request, env: Env): Promise<Re
       return new Response('Symbol is required', { status: 400 });
     }
 
-    const stockAPI = createStockAPI(env);
-    const profile = await stockAPI.getCompanyProfile(symbol);
+    // LLM-based profile data via SwarmDataService
+    const swarmService = new SwarmDataService(env.OPENROUTER_DEEPSEEK_NEX_API_KEY || '');
+    const swarmData = await swarmService.querySwarm([symbol.toUpperCase()], '1d');
+    const data = swarmData[symbol.toUpperCase()] as MarketData | undefined;
 
-    return jsonResponse(profile);
+    return jsonResponse({
+      symbol: symbol.toUpperCase(),
+      name: symbol.toUpperCase(),
+      sector: 'Unknown',
+      industry: 'Unknown',
+      description: `Profile for ${symbol.toUpperCase()}`,
+    });
   } catch (error) {
     console.error('Error in profile request:', error);
     return handleStockApiError(error);
@@ -1219,8 +1231,12 @@ async function handleStockSearchRequest(request: Request, env: Env): Promise<Res
       return new Response('Query is required', { status: 400 });
     }
 
-    const stockAPI = createStockAPI(env);
-    const results = await stockAPI.searchSymbols(query);
+    // LLM-based symbol search - for now return the query as a potential symbol
+    // The LLM agents handle validation during actual data fetch
+    const upperQuery = query.toUpperCase().replace(/[^A-Z]/g, '');
+    const results = upperQuery.length > 0 && upperQuery.length <= 5
+      ? [{ symbol: upperQuery, name: `${upperQuery} (LLM lookup)` }]
+      : [];
 
     return jsonResponse(results);
   } catch (error) {
@@ -1230,14 +1246,15 @@ async function handleStockSearchRequest(request: Request, env: Env): Promise<Res
 }
 
 async function handleWatchlistRequest(request: Request, env: Env): Promise<Response> {
-  const stockAPI = createStockAPI(env);
-
+  // Watchlist stored in KV - no external API needed
   if (request.method === 'GET') {
     try {
       const url = new URL(request.url);
       const userId = url.searchParams.get('userId') || 'anonymous';
+      const key = `watchlist:${userId}`;
 
-      const watchlist = await stockAPI.getWatchlist(userId);
+      const stored = env.STOCK_CACHE_KV ? await env.STOCK_CACHE_KV.get(key) : null;
+      const watchlist = stored ? JSON.parse(stored) : [];
       return jsonResponse({ watchlist });
     } catch (error) {
       console.error('Error getting watchlist:', error);
@@ -1250,8 +1267,11 @@ async function handleWatchlistRequest(request: Request, env: Env): Promise<Respo
       const body = await request.json() as { userId?: string; symbols?: string[] };
       const userId = body.userId || 'anonymous';
       const symbols = body.symbols || [];
+      const key = `watchlist:${userId}`;
 
-      await stockAPI.saveWatchlist(userId, symbols);
+      if (env.STOCK_CACHE_KV) {
+        await env.STOCK_CACHE_KV.put(key, JSON.stringify(symbols));
+      }
       return jsonResponse({ success: true });
     } catch (error) {
       console.error('Error saving watchlist:', error);
@@ -1276,10 +1296,14 @@ async function handleFileUploadRequest(request: Request, env: Env): Promise<Resp
       return new Response('File and key are required', { status: 400 });
     }
 
-    const stockAPI = createStockAPI(env);
-    const fileKey = await stockAPI.uploadFile(key, await file.arrayBuffer(), file.type);
+    // Upload directly to R2
+    if (env.STORAGE) {
+      await env.STORAGE.put(key, await file.arrayBuffer(), {
+        httpMetadata: { contentType: file.type }
+      });
+    }
 
-    return jsonResponse({ success: true, key: fileKey });
+    return jsonResponse({ success: true, key });
   } catch (error) {
     console.error('Error in file upload:', error);
     return new Response('Internal server error', { status: 500 });

@@ -1,5 +1,5 @@
 import { AgentCore, CoreContext, CoreOutput, Timeline } from './types';
-import { MarketClock } from '../../types';
+import { MarketClock } from '../types';
 
 export class MacroCore implements AgentCore {
     name = "Macro Core";

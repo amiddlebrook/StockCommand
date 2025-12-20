@@ -1,35 +1,32 @@
 
 import { Env } from '../../types';
-import { createStockAPI } from '../../api/stock';
+import { SwarmDataService } from './market-data';
+import { MarketData } from './types';
 
 export async function runMarketScanner(env: Env) {
     console.log("[Scanner] Starting autonomous market scan...");
 
-    // 1. Fetch Real Data (The 'Eyes' of the agent)
-    const stockAPI = createStockAPI(env);
-    // Monitor key indices and tech giants
+    // 1. Fetch Real Data via LLM (SwarmDataService)
+    const apiKey = env.OPENROUTER_DEEPSEEK_NEX_API_KEY;
+    if (!apiKey) throw new Error("Missing API Key");
+
+    const swarmService = new SwarmDataService(apiKey);
     const watchlist = ['SPY', 'QQQ', 'NVDA', 'AAPL', 'TSLA', 'AMD'];
 
-    // Use the Race Strategy (Fastest) to get snapshots
-    const quotes = await Promise.allSettled(
-        watchlist.map(sym => stockAPI.getQuote(sym))
-    );
+    // Use SwarmDataService to get LLM-generated market data
+    const swarmData = await swarmService.querySwarm(watchlist, '1d');
 
-    const dataSummary = quotes.map((res, i) => {
-        if (res.status === 'fulfilled') {
-            const q = res.value;
-            return `${q.symbol}: $${q.price} (${q.changePercent > 0 ? '+' : ''}${q.changePercent.toFixed(2)}%)`;
+    const dataSummary = watchlist.map(sym => {
+        const data = swarmData[sym] as MarketData | undefined;
+        if (data) {
+            return `${sym}: $${data.price} (${data.changePercent > 0 ? '+' : ''}${data.changePercent.toFixed(2)}%)`;
         }
-        return `${watchlist[i]}: Failed`;
+        return `${sym}: No data`;
     }).join('\n');
 
     console.log("[Scanner] Data snapshot:", dataSummary);
 
     // 2. The Brain (LLM Analysis) - "Revenue Generator"
-    // We consciously use a smart model to analyze simple data to provide "Premium Insights"
-    const apiKey = env.OPENROUTER_DEEPSEEK_NEX_API_KEY;
-    if (!apiKey) throw new Error("Missing API Key");
-
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
         method: "POST",
         headers: {
@@ -58,7 +55,6 @@ export async function runMarketScanner(env: Env) {
     const analysis = llmResult.choices?.[0]?.message?.content || "Market systems nominal.";
 
     // 3. Cache the Result (Agent Output)
-    // The frontend can poll /api/agent/latest to see this
     if (env.STOCK_CACHE_KV) {
         await env.STOCK_CACHE_KV.put("latest_agent_run", JSON.stringify({
             timestamp: Date.now(),
