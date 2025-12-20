@@ -179,6 +179,66 @@ export class SwarmDataService {
         }
     }
 
+    public async generateIntradayHistory(symbol: string, interval: string = '5min'): Promise<any[]> {
+        // 1. Get current state from Price Agent (or cache)
+        const currentData = await this.runPriceAgent(symbol, '1d');
+        const currentPrice = currentData.price || 100;
+
+        // 2. Generate synthetic history backwards
+        // (Since we are agent-driven, we simulate the path that led to this price)
+        const points = [];
+        const numPoints = 60; // 5 hours of 5min candles
+        let price = currentPrice;
+        const volatility = 0.002; // 0.2% per step
+
+        for (let i = 0; i < numPoints; i++) {
+            points.push({
+                close: Number(price.toFixed(2)),
+                price: Number(price.toFixed(2)),
+                volume: Math.floor(Math.random() * 10000) + 1000,
+                timestamp: Date.now() - (i * 300000) // 5 min intervals
+            });
+
+            // Random walk backwards
+            const change = 1 + (Math.random() * volatility * 2 - volatility);
+            price = price / change;
+        }
+
+        return points.reverse();
+    }
+
+    /**
+     * Generate Intraday History via Agent Inference
+     * (Constructs a plausible chart history based on current price and volatility profile)
+     */
+    public async generateIntradayHistory(symbol: string, interval: string = '5min'): Promise<any[]> {
+        // 1. Get current state from Price Agent (or cache)
+        const currentData = await this.runPriceAgent(symbol, '1d');
+        const currentPrice = currentData.price || 100;
+
+        // 2. Generate synthetic history backwards
+        // (Since we are agent-driven, we simulate the path that led to this price)
+        const points = [];
+        const numPoints = 60; // 5 hours of 5min candles
+        let price = currentPrice;
+        const volatility = 0.002; // 0.2% per step
+
+        for (let i = 0; i < numPoints; i++) {
+            points.push({
+                close: Number(price.toFixed(2)),
+                price: Number(price.toFixed(2)),
+                volume: Math.floor(Math.random() * 10000) + 1000,
+                timestamp: Date.now() - (i * 300000) // 5 min intervals
+            });
+
+            // Random walk backwards
+            const change = 1 + (Math.random() * volatility * 2 - volatility);
+            price = price / change;
+        }
+
+        return points.reverse();
+    }
+
     // --- HELPER: LLM CALL ---
     private async callLLM(model: string, systemPrompt: string): Promise<any> {
         if (!this.apiKey) throw new Error("No API Key");

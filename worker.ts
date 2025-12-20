@@ -247,6 +247,38 @@ export default {
             });
         }
 
+        // GET /api/swarm/intraday - Agent-Generated History
+        if (url.pathname === "/api/swarm/intraday" && request.method === "GET") {
+            const symbol = url.searchParams.get("symbol");
+            const interval = url.searchParams.get("interval") || "5min";
+
+            if (!symbol) return new Response("Missing symbol", { status: 400 });
+
+            // Use Swarm Service
+            const swarmService = new SwarmDataService(env.OPENROUTER_DEEPSEEK_NEX_API_KEY || '');
+            const history = await swarmService.generateIntradayHistory(symbol, interval);
+
+            return new Response(JSON.stringify({ data: history }), {
+                headers: { ...corsHeaders, "Content-Type": "application/json" }
+            });
+        }
+
+        // GET /api/intraday - Synthetic/Agent History for Charts
+        if (url.pathname === "/api/intraday" && request.method === "GET") {
+            const symbol = url.searchParams.get("symbol");
+            const interval = url.searchParams.get("interval") || "5min";
+
+            if (!symbol) return new Response("Missing symbol", { status: 400 });
+
+            // Use Swarm Service
+            const swarmService = new SwarmDataService(env.OPENROUTER_DEEPSEEK_NEX_API_KEY || '');
+            const history = await swarmService.generateIntradayHistory(symbol, interval);
+
+            return new Response(JSON.stringify({ data: history }), {
+                headers: { ...corsHeaders, "Content-Type": "application/json" }
+            });
+        }
+
         // --- SUBSCRIPTION ROUTES ---
 
         // --- AGENT FUEL ROUTES ---

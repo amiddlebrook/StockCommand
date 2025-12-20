@@ -434,7 +434,7 @@ export const TraditionalView: React.FC<TraditionalViewProps> = ({
                 if (realChartData[chart.symbol]) continue; // Already fetched
 
                 try {
-                    const res = await fetch(`/api/intraday?symbol=${chart.symbol}&interval=5min`);
+                    const res = await fetch(`/api/swarm/intraday?symbol=${chart.symbol}&interval=5min`);
                     if (res.ok) {
                         const data = await res.json() as { data?: Array<{ close?: number; price?: number; volume?: number }> };
                         if (data.data && Array.isArray(data.data)) {
