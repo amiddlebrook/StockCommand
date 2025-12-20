@@ -2,7 +2,7 @@ import { AgentEngine } from './engine';
 import { ActionExecutor } from './actions';
 import { MarketData, PortfolioState, UserStrategy, AgentAction, StrategyTrigger, StrategyAction } from './types';
 import { UNIVERSE, SECTOR_ETFS, SectorName } from './universe';
-import { MarketDataService } from './market-data';
+import { SwarmDataService } from './market-data';
 
 // Env variables should be passed in from the worker
 const TOOL_PROXIES: Record<string, string[]> = {
@@ -23,7 +23,7 @@ async function fetchMarketData(
     timeline: string = '1d'
 ): Promise<Record<string, MarketData>> {
     console.log(`Fetching market data via SwarmDataService (Scope: ${scope}, Target: ${target}, Timeline: ${timeline})...`);
-    const service = new MarketDataService(avKey);
+    const service = new SwarmDataService(avKey);
 
     let targetSymbols: string[] = [];
 

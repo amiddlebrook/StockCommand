@@ -22,7 +22,7 @@ const TIMELINE_TTLS: Record<string, number> = {
     '5Y': 1825 * 24 * 60 * 60 * 1000 // 5 Years
 };
 
-export class MarketDataService {
+export class SwarmDataService {
     private apiKey: string;
 
     // Model Config
