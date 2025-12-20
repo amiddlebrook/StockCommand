@@ -40,14 +40,15 @@ Context: Timeframe is ${timeline}.
 Style: "Black Ops" intelligence briefing. Concise. High stakes.
 Output: Markdown. Start with "### 📡 Sentinel Intelligence"`;
 
-Identify potential news drivers, market sentiment, and crowd psychology ranking(0 - 100).
+        const userPrompt = `Analyze the ticker ${target}.
+Identify potential news drivers, market sentiment, and crowd psychology ranking (0-100).
 If no specific news is available, infer sentiment from general market conditions for this sector.`;
 
         try {
             const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
                 method: "POST",
                 headers: {
-                    "Authorization": `Bearer ${ apiKey } `,
+                    "Authorization": `Bearer ${apiKey}`,
                     "Content-Type": "application/json",
                     "HTTP-Referer": "https://stockcommand.workers.dev",
                     "X-Title": "StockCommand Sentinel"
@@ -75,7 +76,7 @@ If no specific news is available, infer sentiment from general market conditions
 
         } catch (e: any) {
             return {
-                analysis: `### 📡 Sentinel Intelligence\n - ** Status **: Uplink Failed(${ e.message }) \n`,
+                analysis: `### 📡 Sentinel Intelligence\n - ** Status **: Uplink Failed(${e.message}) \n`,
                 actions: [],
                 sentimentScore: 50
             };

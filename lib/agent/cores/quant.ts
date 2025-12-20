@@ -44,21 +44,24 @@ export class QuantCore implements AgentCore {
         const { price, changePercent, rsi, volume, technicalSignal } = data;
 
         // 1. Construct Prompt
-        Ticker: ${ target }
-        Price: ${ price }
-        Change: ${ changePercent }%
-            RSI: ${ rsi || 'N/A' }
-        Signal: ${ technicalSignal || 'Neutral' }
-        Volume: ${ volume }
+        const systemPrompt = `You are a quantitative technical analyst. Analyze the following stock data and provide insights.`;
+        const userPrompt = `
+Ticker: ${target}
+Price: ${price}
+Change: ${changePercent}%
+RSI: ${rsi || 'N/A'}
+Signal: ${technicalSignal || 'Neutral'}
+Volume: ${volume}
 
-Provide a 3 - bullet summary of the technical setup and a final trading signal(BUY / SELL / NEUTRAL).`;
+Provide a 3-bullet summary of the technical setup and a final trading signal (BUY / SELL / NEUTRAL).`;
+
 
         try {
             // 2. Call LLM
             const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
                 method: "POST",
                 headers: {
-                    "Authorization": `Bearer ${ apiKey } `,
+                    "Authorization": `Bearer ${apiKey}`,
                     "Content-Type": "application/json",
                     "HTTP-Referer": "https://stockcommand.workers.dev",
                     "X-Title": "StockCommand Quant"
@@ -91,7 +94,7 @@ Provide a 3 - bullet summary of the technical setup and a final trading signal(B
         } catch (e: any) {
             console.error("Quant Core LLM Failed:", e);
             return {
-                analysis: `### 📐 Technical Analysis(${ timeline }) \n - ** Error **: AI Analysis failed(${ e.message }).\n - ** Data **: $${ price } (${ changePercent }%) \n`,
+                analysis: `### 📐 Technical Analysis(${timeline}) \n - ** Error **: AI Analysis failed(${e.message}).\n - ** Data **: $${price} (${changePercent}%) \n`,
                 actions: [],
                 technicalSignal: 'NEUTRAL'
             };
