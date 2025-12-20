@@ -25,6 +25,7 @@ interface CentralCommandProps {
     symbols?: string[];
     onAddSymbol?: (symbol: string) => void;
     isAgentActive?: boolean;
+    analysisData?: Record<string, any>;
 }
 
 export const CentralCommand: React.FC<CentralCommandProps> = ({
@@ -36,7 +37,8 @@ export const CentralCommand: React.FC<CentralCommandProps> = ({
     clocks = [],
     symbols = [],
     onAddSymbol = () => { },
-    isAgentActive = false
+    isAgentActive = false,
+    analysisData = {}
 }) => {
     const [hoveredNode, setHoveredNode] = useState<string | null>(null);
     const colorClass = status === 'optimal' ? 'text-cyan-400' : status === 'warning' ? 'text-orange-400' : 'text-red-500';
@@ -51,6 +53,7 @@ export const CentralCommand: React.FC<CentralCommandProps> = ({
                     symbols={symbols}
                     onAddSymbol={onAddSymbol}
                     isAgentActive={isAgentActive}
+                    analysisData={analysisData}
                 />
             </div>
         );

@@ -12,6 +12,7 @@ interface TraditionalViewProps {
     onAddSymbol: (symbol: string) => void;
     onRemoveSymbol?: (symbol: string) => void;
     isAgentActive?: boolean;
+    analysisData?: Record<string, any>;
 }
 
 // Types for API-ready mock data
@@ -210,7 +211,8 @@ export const TraditionalView: React.FC<TraditionalViewProps> = ({
     symbols = [],
     onAddSymbol,
     onRemoveSymbol,
-    isAgentActive = false
+    isAgentActive = false,
+    analysisData = {}
 }) => {
     // Safety check
     if (!Array.isArray(clocks)) {
@@ -422,54 +424,16 @@ export const TraditionalView: React.FC<TraditionalViewProps> = ({
         return [];
     };
 
-    // Agent Analysis State
-    const [analysisData, setAnalysisData] = useState<Record<string, AnalysisData>>({});
-
-    const fetchAgentAnalysis = async (symbol: string) => {
-        // Don't re-fetch if we already have it
-        if (analysisData[symbol]?.analysis) return;
-
-        setAnalysisData(prev => ({ ...prev, [symbol]: { symbol, analysis: '', isLoading: true } }));
-        try {
-            const res = await fetch(`/api/agent/analyze?ticker=${symbol}`);
-            const data = await res.json();
-            setAnalysisData(prev => ({
-                ...prev,
-                [symbol]: { symbol, analysis: data.analysis || "Analysis unavailable.", isLoading: false }
-            }));
-        } catch (e) {
-            setAnalysisData(prev => ({
-                ...prev,
-                [symbol]: { symbol, analysis: "Agent offline.", isLoading: false }
-            }));
-        }
-    };
-
-    // Auto-Scan Logic
-    useEffect(() => {
-        if (!isAgentActive) return;
-
-        const target = openCharts.find(c => !analysisData[c.symbol]?.analysis && !analysisData[c.symbol]?.isLoading);
-
-        if (target) {
-            const timer = setTimeout(() => {
-                fetchAgentAnalysis(target.symbol);
-            }, 3000);
-            return () => clearTimeout(timer);
-        }
-    }, [isAgentActive, analysisData, openCharts]);
 
     // Consolidate duplicate handleToggleChart
     const handleToggleChart = (symbol: string) => {
         setOpenCharts(prev => {
             const exists = prev.find(c => c.symbol === symbol);
             if (exists) {
-                // Toggle open state, if opening trigger analysis
-                if (!exists.isOpen) fetchAgentAnalysis(symbol);
+                // Toggle open state
                 return prev.map(c => c.symbol === symbol ? { ...c, isOpen: !c.isOpen } : c);
             }
-            // Add new chart and TRIGGER ANALYSIS
-            fetchAgentAnalysis(symbol);
+            // Add new chart
             return [...prev, { symbol, period: '1M', isOpen: true }];
         });
     };

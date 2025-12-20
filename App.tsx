@@ -42,12 +42,21 @@ import {
 } from './services/geminiService';
 import { DEFAULT_CHAT_MODEL } from './lib/constants/llmModels';
 import { fetchStockSnapshot } from './services/stockData';
-import { UNIVERSE } from './lib/agent/universe';
+import { UNIVERSE, SECTOR_ETFS } from './lib/agent/universe';
 import { MarketClock, UserStrategy } from './lib/agent/types';
 import { JobProvider, useJobContext } from './contexts/JobContext';
 import { getClocksForEntity, getGlobalClocks } from './lib/clockData';
 import { StorageService } from './lib/storage';
 import { CreditsService, CREDIT_COSTS } from './lib/credits';
+
+const GREETING_BLACKLIST = ['HI', 'HEY', 'HELLO', 'OK', 'NO', 'YES', 'BYE', 'THANKS', 'COOL', 'WOW'];
+
+// Agent Analysis Cache Type
+export interface AnalysisData {
+  symbol: string;
+  analysis: string;
+  isLoading: boolean;
+}
 
 const DEFAULT_SYMBOLS: string[] = ['AAPL', 'MSFT', 'GOOGL', 'NVDA', 'META', 'AMZN', 'TSLA', 'JPM', 'V', 'UNH'];
 
@@ -155,6 +164,58 @@ const AppContent: React.FC = () => {
   const [researchHistory, setResearchHistory] = useState<Record<string, { content: string; timestamp: number; status?: string }[]>>(() => StorageService.loadResearchHistory());
   const [uncuratedTicker, setUncuratedTicker] = useState<string | null>(null);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+
+  // Agent Analysis State (Global)
+  const [analysisData, setAnalysisData] = useState<Record<string, AnalysisData>>({});
+
+  const fetchAgentAnalysis = async (symbol: string) => {
+    // Don't re-fetch if we already have it
+    if (analysisData[symbol]?.analysis) return;
+
+    setAnalysisData(prev => ({ ...prev, [symbol]: { symbol, analysis: '', isLoading: true } }));
+    try {
+      const res = await fetch(`/api/agent/analyze?ticker=${symbol}`);
+      const data = await res.json();
+      setAnalysisData(prev => ({
+        ...prev,
+        [symbol]: { symbol, analysis: data.analysis || "Analysis unavailable.", isLoading: false }
+      }));
+    } catch (e) {
+      setAnalysisData(prev => ({
+        ...prev,
+        [symbol]: { symbol, analysis: "Agent offline.", isLoading: false }
+      }));
+    }
+  };
+
+  // Global Auto-Scan Loop (The "Everything" Engine)
+  useEffect(() => {
+    if (!isAgentEnabled) return;
+
+    // 1. Build the Master Queue (All Stocks + All Sectors)
+    const masterQueue = [
+      ...symbols, // User's watchlist first
+      ...Object.values(SECTOR_ETFS), // Then Sectors
+      ...UNIVERSE.map(u => u.symbol) // Then the rest of the Universe
+    ];
+
+    // Remove duplicates
+    const uniqueQueue = [...new Set(masterQueue)];
+
+    // 2. Find next target that needs analysis
+    const target = uniqueQueue.find(sym => !analysisData[sym]?.analysis && !analysisData[sym]?.isLoading);
+
+    if (target) {
+      const timer = setTimeout(() => {
+        setAgentOutput(`Background Agent: Analyzing ${target}...`);
+        fetchAgentAnalysis(target);
+      }, 3000); // 3s pacing to avoid rate limits while remaining "active"
+      return () => clearTimeout(timer);
+    } else {
+      // Refresher logic: If all done, find oldest analysis (> 1 hour old) and re-scan?
+      // (Optional future enhancement for infinite loop)
+    }
+  }, [isAgentEnabled, symbols, analysisData]);
 
   // VIEW MODE: DATA = 2D Charts/Data, ARENA = 3D Agentic Universe (HUD)
   type ViewMode = 'DATA' | 'ARENA';
@@ -407,7 +468,7 @@ const AppContent: React.FC = () => {
         const trimmedMsg = message.trim().toUpperCase();
 
         // Check if this looks like a ticker (1-5 letters only)
-        const isPotentialTicker = /^[A-Za-z]{1,5}$/.test(message.trim());
+        const isPotentialTicker = /^[A-Za-z]{1,5}$/.test(message.trim()) && !GREETING_BLACKLIST.includes(trimmedMsg);
 
         if (lowerMsg.startsWith('analyze ') || lowerMsg.startsWith('scan ')) {
           const parts = message.split(' ');
@@ -436,7 +497,12 @@ const AppContent: React.FC = () => {
             currentView: activeTab,
             activeTarget: potentialTicker,
             // Explicit instruction that this is a ticker
-            tickerHint: potentialTicker
+            currentView: activeTab,
+            activeTarget: potentialTicker,
+            // Explicit instruction that this is a ticker
+            tickerHint: potentialTicker,
+            // RAG: Inject existing agent analysis if available
+            agentKnowledge: analysisData[potentialTicker]?.analysis
           };
           const history = messages.filter(m => !m.isLoading).map(m => ({ role: m.role as 'user' | 'model', parts: [{ text: m.content }] }));
           // Enhance the message to make it clear it's a ticker query
@@ -717,6 +783,7 @@ const AppContent: React.FC = () => {
               symbols={symbols}
               onAddSymbol={(sym) => setSymbols(prev => [...prev, sym])}
               isAgentActive={isAgentEnabled}
+              analysisData={analysisData}
             />
           ) : activeTab === 'portfolio' ? (
             <div className="h-full overflow-y-auto">
