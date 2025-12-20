@@ -87,3 +87,7 @@ queue = "stockbrain-queue"
 # Analytics Engine for usage tracking
 [[analytics_engine_datasets]]
 binding = "ANALYTICS"
+
+# Background Scanner Schedule (Every hour)
+[triggers]
+crons = ["0 * * * *"]

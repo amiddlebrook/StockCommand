@@ -1,4 +1,5 @@
 // Worker Entry Point
+import { Env } from './types';
 import { runAgentWorkflow } from './lib/agent/workflow';
 import { hashPassword, verifyPassword, createSession, getSession, destroySession, createSessionCookie, createClearSessionCookie } from './lib/auth';
 import { getGoogleAuthUrl, getGoogleUser } from './lib/google';
@@ -1178,4 +1179,17 @@ Communication style:
 
         return new Response("StockCommand Worker Active. Endpoints: /api/auth/*, /api/agent/*, /api/chat", { status: 200 });
     },
+
+    // BACKGROUND SCANNER (Cron Trigger)
+    // This runs autonomously to check markets and generate "Revenue" (Agent Action)
+    async scheduled(event: any, env: Env, ctx: any) {
+        console.log("[Worker] Scheduled event triggered");
+        try {
+            const { runMarketScanner } = await import('./lib/agent/scanner');
+            const result = await runMarketScanner(env);
+            console.log("[Worker] Scan complete:", result);
+        } catch (e) {
+            console.error("[Worker] Scan failed:", e);
+        }
+    }
 };
