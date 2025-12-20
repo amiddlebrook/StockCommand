@@ -10,9 +10,9 @@ const createDemoClock = (
 ): MarketClock => ({
     code,
     label,
-    status: status || (['green', 'yellow', 'red'] as const)[Math.floor(Math.random() * 3)],
-    reason: reason || ['Bullish momentum detected', 'Neutral - monitoring closely', 'Bearish divergence forming', 'Strong uptrend', 'Consolidation phase'][Math.floor(Math.random() * 5)],
-    lastUpdated: Date.now() - Math.floor(Math.random() * 3600000), // Random time within last hour
+    status: status || 'yellow', // Default to yellow (working/unknown) instead of random
+    reason: reason || 'Initializing swarm analysis...',
+    lastUpdated: Date.now(),
     category
 });
 

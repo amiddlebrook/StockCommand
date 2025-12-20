@@ -211,23 +211,39 @@ export default {
             }
         }
 
-        // --- STRIPE ROUTES ---
+        // GET /api/quotes - Real-time quotes via Swarm Agents
+        if (url.pathname === "/api/quotes" && request.method === "GET") {
+            const symbolsParam = url.searchParams.get("symbols");
+            if (!symbolsParam) return new Response("Missing symbols", { status: 400 });
 
-        if (url.pathname === "/api/stripe/create-checkout-session" && request.method === "POST") {
-            try {
-                const user = await getSession(env, request);
-                if (!user) return new Response("Unauthorized", { status: 401 });
+            const symbols = symbolsParam.split(",").map(s => s.trim().toUpperCase());
 
-                // Use a default price ID or get from body
-                const body = await request.json() as any;
-                const priceId = body.priceId || env.STRIPE_DEFAULT_PRICE_ID;
+            // Use Swarm Service for data
+            const swarmService = new SwarmDataService(env);
 
-                const session = await createCheckoutSession(env, user.id, priceId);
-                return new Response(JSON.stringify(session), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+            // Parallel fetch for all symbols
+            // We use '1d' timeline for quotes as it represents "today's price action"
+            const promises = symbols.map(sym => swarmService.querySwarm(sym, '1d'));
+            const results = await Promise.all(promises);
 
-            } catch (e: any) {
-                return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: corsHeaders });
-            }
+            const quoteMap: Record<string, any> = {};
+            results.forEach((data, index) => {
+                const sym = symbols[index];
+                quoteMap[sym] = {
+                    symbol: sym,
+                    price: data.price,
+                    change: data.change,
+                    changePercent: data.changePercent,
+                    volume: data.volume,
+                    // Synthesize additional quote fields from agent data
+                    timestamp: Date.now(),
+                    name: sym // Agent usually knows name but we keep it simple for now
+                };
+            });
+
+            return new Response(JSON.stringify(quoteMap), {
+                headers: { ...corsHeaders, "Content-Type": "application/json" }
+            });
         }
 
         // --- SUBSCRIPTION ROUTES ---

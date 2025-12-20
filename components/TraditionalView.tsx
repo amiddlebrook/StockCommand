@@ -306,8 +306,17 @@ export const TraditionalView: React.FC<TraditionalViewProps> = ({
                     isLoading: true
                 };
             }
-            // Fallback to mock if API failed or not configured
-            return { ...generateTickerData(symbol, sector), isLoading: false };
+            // Fallback to loading/empty if API failed (do NOT use mock data)
+            return {
+                symbol,
+                price: 0,
+                change: 0,
+                changePercent: 0,
+                volume: 0,
+                sector,
+                clocks: getTickerClocks(symbol),
+                isLoading: true
+            };
         };
 
         return [
@@ -323,8 +332,8 @@ export const TraditionalView: React.FC<TraditionalViewProps> = ({
         // Check if we have real data for SPY
         const spyQuote = realQuotes['SPY'];
 
-        // If no real data yet, use the generator (clean fallback)
-        if (!spyQuote) return generateSectorPerformance(sectorPeriod);
+        // If no real data yet, return empty/loading state
+        if (!spyQuote) return sectors.map(([name, _]) => ({ name: name.slice(0, 12), value: 0, status: 'yellow' as const }));
 
         const spyChange = spyQuote.changePercent || 0;
 
@@ -332,10 +341,9 @@ export const TraditionalView: React.FC<TraditionalViewProps> = ({
             const quote = realQuotes[etf];
 
             // If specific sector data missing, fallback to generator for just that one (or show 0)
+            // If specific sector data missing, return neutral
             if (!quote) {
-                // seamless fallback to mock for this entry to avoid broken UI
-                const mock = generateSectorPerformance(sectorPeriod).find(s => s.name === sectorName.slice(0, 12));
-                return mock!;
+                return { name: sectorName.slice(0, 12), value: 0, status: 'yellow' };
             }
 
             const changePercent = quote.changePercent || 0;
