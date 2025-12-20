@@ -1045,24 +1045,45 @@ Communication style:
                     if (context.activeTickers && context.activeTickers.length > 0) {
                         systemPrompt += `\n\nCURRENT ACTIVE TICKERS: ${context.activeTickers.join(', ')}\nFocus your answers on these tickers unless the user explicitly asks about others.`;
                     }
-
                     if (context.latestReport) {
-                        systemPrompt += `\n\nCONTEXT - LATEST AGENT REPORT:\n"""${context.latestReport}"""\n\nINSTRUCTION: This report may be for a previously selected ticker. Only use this information if it is relevant to the Current Active Tickers or if the user explicitly asks about this specific report content. Otherwise, ignore it.`;
+                        systemPrompt += `\n\nLATEST PORTFOLIO REPORT:\n${JSON.stringify(context.latestReport)}`;
                     }
                 }
 
-                const messages = [
+                let messages = [
                     { role: "system", content: systemPrompt },
-                    ...history.map((h: any) => ({ role: h.role === 'model' ? 'assistant' : 'user', content: h.parts[0].text })),
+                    ...(history || []).map((h: any) => ({ role: h.sender === 'user' ? 'user' : 'assistant', content: h.text })),
                     { role: "user", content: message }
                 ];
 
-                // Dynamic Web Search: Only search if relevant to stocks/news
-                // This prevents slow searches for general chat and reduces hallucinations
+                // Dynamic Web Search Toggle
                 const searchKeywords = ['analyze', 'stock', 'price', 'market', 'news', 'ticker', 'buying', 'selling', 'chart', 'trend', 'value', 'earnings', 'dividend', 'forecast', 'prediction', 'latest', 'today', '$'];
-                const shouldSearch = searchKeywords.some(kw => cleanMsg.includes(kw)) || cleanMsg.includes('$');
+                // Only use web plugin if strictly needed AND not a ticker lookup (which uses the tool below)
+                const shouldSearch = (searchKeywords.some(kw => cleanMsg.includes(kw)) || cleanMsg.includes('$')) && !cleanMsg.match(/^(price|quote) of [a-z]+$/i);
                 const plugins = shouldSearch ? [{ id: "web" }] : [];
 
+                // MCP TOOLS DEFINITION
+                const tools = [
+                    {
+                        type: "function",
+                        function: {
+                            name: "get_stock_quote",
+                            description: "Get the real-time price and data for a specific stock ticker. Use this whenever the user asks for a price, quote, or analysis of a specific company.",
+                            parameters: {
+                                type: "object",
+                                properties: {
+                                    symbol: {
+                                        type: "string",
+                                        description: "The stock ticker symbol (e.g. AAPL, NVDA, TSLA)"
+                                    }
+                                },
+                                required: ["symbol"]
+                            }
+                        }
+                    }
+                ];
+
+                // 1st Call: Ask LLM (with Tools enabled)
                 const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
                     method: "POST",
                     headers: {
@@ -1075,12 +1096,70 @@ Communication style:
                         model: "nex-agi/deepseek-v3.1-nex-n1:free",
                         messages: messages,
                         max_tokens: 1500,
-                        plugins: plugins
+                        plugins: plugins,
+                        tools: tools,
+                        tool_choice: "auto"
                     })
                 });
 
                 const data: any = await response.json();
-                const reply = data.choices?.[0]?.message?.content || "No response generated.";
+                let reply = data.choices?.[0]?.message?.content || "";
+                const toolCalls = data.choices?.[0]?.message?.tool_calls;
+
+                // HANDLE TOOL CALLS
+                if (toolCalls && toolCalls.length > 0) {
+                    // Add assistant's tool-call message to history
+                    messages.push(data.choices[0].message);
+
+                    const { createStockAPI } = await import('./api/stock');
+                    const stockAPI = createStockAPI(env);
+
+                    for (const toolCall of toolCalls) {
+                        if (toolCall.function.name === "get_stock_quote") {
+                            try {
+                                const args = JSON.parse(toolCall.function.arguments);
+                                console.log(`[Agent] Calling Tool: get_stock_quote(${args.symbol})`);
+
+                                // Execute the tool (Race Strategy is built into getQuote!)
+                                const quote = await stockAPI.getQuote(args.symbol);
+
+                                // Add tool result to messages
+                                messages.push({
+                                    role: "tool",
+                                    tool_call_id: toolCall.id,
+                                    content: JSON.stringify(quote)
+                                });
+                            } catch (e: any) {
+                                messages.push({
+                                    role: "tool",
+                                    tool_call_id: toolCall.id,
+                                    content: JSON.stringify({ error: e.message })
+                                });
+                            }
+                        }
+                    }
+
+                    // 2nd Call: Get final answer based on tool results
+                    const secondResponse = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+                        method: "POST",
+                        headers: {
+                            "Authorization": `Bearer ${apiKey}`,
+                            "Content-Type": "application/json",
+                            "HTTP-Referer": "https://stockcommand.workers.dev",
+                            "X-Title": "StockCommand"
+                        },
+                        body: JSON.stringify({
+                            model: "nex-agi/deepseek-v3.1-nex-n1:free",
+                            messages: messages,
+                            max_tokens: 1500,
+                            // No plugins for the summary step to avoid confusion
+                        })
+                    });
+                    const secondData: any = await secondResponse.json();
+                    reply = secondData.choices?.[0]?.message?.content || "Analysis failed.";
+                }
+
+                if (!reply) reply = "No response generated.";
 
                 return new Response(JSON.stringify({ response: reply }), {
                     headers: {
