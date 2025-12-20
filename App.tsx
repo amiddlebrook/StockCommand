@@ -716,6 +716,7 @@ const AppContent: React.FC = () => {
               clocks={marketClocks}
               symbols={symbols}
               onAddSymbol={(sym) => setSymbols(prev => [...prev, sym])}
+              isAgentActive={isAgentEnabled}
             />
           ) : activeTab === 'portfolio' ? (
             <div className="h-full overflow-y-auto">

@@ -11,6 +11,7 @@ interface TraditionalViewProps {
     symbols: string[];
     onAddSymbol: (symbol: string) => void;
     onRemoveSymbol?: (symbol: string) => void;
+    isAgentActive?: boolean;
 }
 
 // Types for API-ready mock data
@@ -55,6 +56,13 @@ interface OpenChart {
     symbol: string;
     period: TimePeriod;
     isOpen: boolean;
+}
+
+// Agent Analysis Cache
+interface AnalysisData {
+    symbol: string;
+    analysis: string;
+    isLoading: boolean;
 }
 
 // Mock price data generator - structured for future API integration
@@ -201,7 +209,8 @@ export const TraditionalView: React.FC<TraditionalViewProps> = ({
     clocks = [],
     symbols = [],
     onAddSymbol,
-    onRemoveSymbol
+    onRemoveSymbol,
+    isAgentActive = false
 }) => {
     // Safety check
     if (!Array.isArray(clocks)) {
@@ -340,10 +349,7 @@ export const TraditionalView: React.FC<TraditionalViewProps> = ({
         setOpenCharts(prev => prev.filter(c => c.symbol !== sym));
     };
 
-    // Toggle chart collapse
-    const handleToggleChart = (sym: string) => {
-        setOpenCharts(prev => prev.map(c => c.symbol === sym ? { ...c, isOpen: !c.isOpen } : c));
-    };
+
 
     // Change chart time period
     const handleChartPeriodChange = (sym: string, period: TimePeriod) => {
@@ -414,6 +420,58 @@ export const TraditionalView: React.FC<TraditionalViewProps> = ({
         }
         // Return empty array while loading (will show loading indicator)
         return [];
+    };
+
+    // Agent Analysis State
+    const [analysisData, setAnalysisData] = useState<Record<string, AnalysisData>>({});
+
+    const fetchAgentAnalysis = async (symbol: string) => {
+        // Don't re-fetch if we already have it
+        if (analysisData[symbol]?.analysis) return;
+
+        setAnalysisData(prev => ({ ...prev, [symbol]: { symbol, analysis: '', isLoading: true } }));
+        try {
+            const res = await fetch(`/api/agent/analyze?ticker=${symbol}`);
+            const data = await res.json();
+            setAnalysisData(prev => ({
+                ...prev,
+                [symbol]: { symbol, analysis: data.analysis || "Analysis unavailable.", isLoading: false }
+            }));
+        } catch (e) {
+            setAnalysisData(prev => ({
+                ...prev,
+                [symbol]: { symbol, analysis: "Agent offline.", isLoading: false }
+            }));
+        }
+    };
+
+    // Auto-Scan Logic
+    useEffect(() => {
+        if (!isAgentActive) return;
+
+        const target = openCharts.find(c => !analysisData[c.symbol]?.analysis && !analysisData[c.symbol]?.isLoading);
+
+        if (target) {
+            const timer = setTimeout(() => {
+                fetchAgentAnalysis(target.symbol);
+            }, 3000);
+            return () => clearTimeout(timer);
+        }
+    }, [isAgentActive, analysisData, openCharts]);
+
+    // Consolidate duplicate handleToggleChart
+    const handleToggleChart = (symbol: string) => {
+        setOpenCharts(prev => {
+            const exists = prev.find(c => c.symbol === symbol);
+            if (exists) {
+                // Toggle open state, if opening trigger analysis
+                if (!exists.isOpen) fetchAgentAnalysis(symbol);
+                return prev.map(c => c.symbol === symbol ? { ...c, isOpen: !c.isOpen } : c);
+            }
+            // Add new chart and TRIGGER ANALYSIS
+            fetchAgentAnalysis(symbol);
+            return [...prev, { symbol, period: '1M', isOpen: true }];
+        });
     };
 
     return (
@@ -577,6 +635,19 @@ export const TraditionalView: React.FC<TraditionalViewProps> = ({
                                     <span className="hidden sm:inline">Remove</span>
                                 </button>
                             </div>
+                        </div>
+
+                        {/* Agent Analysis Panel (New Feature) */}
+                        <div className="mb-4 text-xs font-mono bg-slate-900 border border-slate-700 p-2 rounded relative overflow-hidden">
+                            <div className="absolute top-0 right-0 p-1 opacity-20">
+                                <Icon icon="bot" className="w-8 h-8 text-cyan-500" />
+                            </div>
+                            <span className="text-cyan-400 font-bold mr-2">AGENT_INSIGHT:</span>
+                            {analysisData[chart.symbol]?.isLoading ? (
+                                <span className="text-slate-500 animate-pulse">Analyzing market data...</span>
+                            ) : (
+                                <span className="text-slate-300">{analysisData[chart.symbol]?.analysis || "Initialize Agent to view."}</span>
+                            )}
                         </div>
 
                         {/* Price Chart */}

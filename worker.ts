@@ -975,6 +975,49 @@ export default {
             }
         }
 
+        if (url.pathname === "/api/agent/analyze" && request.method === "GET") {
+            try {
+                const ticker = url.searchParams.get("ticker");
+                if (!ticker) throw new Error("Missing ticker");
+
+                const { createStockAPI } = await import('./api/stock');
+                const stockAPI = createStockAPI(env);
+                const quote = await stockAPI.getQuote(ticker);
+
+                const apiKey = env.OPENROUTER_DEEPSEEK_NEX_API_KEY;
+                if (!apiKey) throw new Error("Missing API Key");
+
+                // Call LLM for instant analysis
+                const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+                    method: "POST",
+                    headers: {
+                        "Authorization": `Bearer ${apiKey}`,
+                        "Content-Type": "application/json",
+                        "HTTP-Referer": "https://stockcommand.workers.dev",
+                        "X-Title": "StockCommand Analyst"
+                    },
+                    body: JSON.stringify({
+                        model: "nex-agi/deepseek-v3.1-nex-n1:free",
+                        messages: [
+                            { role: "system", content: "You are a Senior Market Analyst. Analyze the provided stock data. Be extremely concise. Max 2 sentences. Focus on sentiment and trend." },
+                            { role: "user", content: `Analyze ${ticker}. Price: $${quote.price}. Change: ${quote.changePercent}%.` }
+                        ],
+                        max_tokens: 150
+                    })
+                });
+
+                const data: any = await response.json();
+                const analysis = data.choices?.[0]?.message?.content || "Analysis unavailable.";
+
+                return new Response(JSON.stringify({ symbol: ticker, price: quote.price, analysis, quote }), {
+                    headers: { ...corsHeaders, "Content-Type": "application/json" }
+                });
+
+            } catch (e: any) {
+                return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: corsHeaders });
+            }
+        }
+
         if (url.pathname === "/api/chat" && request.method === "POST") {
             try {
                 const body = await request.json() as any;
