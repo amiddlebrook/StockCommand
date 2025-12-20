@@ -70,7 +70,7 @@ export const StorageService = {
         }
     },
 
-    saveSettings: (settings: { freshnessHours: number; viewMode?: 'DATA' | 'ARENA'; agentEnabled?: boolean }) => {
+    saveSettings: (settings: { freshnessHours: number; viewMode?: 'DATA' | 'ARENA'; agentEnabled?: boolean; timeline?: string }) => {
         try {
             localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(settings));
         } catch (e) {
@@ -78,7 +78,7 @@ export const StorageService = {
         }
     },
 
-    loadSettings: (): { freshnessHours: number; viewMode?: 'DATA' | 'ARENA'; agentEnabled?: boolean } => {
+    loadSettings: (): { freshnessHours: number; viewMode?: 'DATA' | 'ARENA'; agentEnabled?: boolean; timeline?: string } => {
         try {
             const saved = localStorage.getItem(STORAGE_KEYS.SETTINGS);
             if (saved) {
@@ -88,9 +88,9 @@ export const StorageService = {
                 if (parsed.viewMode === '3D' || parsed.viewMode === 'SPATIAL') parsed.viewMode = 'ARENA';
                 return parsed;
             }
-            return { freshnessHours: 24, viewMode: 'ARENA', agentEnabled: false };
+            return { freshnessHours: 24, viewMode: 'ARENA', agentEnabled: false, timeline: '1d' };
         } catch (e) {
-            return { freshnessHours: 24, viewMode: 'ARENA', agentEnabled: false };
+            return { freshnessHours: 24, viewMode: 'ARENA', agentEnabled: false, timeline: '1d' };
         }
     },
 

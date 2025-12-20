@@ -56,6 +56,8 @@ export interface AnalysisData {
   symbol: string;
   analysis: string;
   isLoading: boolean;
+  timeline: string;
+  lastUpdated: number;
 }
 
 const DEFAULT_SYMBOLS: string[] = ['AAPL', 'MSFT', 'GOOGL', 'NVDA', 'META', 'AMZN', 'TSLA', 'JPM', 'V', 'UNH'];
@@ -67,8 +69,8 @@ const AppContent: React.FC = () => {
   // Credit balance state
   const [creditBalance, setCreditBalance] = useState(() => CreditsService.loadBalance().credits);
 
-  // Agent background processes toggle
-  const [isAgentEnabled, setIsAgentEnabled] = useState(() => StorageService.loadSettings().agentEnabled ?? false);
+  // Agent implicitly active based on Timeline interactions
+  // const [isAgentEnabled, setIsAgentEnabled] = useState(() => StorageService.loadSettings().agentEnabled ?? false);
 
   const [messages, setMessages] = useState<ChatMessageType[]>(() => [
     { id: 'welcome', role: 'model', content: "**StockCommand V2.1 Online** 🟢\n\nAll systems operational. Awaiting commands...\n\nTry: Ask me to analyze any ticker, e.g. 'Analyze $AAPL momentum'" },
@@ -77,6 +79,9 @@ const AppContent: React.FC = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [widgets, setWidgets] = useState<AnalysisWidget[]>(() => StorageService.loadWidgets());
   const [activeTab, setActiveTab] = useState<'command-center' | 'portfolio' | 'entity-detail' | 'competitions' | 'feature-detail' | 'features' | 'creator' | 'market-clocks' | 'settings'>('command-center');
+  const [timeline, setTimeline] = useState<'1m' | '1h' | '1d' | '1w' | '1M' | '1Y'>(() => {
+    return (StorageService.loadSettings().timeline as any) || '1d';
+  });
   const [activeFeature, setActiveFeature] = useState<{ name: string; symbols: string[]; content: string | null } | null>(null);
 
   // Console Drawer State
@@ -178,7 +183,7 @@ const AppContent: React.FC = () => {
       const data = await res.json();
       setAnalysisData(prev => ({
         ...prev,
-        [symbol]: { symbol, analysis: data.analysis || "Analysis unavailable.", isLoading: false }
+        [symbol]: { symbol, analysis: (data as any).analysis || "Analysis unavailable.", isLoading: false, timeline: '1d', lastUpdated: Date.now() }
       }));
     } catch (e) {
       setAnalysisData(prev => ({
@@ -236,6 +241,7 @@ const AppContent: React.FC = () => {
         target: scope === 'TOOL' ? target : target,
         tool: toolName || (scope === 'TOOL' ? target : undefined),
         context: searchContext,
+        timeline, // Pass the selected timeline to the Cores
         strategies: strategies.filter(s => s.active)
       })
     });
@@ -259,7 +265,13 @@ const AppContent: React.FC = () => {
     if (target && finalAnalysis) {
       setAnalysisData(prev => ({
         ...prev,
-        [target]: { symbol: target, analysis: finalAnalysis, isLoading: false }
+        [target]: {
+          symbol: target,
+          analysis: finalAnalysis,
+          isLoading: false,
+          timeline,
+          lastUpdated: timestamp
+        }
       }));
     }
 
@@ -282,7 +294,8 @@ const AppContent: React.FC = () => {
 
   // Global Auto-Scan Loop (The "Everything" Engine)
   useEffect(() => {
-    if (!isAgentEnabled) return;
+    // Implicit Agent: Always scans, but respects freshness intervals per timeline
+    // if (!isAgentEnabled) return;
 
     // 1. Build the Master Queue (All Stocks + All Sectors)
     const masterQueue = [
@@ -295,27 +308,27 @@ const AppContent: React.FC = () => {
     const uniqueQueue = [...new Set(masterQueue)];
 
     // 2. Find next target that needs analysis
-    // We check both analysisData availability AND clock freshness
-    // If a clock exists but is > 24h old, re-scan
     const now = Date.now();
-    const staleThreshold = 24 * 60 * 60 * 1000;
+    const FRESHNESS_THRESHOLD = 5 * 60 * 1000; // 5 Minutes (Can be tuned per timeline)
 
-    const target = uniqueQueue.find(sym => {
-      const hasFreshAnalysis = analysisData[sym]?.analysis && !analysisData[sym].isLoading;
-      const clock = marketClocks.find(c => c.code === sym);
-      const isClockFresh = clock && (now - (clock.lastUpdated || 0) < staleThreshold);
+    if (scanningTarget) return; // Busy
 
-      return !hasFreshAnalysis || !isClockFresh;
+    const nextTarget = uniqueQueue.find(sym => {
+      const data = analysisData[sym];
+      // Condition: No data OR Stale data OR Different timeline
+      if (!data) return true;
+      if (data.timeline !== timeline) return true; // Timeline switch forces update
+      if (now - data.lastUpdated > FRESHNESS_THRESHOLD) return true;
+      return false;
     });
 
-    if (target) {
+    if (nextTarget) {
       const timer = setTimeout(() => {
-        // Determine Scope
-        const isSectorProxy = Object.values(SECTOR_ETFS).includes(target);
-
-        // Execute Full Scan (Hydrates Clocks + Analysis)
-        executeAgentScan(isSectorProxy ? 'SECTOR' : 'TICKER', target);
-
+        // Determine scope
+        const isSector = Object.keys(SECTOR_ETFS).includes(nextTarget) || Object.values(SECTOR_ETFS).includes(nextTarget) || nextTarget.startsWith('CLOCK_');
+        const scanScope = isSector ? 'SECTOR' : 'TICKER';
+        console.log(`[Auto-Scan] Triggering ${scanScope} scan for ${nextTarget} (Timeline: ${timeline})`);
+        executeAgentScan(scanScope, nextTarget, undefined); // Uses current timeline state implicitly via arg or scope
       }, 5000); // 5s pacing (slightly slower for full scans)
       return () => clearTimeout(timer);
     }
@@ -366,7 +379,7 @@ const AppContent: React.FC = () => {
   useEffect(() => { StorageService.saveWidgets(widgets); }, [widgets]);
   useEffect(() => { StorageService.saveReports(researchReports); }, [researchReports]);
   useEffect(() => { StorageService.saveClocks(marketClocks); }, [marketClocks]);
-  useEffect(() => { StorageService.saveSettings({ freshnessHours: dataFreshnessHours, viewMode }); }, [dataFreshnessHours, viewMode]);
+  useEffect(() => { StorageService.saveSettings({ freshnessHours: dataFreshnessHours, viewMode, timeline }); }, [dataFreshnessHours, viewMode, timeline]);
   useEffect(() => { StorageService.saveResearchHistory(researchHistory); }, [researchHistory]);
   useEffect(() => { StorageService.saveWatchlist(symbols); }, [symbols]);
 
@@ -704,30 +717,7 @@ const AppContent: React.FC = () => {
             <h1 className="font-bold tracking-widest text-lg md:hidden group-hover:text-cyan-300 transition-colors">CMD</h1>
           </div>
 
-          {/* AGENT TOGGLE - Controls background data generation */}
-          <button
-            onClick={() => {
-              const newState = !isAgentEnabled;
-              setIsAgentEnabled(newState);
-              StorageService.saveSettings({ ...StorageService.loadSettings(), agentEnabled: newState });
-              if (newState) {
-                // Deduct credits for enabling agent background processes
-                if (CreditsService.deduct('AGENT_BACKGROUND_TICK', 'Background Processes')) {
-                  setCreditBalance(CreditsService.loadBalance().credits);
-                }
-              }
-            }}
-            className={`hidden md:flex items-center gap-2 px-3 py-1 rounded-full cursor-pointer transition-all ${isAgentEnabled
-              ? 'bg-cyan-900/30 border border-cyan-500/50 hover:bg-cyan-800/40'
-              : 'bg-slate-800/50 border border-slate-600/50 hover:bg-slate-700/50'
-              }`}
-            title={isAgentEnabled ? 'Click to disable background data generation' : 'Click to enable background data generation (uses credits)'}
-          >
-            <span className={`w-1.5 h-1.5 rounded-full ${isAgentEnabled ? 'bg-cyan-500 animate-pulse' : 'bg-slate-500'}`}></span>
-            <span className={`text-[10px] font-mono ${isAgentEnabled ? 'text-cyan-400' : 'text-slate-400'}`}>
-              {isAgentEnabled ? 'AGENT_ACTIVE' : 'AGENT_IDLE'}
-            </span>
-          </button>
+
 
           {/* Agent Fuel Balance Mini-Display */}
           <div
@@ -751,6 +741,22 @@ const AppContent: React.FC = () => {
               <span className="hidden sm:inline">Return to Arena</span>
             </button>
           )}
+
+          {/* Timeline Toggle (Cores Control) */}
+          <div className="hidden lg:flex items-center bg-slate-900 rounded-lg p-1 border border-slate-800 mr-2">
+            {(['1m', '1h', '1d', '1w', '1M', '1Y'] as const).map((t) => (
+              <button
+                key={t}
+                onClick={() => setTimeline(t)}
+                className={`px-2 py-1 text-[10px] font-mono rounded transition-all ${timeline === t
+                  ? 'bg-cyan-900/50 text-cyan-400 border border-cyan-500/30'
+                  : 'text-slate-500 hover:text-slate-300'
+                  }`}
+              >
+                {t}
+              </button>
+            ))}
+          </div>
 
           {/* View Mode Toggle */}
           <div className="flex items-center bg-slate-900 rounded-lg p-1 border border-slate-800">
@@ -803,7 +809,7 @@ const AppContent: React.FC = () => {
               clocks={marketClocks}
               symbols={symbols}
               onAddSymbol={(sym) => setSymbols(prev => [...prev, sym])}
-              isAgentActive={isAgentEnabled}
+              isAgentActive={true} // Implicitly active
               analysisData={analysisData}
             />
           ) : activeTab === 'portfolio' ? (

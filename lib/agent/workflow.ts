@@ -122,34 +122,42 @@ export async function runAgentWorkflow(
     scope: 'FULL' | 'SECTOR' | 'TICKER' | 'TOOL' = 'FULL',
     target?: string,
     tool?: string,
-    strategies: UserStrategy[] = []
+    strategies: UserStrategy[] = [],
+    timeline: string = '1d' // Default to 1d if not provided
 ) {
-    console.log(`Starting StockCommand Agent Workflow (Scope: ${scope}, Tool: ${tool || 'None'}, Strategies: ${strategies.length})...`);
+    console.log(`Starting StockCommand Multi-Core Workflow (Scope: ${scope}, Timeline: ${timeline})...`);
 
     const AV_KEY = env.ALPHA_VANTAGE_API_KEY || '';
-    const AGENT_KEY = env.OPENROUTER_DEEPSEEK_NEX_API_KEY || '';
+    // const AGENT_KEY = env.OPENROUTER_DEEPSEEK_NEX_API_KEY || ''; // Legacy Key
 
     if (!AV_KEY) {
         console.error("Missing ALPHA_VANTAGE_API_KEY");
         return { analysis: "Error: Missing Alpha Vantage API Key", actions: [] };
     }
 
-    if (!AGENT_KEY) {
-        console.error("Missing OPENROUTER_DEEPSEEK_NEX_API_KEY");
-        return { analysis: "Error: Missing Agent API Key", actions: [] };
-    }
-
     // 1. Refresh Data
+    // Note: In future, fetchMarketData should use 'timeline' to fetch 1m/1h candles vs daily
     const [marketData, portfolio] = await Promise.all([
         fetchMarketData(AV_KEY, scope, target),
         fetchPortfolioState()
     ]);
 
-    // 2. Research & Analyze (Engine with LLM)
-    const engine = new AgentEngine(AGENT_KEY);
-    const { analysis, actions: engineActions, clocks } = await engine.evaluate(scope, marketData, portfolio, target, tool);
+    // 2. Dispatch to Cores (New Architecture)
+    const router = new CoreRouter();
+    const coreContext: CoreContext = {
+        scope,
+        target,
+        tool,
+        marketData,
+        portfolio,
+        timeline: timeline as any
+    };
+
+    const coreResult = await router.dispatch(coreContext);
+    const { analysis, actions: engineActions, clocks } = coreResult;
 
     // 3. Evaluate User Strategies (Strategic Overlay)
+    // ... Legacy Strategy logic remains valid ...
     const strategyActions = evaluateStrategies(strategies, marketData);
     const allActions = [...engineActions, ...strategyActions];
 
