@@ -441,34 +441,69 @@ class StockAPIService {
     };
 
     const apiInterval = intervalMap[interval] || '1min';
-    const url = `https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol=${symbol}&interval=${apiInterval}&apikey=${this.env.ALPHA_VANTAGE_API_KEY}`;
-    const response = await fetch(url);
-    const data = await response.json() as any;
-    this.assertAlphaVantageResponseIsHealthy(data);
 
-    const timeSeriesKey = `Time Series (${apiInterval})`;
-    const timeSeries = data[timeSeriesKey];
+    // 1. Try Alpha Vantage First (Primary)
+    try {
+      const url = `https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol=${symbol}&interval=${apiInterval}&apikey=${this.env.ALPHA_VANTAGE_API_KEY}`;
+      const response = await fetch(url);
+      const data = await response.json() as any;
+      this.assertAlphaVantageResponseIsHealthy(data);
 
-    if (!timeSeries) {
-      throw new StockAPIError(`Alpha Vantage returned no intraday data for ${symbol.toUpperCase()}.`, 404, 'ALPHA_VANTAGE_NO_INTRADAY');
+      const timeSeriesKey = `Time Series (${apiInterval})`;
+      const timeSeries = data[timeSeriesKey];
+
+      if (!timeSeries) {
+        throw new StockAPIError('No data', 404, 'NO_DATA');
+      }
+
+      const dataPoints = Object.entries(timeSeries)
+        .map(([timestamp, values]: [string, any]) => ({
+          timestamp: new Date(timestamp).getTime(),
+          open: parseFloat(values['1. open']),
+          high: parseFloat(values['2. high']),
+          low: parseFloat(values['3. low']),
+          close: parseFloat(values['4. close']),
+          volume: parseInt(values['5. volume'])
+        }))
+        .reverse();
+
+      return {
+        symbol: symbol.toUpperCase(),
+        interval: apiInterval,
+        data: dataPoints
+      };
+    } catch (e: any) {
+      console.warn(`Alpha Vantage intraday failed for ${symbol}, trying Yahoo fallback...`, e);
+
+      // 2. Fallback to Yahoo Finance (via RapidAPI)
+      if (this.env.YAHOO_API_KEY) {
+        const yahooUrl = `https://yahoo-finance15.p.rapidapi.com/api/v1/markets/stock/history?symbol=${symbol}&interval=${interval}&diffandsplits=false`;
+        const response = await fetch(yahooUrl, {
+          headers: {
+            'X-RapidAPI-Key': this.env.YAHOO_API_KEY,
+            'X-RapidAPI-Host': 'yahoo-finance15.p.rapidapi.com'
+          }
+        });
+        const data = await response.json() as any;
+        if (data.body && data.body[symbol] && data.body[symbol].history) {
+          const history = data.body[symbol].history;
+          return {
+            symbol: symbol.toUpperCase(),
+            interval: interval,
+            data: Object.keys(history).map(dateStr => ({
+              timestamp: new Date(dateStr).getTime(),
+              open: history[dateStr].open,
+              high: history[dateStr].high,
+              low: history[dateStr].low,
+              close: history[dateStr].close,
+              volume: history[dateStr].volume
+            })).sort((a, b) => a.timestamp - b.timestamp)
+          };
+        }
+      }
+
+      throw new StockAPIError(`All intraday providers failed for ${symbol}`, 503, 'ALL_PROVIDERS_EXHAUSTED');
     }
-
-    const dataPoints = Object.entries(timeSeries)
-      .map(([timestamp, values]: [string, any]) => ({
-        timestamp: new Date(timestamp).getTime(),
-        open: parseFloat(values['1. open']),
-        high: parseFloat(values['2. high']),
-        low: parseFloat(values['3. low']),
-        close: parseFloat(values['4. close']),
-        volume: parseInt(values['5. volume'])
-      }))
-      .reverse(); // Reverse to get chronological order
-
-    return {
-      symbol: symbol.toUpperCase(),
-      interval: apiInterval,
-      data: dataPoints
-    };
   }
 
   private async fetchAlphaVantageProfile(symbol: string): Promise<CompanyProfile> {

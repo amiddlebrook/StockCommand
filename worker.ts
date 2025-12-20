@@ -1018,15 +1018,24 @@ hi, hey, hello, yo, sup, hiya, heya, howdy, greetings, hola, good morning, good 
 For greetings: Respond warmly like "Hey! 👋 How can I help with your trading today?" 
 DO NOT mention any stock ticker. DO NOT analyze any company. Just greet them back.
 
+⚠️ SECOND: CHECK FOR AMBIGUITY ⚠️
+If the user input is short, unclear, or looks like slang (e.g., "ayy", "bet", "nah") AND is not a clear stock symbol:
+- DO NOT search for it.
+- DO NOT hallucinate a ticker (e.g. do not assume "ayy" is "AAYY").
+- Respond with a clarification question: "I'm not sure I caught that. Did you mean a specific ticker?" or "How can I help you regarding the markets?"
+- Keep it SHORT. No giant paragraphs for clarification.
+
 ONLY treat something as a stock ticker if:
 1. User explicitly says "analyze X" or "look at X" or "what about X stock"
 2. User uses $ prefix like "$AAPL"
 3. Message has clear financial context beyond just the word
+4. It is a well-known major ticker (AAPL, TSLA, NVDA)
 
 Example:
-- "hi" → Greeting, respond: "Hey! 👋 Ready to dive into the markets?"
-- "analyze HI" → Stock analysis request for Hillenbrand Inc
-- "HI stock" → Stock analysis request
+- "hi" → Greeting: "Hey! 👋 Ready to dive into the markets?"
+- "ayy" → Clarification: "Could you clarify? Are you looking for a specific stock?"
+- "analyze HI" → Analysis: Hillenbrand Inc (HI)
+- "HI stock" → Analysis: Hillenbrand Inc (HI)
 
 Communication style:
 - Use 🟢 for bullish, 🟡 for neutral, 🔴 for bearish
@@ -1048,6 +1057,12 @@ Communication style:
                     { role: "user", content: message }
                 ];
 
+                // Dynamic Web Search: Only search if relevant to stocks/news
+                // This prevents slow searches for general chat and reduces hallucinations
+                const searchKeywords = ['analyze', 'stock', 'price', 'market', 'news', 'ticker', 'buying', 'selling', 'chart', 'trend', 'value', 'earnings', 'dividend', 'forecast', 'prediction', 'latest', 'today', '$'];
+                const shouldSearch = searchKeywords.some(kw => cleanMsg.includes(kw)) || cleanMsg.includes('$');
+                const plugins = shouldSearch ? [{ id: "web" }] : [];
+
                 const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
                     method: "POST",
                     headers: {
@@ -1060,7 +1075,7 @@ Communication style:
                         model: "nex-agi/deepseek-v3.1-nex-n1:free",
                         messages: messages,
                         max_tokens: 1500,
-                        plugins: [{ id: "web" }] // Enable web search for real-time data
+                        plugins: plugins
                     })
                 });
 
