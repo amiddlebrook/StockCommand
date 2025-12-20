@@ -179,64 +179,44 @@ export class SwarmDataService {
         }
     }
 
-    public async generateIntradayHistory(symbol: string, interval: string = '5min'): Promise<any[]> {
-        // 1. Get current state from Price Agent (or cache)
-        const currentData = await this.runPriceAgent(symbol, '1d');
-        const currentPrice = currentData.price || 100;
-
-        // 2. Generate synthetic history backwards
-        // (Since we are agent-driven, we simulate the path that led to this price)
-        const points = [];
-        const numPoints = 60; // 5 hours of 5min candles
-        let price = currentPrice;
-        const volatility = 0.002; // 0.2% per step
-
-        for (let i = 0; i < numPoints; i++) {
-            points.push({
-                close: Number(price.toFixed(2)),
-                price: Number(price.toFixed(2)),
-                volume: Math.floor(Math.random() * 10000) + 1000,
-                timestamp: Date.now() - (i * 300000) // 5 min intervals
-            });
-
-            // Random walk backwards
-            const change = 1 + (Math.random() * volatility * 2 - volatility);
-            price = price / change;
-        }
-
-        return points.reverse();
-    }
-
     /**
-     * Generate Intraday History via Agent Inference
-     * (Constructs a plausible chart history based on current price and volatility profile)
+     * Retrieve REAL Intraday History via Agent Search
+     * (Relies on the Agent's ability to search/browse for actual market data)
      */
     public async generateIntradayHistory(symbol: string, interval: string = '5min'): Promise<any[]> {
-        // 1. Get current state from Price Agent (or cache)
-        const currentData = await this.runPriceAgent(symbol, '1d');
-        const currentPrice = currentData.price || 100;
+        const prompt = `
+        ROLE: Market Data Agent (Chart Specialist).
+        TASK: Search for and retrieve the REAL, ACTUAL intraday price history for ${symbol} for today.
+        
+        STRICT RULES:
+        1. Do NOT generate synthetic or random numbers. Use your search tool to find real data.
+        2. If you find the data, return it as a JSON array of objects.
+        3. If you absolutely cannot find real data, return an empty array [].
+        4. Interval: Close to ${interval} if possible, or whatever is available (15min, 30min).
+        
+        OUTPUT JSON ONLY:
+        [
+            { "timestamp": number (epoch ms), "price": number, "volume": number },
+            ...
+        ]
+        `;
 
-        // 2. Generate synthetic history backwards
-        // (Since we are agent-driven, we simulate the path that led to this price)
-        const points = [];
-        const numPoints = 60; // 5 hours of 5min candles
-        let price = currentPrice;
-        const volatility = 0.002; // 0.2% per step
-
-        for (let i = 0; i < numPoints; i++) {
-            points.push({
-                close: Number(price.toFixed(2)),
-                price: Number(price.toFixed(2)),
-                volume: Math.floor(Math.random() * 10000) + 1000,
-                timestamp: Date.now() - (i * 300000) // 5 min intervals
-            });
-
-            // Random walk backwards
-            const change = 1 + (Math.random() * volatility * 2 - volatility);
-            price = price / change;
+        try {
+            const result = await this.callLLM(this.models.price, prompt);
+            if (Array.isArray(result) && result.length > 0) {
+                // Validate data structure
+                return result.map(p => ({
+                    timestamp: p.timestamp || Date.now(),
+                    price: p.price || 0,
+                    volume: p.volume || 0,
+                    close: p.price || 0
+                })).sort((a, b) => a.timestamp - b.timestamp);
+            }
+            return [];
+        } catch (e) {
+            console.error(`Agent failed to retrieve chart history for ${symbol}:`, e);
+            return [];
         }
-
-        return points.reverse();
     }
 
     // --- HELPER: LLM CALL ---
