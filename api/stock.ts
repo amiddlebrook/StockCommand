@@ -253,44 +253,51 @@ class StockAPIService {
    * Priority based on rate limits (highest first)
    */
   private async fetchQuoteFromAPI(symbol: string): Promise<StockQuote> {
+    // Speed Optimization: Race multiple providers if configured
+    // This uses more quota but provides lowest latency
+    const providers: Promise<StockQuote>[] = [];
     const errors: string[] = [];
 
-    // 1. Try Finnhub first (60 req/min)
+    // 1. Finnhub (Fastest)
     if (this.env.FINNHUB_API_KEY) {
-      try {
-        return await this.fetchFinnhubQuote(symbol);
-      } catch (error: any) {
-        errors.push(`Finnhub: ${error.message}`);
-        console.warn(`Finnhub failed for ${symbol}: ${error.message}`);
-      }
+      providers.push(this.fetchFinnhubQuote(symbol).catch(e => {
+        errors.push(`Finnhub: ${e.message}`);
+        throw e;
+      }));
     }
 
-    // 2. Fallback to Alpha Vantage (5 req/min)
+    // 2. Alpha Vantage (Good data, slower)
     if (this.env.ALPHA_VANTAGE_API_KEY) {
-      try {
-        return await this.fetchAlphaVantageQuote(symbol);
-      } catch (error: any) {
-        errors.push(`AlphaVantage: ${error.message}`);
-        console.warn(`Alpha Vantage failed for ${symbol}: ${error.message}`);
-      }
+      providers.push(this.fetchAlphaVantageQuote(symbol).catch(e => {
+        errors.push(`AlphaVantage: ${e.message}`);
+        throw e;
+      }));
     }
 
-    // 3. Last resort: Yahoo Finance (100 req/day)
+    // 3. Yahoo (Fallback)
     if (this.env.YAHOO_API_KEY) {
-      try {
-        return await this.fetchYahooQuote(symbol);
-      } catch (error: any) {
-        errors.push(`Yahoo: ${error.message}`);
-        console.warn(`Yahoo failed for ${symbol}: ${error.message}`);
-      }
+      providers.push(this.fetchYahooQuote(symbol).catch(e => {
+        errors.push(`Yahoo: ${e.message}`);
+        throw e;
+      }));
     }
 
-    // All providers failed
-    throw new StockAPIError(
-      `All data providers failed for ${symbol}: ${errors.join('; ')}`,
-      503,
-      'ALL_PROVIDERS_EXHAUSTED'
-    );
+    if (providers.length === 0) {
+      throw new Error('No stock data providers configured');
+    }
+
+    try {
+      // Promise.any returns the first FULFILLED promise
+      const result = await Promise.any(providers);
+      return result;
+    } catch (aggregateError: any) {
+      // All failed
+      throw new StockAPIError(
+        `All data providers failed for ${symbol}: ${errors.join('; ')}`,
+        503,
+        'ALL_PROVIDERS_EXHAUSTED'
+      );
+    }
   }
 
   private async fetchAlphaVantageQuote(symbol: string): Promise<StockQuote> {

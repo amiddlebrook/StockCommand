@@ -990,7 +990,14 @@ export default {
                 const cleanMsg = message.trim().toLowerCase().replace(/[^a-z ]/g, '');
                 const greetings = new Set(['hi', 'hey', 'hello', 'yo', 'sup', 'hiya', 'heya', 'howdy', 'greetings', 'hola', 'good morning', 'good afternoon', 'good evening', 'gm', 'morning']);
 
-                if (greetings.has(cleanMsg) || cleanMsg.match(/^(hi|hey|hello) (there|stockcommand|bot|agent)$/)) {
+                // Check if exact match OR starts with greeting (e.g. "yo bot")
+                // Also explicitly check 2-3 char messages to prevent ticker confusion
+                const isShortMsg = cleanMsg.length <= 4;
+
+                if (greetings.has(cleanMsg) ||
+                    cleanMsg.match(/^(hi|hey|hello|yo|sup) (there|stockcommand|bot|agent|world|test)$/) ||
+                    (isShortMsg && greetings.has(cleanMsg.split(' ')[0]))
+                ) {
                     return new Response(JSON.stringify({
                         response: "Hey! 👋 Ready to conquer the markets? Let me know which ticker to analyze or what you're looking for!"
                     }), {
