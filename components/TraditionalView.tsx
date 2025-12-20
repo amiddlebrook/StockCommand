@@ -240,12 +240,14 @@ export const TraditionalView: React.FC<TraditionalViewProps> = ({
     useEffect(() => {
         const fetchQuotes = async () => {
             // Priority: open charts first, then first 10 of universe
+            // Priority: open charts first, then first 10 of universe
             const openChartSymbols = openCharts.map(c => c.symbol);
             const universeSymbols = UNIVERSE.slice(0, 10).map(t => t.symbol); // Only first 10
             const customSymbols = [...symbols, ...localSymbols];
+            const sectorSymbols = [...Object.values(SECTOR_ETFS), 'SPY'];
 
             // Combine priority symbols (no duplicates)
-            const prioritySymbols = [...new Set([...openChartSymbols, ...universeSymbols, ...customSymbols])];
+            const prioritySymbols = [...new Set([...openChartSymbols, ...universeSymbols, ...customSymbols, ...sectorSymbols])];
 
             if (prioritySymbols.length === 0) return;
 
@@ -315,7 +317,44 @@ export const TraditionalView: React.FC<TraditionalViewProps> = ({
     }, [symbols, localSymbols, hiddenSymbols, realQuotes, isLoadingQuotes]);
 
     // Sector performance data using ETF proxies
-    const sectorPerformance = useMemo(() => generateSectorPerformance(sectorPeriod), [sectorPeriod]);
+    const sectorPerformance = useMemo(() => {
+        const sectors = Object.entries(SECTOR_ETFS) as [SectorName, string][];
+
+        // Check if we have real data for SPY
+        const spyQuote = realQuotes['SPY'];
+
+        // If no real data yet, use the generator (clean fallback)
+        if (!spyQuote) return generateSectorPerformance(sectorPeriod);
+
+        const spyChange = spyQuote.changePercent || 0;
+
+        return sectors.map(([sectorName, etf]) => {
+            const quote = realQuotes[etf];
+
+            // If specific sector data missing, fallback to generator for just that one (or show 0)
+            if (!quote) {
+                // seamless fallback to mock for this entry to avoid broken UI
+                const mock = generateSectorPerformance(sectorPeriod).find(s => s.name === sectorName.slice(0, 12));
+                return mock!;
+            }
+
+            const changePercent = quote.changePercent || 0;
+            // Relative Strength: Sector Change - SPY Change
+            const relativePerformance = changePercent - spyChange;
+
+            const status: 'green' | 'yellow' | 'red' =
+                relativePerformance > 0.5 ? 'green' :
+                    relativePerformance < -0.5 ? 'red' : 'yellow';
+
+            return {
+                name: sectorName.slice(0, 12),
+                fullName: sectorName,
+                etf,
+                changePercent: parseFloat(relativePerformance.toFixed(2)),
+                status
+            };
+        });
+    }, [sectorPeriod, realQuotes]);
 
     // Handle add symbol - with duplicate check
     const handleAddSymbol = () => {
@@ -397,10 +436,17 @@ export const TraditionalView: React.FC<TraditionalViewProps> = ({
                                 volume: d.volume || 0
                             }));
                             setRealChartData(prev => ({ ...prev, [chart.symbol]: points }));
+                        } else {
+                            // Empty data
+                            setRealChartData(prev => ({ ...prev, [chart.symbol]: [] }));
                         }
+                    } else {
+                        // Error response
+                        setRealChartData(prev => ({ ...prev, [chart.symbol]: [] }));
                     }
                 } catch (e) {
                     console.warn(`Failed to fetch chart data for ${chart.symbol}:`, e);
+                    setRealChartData(prev => ({ ...prev, [chart.symbol]: [] }));
                 }
             }
         };
