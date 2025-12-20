@@ -17,13 +17,13 @@ const TOOL_PROXIES: Record<string, string[]> = {
 
 
 async function fetchMarketData(
-    avKey: string,
+    agentKey: string,
     scope: 'FULL' | 'SECTOR' | 'TICKER' | 'TOOL',
     target?: string,
     timeline: string = '1d'
 ): Promise<Record<string, MarketData>> {
     console.log(`Fetching market data via SwarmDataService (Scope: ${scope}, Target: ${target}, Timeline: ${timeline})...`);
-    const service = new SwarmDataService(avKey);
+    const service = new SwarmDataService(agentKey);
 
     let targetSymbols: string[] = [];
 
@@ -131,13 +131,8 @@ export async function runAgentWorkflow(
 ) {
     console.log(`Starting StockCommand Multi-Core Workflow (Scope: ${scope}, Timeline: ${timeline})...`);
 
-    const AV_KEY = env.ALPHA_VANTAGE_API_KEY || '';
+    const AV_KEY = env.ALPHA_VANTAGE_API_KEY || ''; // Legacy, unused
     const AGENT_KEY = env.OPENROUTER_DEEPSEEK_NEX_API_KEY || '';
-
-    if (!AV_KEY) {
-        console.error("Missing ALPHA_VANTAGE_API_KEY");
-        return { analysis: "Error: Missing Alpha Vantage API Key", actions: [] };
-    }
 
     if (!AGENT_KEY) {
         console.error("Missing OPENROUTER_DEEPSEEK_NEX_API_KEY");
@@ -147,7 +142,7 @@ export async function runAgentWorkflow(
     // 1. Refresh Data
     // Fetch data respecting the requested timeline (1m, 1h, etc.)
     const [marketData, portfolio] = await Promise.all([
-        fetchMarketData(AV_KEY, scope, target, timeline),
+        fetchMarketData(AGENT_KEY, scope, target, timeline),
         fetchPortfolioState()
     ]);
 
