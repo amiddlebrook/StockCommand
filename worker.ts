@@ -220,7 +220,7 @@ export default {
             const symbols = symbolsParam.split(",").map(s => s.trim().toUpperCase());
 
             // Use Swarm Service for data
-            const swarmService = new SwarmDataService(env);
+            const swarmService = new SwarmDataService(env.OPENROUTER_DEEPSEEK_NEX_API_KEY || '');
 
             // Parallel fetch for all symbols
             // We use '1d' timeline for quotes as it represents "today's price action"
