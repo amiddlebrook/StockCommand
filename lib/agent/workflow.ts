@@ -14,13 +14,25 @@ const TOOL_PROXIES: Record<string, string[]> = {
     'CLOCK_DOLLAR_STRENGTH': ['UUP', 'GLD', 'SPY']
 };
 
+import { MarketDataService } from './market-data';
+
+// Env variables should be passed in from the worker
+const TOOL_PROXIES: Record<string, string[]> = {
+    'CLOCK_LIQUIDITY_CYCLE': ['BTC', 'HYG', 'SPY'],
+    'CLOCK_COMMODITY_CYCLE': ['DBC', 'USO', 'DBB'],
+    'CLOCK_VIX_REGIME': ['VIX', 'SPY'],
+    'CLOCK_INFLATION_TREND': ['TIP', 'IEF', 'USO'],
+    'CLOCK_CREDIT_IMPULSE': ['HYG', 'LQD'],
+    'CLOCK_DOLLAR_STRENGTH': ['UUP', 'GLD', 'SPY']
+};
+
 async function fetchMarketData(
     avKey: string,
     scope: 'FULL' | 'SECTOR' | 'TICKER' | 'TOOL',
     target?: string,
     timeline: string = '1d'
 ): Promise<Record<string, MarketData>> {
-    console.log(`Fetching market data via MarketDataService (Scope: ${scope}, Target: ${target}, Timeline: ${timeline})...`);
+    console.log(`Fetching market data via SwarmDataService (Scope: ${scope}, Target: ${target}, Timeline: ${timeline})...`);
     const service = new MarketDataService(avKey);
 
     let targetSymbols: string[] = [];
@@ -49,7 +61,8 @@ async function fetchMarketData(
     targetSymbols = Array.from(new Set(targetSymbols));
 
     console.log(`Identified ${targetSymbols.length} symbols to fetch.`);
-    return await service.fetchMarketData(targetSymbols, timeline);
+    // Use the Swarm Query
+    return await service.querySwarm(targetSymbols, timeline);
 }
 
 // Mock portfolio fetcher

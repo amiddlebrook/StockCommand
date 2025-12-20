@@ -38,6 +38,7 @@ export interface MarketData {
   macd?: { macd: number; signal: number; histogram: number };
   dailyClose?: number[]; // For chart pattern analysis
   technicalSignal?: string; // "Buy", "Sell", "Neutral" (simple heuristic)
+  news?: { headline: string; sentiment: 'Positive' | 'Negative' | 'Neutral'; source: string }[];
 }
 
 export interface AgentAction {

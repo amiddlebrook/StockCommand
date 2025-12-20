@@ -3,6 +3,35 @@ import { AgentCore, CoreContext, CoreOutput } from './types';
 export class QuantCore implements AgentCore {
     name = "Quant Core";
 
+    public async constructPrompt(context: CoreContext): Promise<string> {
+        const { marketData, target, timeline = '1d' } = context;
+        if (!target) return "Analyze technical structure.";
+
+        const data = marketData[target];
+        // Parse Swarm Tech Data
+        const rsi = data?.rsi || 50;
+        const signal = data?.technicalSignal || "Neutral";
+        const macd = data?.macd ? `MACD: ${data.macd.macd.toFixed(2)}, Hist: ${data.macd.histogram.toFixed(2)}` : "MACD: N/A";
+
+        return `
+        AGENT: QUANT (Technical Analyst)
+        TARGET: ${target}
+        TIMELINE: ${timeline}
+        
+        TECHNICAL DATA:
+        Price: ${data?.price}
+        Change: ${data?.changePercent?.toFixed(2)}%
+        RSI: ${rsi}
+        Signal: ${signal}
+        ${macd}
+        
+        TASK:
+        Provide a technical analysis for the ${timeline} chart.
+        Identify key support/resistance levels relevant to this timeframe.
+        Confirm or Reject the "${signal}" signal based on the confluence of RSI and Price Action.
+        `;
+    }
+
     public async process(context: CoreContext): Promise<CoreOutput> {
         const { target, marketData, timeline, apiKey } = context;
         console.log(`[Quant Core] Analyzing ${target} on ${timeline} timeline using LLM...`);
@@ -15,28 +44,21 @@ export class QuantCore implements AgentCore {
         const { price, changePercent, rsi, volume, technicalSignal } = data;
 
         // 1. Construct Prompt
-        const systemPrompt = `You are the Quant Core of StockCommand.
-Your job is to analyze technical indicators and price action for ${target} on a ${timeline} timeframe.
-Be concise, data-driven, and professional.
-Focus on: Trend direction, Momentum (RSI), and Volume profile.
-Output format: Markdown bullet points. Start with "### 📐 Technical Analysis (${timeline})"`;
+        Ticker: ${ target }
+        Price: ${ price }
+        Change: ${ changePercent }%
+            RSI: ${ rsi || 'N/A' }
+        Signal: ${ technicalSignal || 'Neutral' }
+        Volume: ${ volume }
 
-        const userPrompt = `Analyze this data:
-Ticker: ${target}
-Price: ${price}
-Change: ${changePercent}%
-RSI: ${rsi || 'N/A'}
-Signal: ${technicalSignal || 'Neutral'}
-Volume: ${volume}
-
-Provide a 3-bullet summary of the technical setup and a final trading signal (BUY/SELL/NEUTRAL).`;
+Provide a 3 - bullet summary of the technical setup and a final trading signal(BUY / SELL / NEUTRAL).`;
 
         try {
             // 2. Call LLM
             const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
                 method: "POST",
                 headers: {
-                    "Authorization": `Bearer ${apiKey}`,
+                    "Authorization": `Bearer ${ apiKey } `,
                     "Content-Type": "application/json",
                     "HTTP-Referer": "https://stockcommand.workers.dev",
                     "X-Title": "StockCommand Quant"
@@ -69,7 +91,7 @@ Provide a 3-bullet summary of the technical setup and a final trading signal (BU
         } catch (e: any) {
             console.error("Quant Core LLM Failed:", e);
             return {
-                analysis: `### 📐 Technical Analysis (${timeline})\n- **Error**: AI Analysis failed (${e.message}).\n- **Data**: $${price} (${changePercent}%)\n`,
+                analysis: `### 📐 Technical Analysis(${ timeline }) \n - ** Error **: AI Analysis failed(${ e.message }).\n - ** Data **: $${ price } (${ changePercent }%) \n`,
                 actions: [],
                 technicalSignal: 'NEUTRAL'
             };
