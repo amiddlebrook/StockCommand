@@ -221,32 +221,53 @@ export class SwarmDataService {
 
     // --- HELPER: LLM CALL ---
     private async callLLM(model: string, systemPrompt: string): Promise<any> {
-        if (!this.apiKey) throw new Error("No API Key");
+        if (!this.apiKey) {
+            console.error("SwarmDataService: No API Key provided");
+            throw new Error("No API Key");
+        }
 
-        const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-            method: "POST",
-            headers: {
-                "Authorization": `Bearer ${this.apiKey}`,
-                "Content-Type": "application/json",
-                "HTTP-Referer": "https://stockcommand.workers.dev",
-                "X-Title": "StockCommand Swarm"
-            },
-            body: JSON.stringify({
-                model: model,
-                messages: [
-                    { role: "system", content: systemPrompt }
-                ],
-                max_tokens: 300,
-                temperature: 0.2, // Low temp for JSON stability
-                response_format: { type: "json_object" } // Force JSON if supported, else rely on prompt
-            })
-        });
+        console.log(`[Swarm] calling LLM ${model} with key length ${this.apiKey.length}...`);
 
-        const data: any = await response.json();
-        const content = data.choices?.[0]?.message?.content || "{}";
+        try {
+            const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+                method: "POST",
+                headers: {
+                    "Authorization": `Bearer ${this.apiKey}`,
+                    "Content-Type": "application/json",
+                    "HTTP-Referer": "https://stockcommand.workers.dev",
+                    "X-Title": "StockCommand Swarm"
+                },
+                body: JSON.stringify({
+                    model: model,
+                    messages: [
+                        { role: "system", content: systemPrompt }
+                    ],
+                    max_tokens: 2000,
+                    temperature: 0.2, // Low temp for JSON stability
+                    response_format: { type: "json_object" } // Force JSON if supported, else rely on prompt
+                })
+            });
 
-        // Clean markdown
-        const clean = content.replace(/```json/g, '').replace(/```/g, '').trim();
-        return JSON.parse(clean);
+            if (!response.ok) {
+                const errText = await response.text();
+                console.error(`[Swarm] LLM Call Failed: ${response.status} ${errText}`);
+                throw new Error(`LLM Error: ${response.status} - ${errText}`);
+            }
+
+            const data: any = await response.json();
+            const content = data.choices?.[0]?.message?.content || "{}";
+
+            // Clean markdown
+            const clean = content.replace(/```json/g, '').replace(/```/g, '').trim();
+            try {
+                return JSON.parse(clean);
+            } catch (e) {
+                console.error("[Swarm] Failed to parse JSON response:", clean);
+                throw e;
+            }
+        } catch (e) {
+            console.error(`[Swarm] Network/Fetch Error:`, e);
+            throw e;
+        }
     }
 }

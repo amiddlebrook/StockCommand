@@ -25,7 +25,7 @@ export const LLM_MODEL_OPTIONS: LlmModelOption[] = [
     id: 'openrouter-deepseek-nex',
     name: 'DeepSeek V3.1 Nex',
     provider: 'openrouter-deepseek-nex',
-    apiModelId: 'deepseek/deepseek-chat',
+    apiModelId: 'nex-agi/deepseek-v3.1-nex-n1:free',
     isDefault: true,
   },
   {
