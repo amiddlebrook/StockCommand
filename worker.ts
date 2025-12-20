@@ -22,6 +22,7 @@ import {
     getGlobalLeaderboard,
     getSharedStrategies
 } from './lib/social';
+import { SwarmDataService } from './lib/agent/market-data';
 
 export default {
     async fetch(request: Request, env: any, ctx: any): Promise<Response> {
