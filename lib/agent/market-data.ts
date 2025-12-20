@@ -16,7 +16,7 @@ export class MarketDataService {
         this.alphaVantageKey = alphaVantageKey;
     }
 
-    public async fetchMarketData(symbols: string[]): Promise<Record<string, MarketData>> {
+    public async fetchMarketData(symbols: string[], timeline: string = '1d'): Promise<Record<string, MarketData>> {
         const results: Record<string, MarketData> = {};
 
         for (const symbol of symbols) {
@@ -27,21 +27,19 @@ export class MarketDataService {
 
             try {
                 // 1. Try Alpha Vantage
-                const data = await this.fetchAlphaVantage(symbol);
+                const data = await this.fetchAlphaVantage(symbol, timeline);
                 results[symbol] = data;
                 await new Promise(resolve => setTimeout(resolve, 200));
             } catch (error: any) {
-                console.warn(`[MarketData] Alpha Vantage failed for ${symbol}: ${error.message}`);
+                console.warn(`[MarketData] Alpha Vantage failed for ${symbol} (${timeline}): ${error.message}`);
 
                 if (this.useYahooFallback) {
                     try {
-                        console.log(`[MarketData] Falling back to Yahoo Finance (Chart API) for ${symbol}`);
-                        const data = await this.fetchYahooFinance(symbol);
+                        console.log(`[MarketData] Falling back to Yahoo Finance for ${symbol}`);
+                        const data = await this.fetchYahooFinance(symbol, timeline);
                         results[symbol] = data;
                     } catch (yahooError: any) {
                         console.error(`[MarketData] Yahoo Finance also failed for ${symbol}: ${yahooError.message}`);
-                        // Don't result in empty. Return mock/neutral if crucial? 
-                        // For now, logging effectively allows us to debug "Fake" data claims.
                         results[symbol] = { price: 0, changePercent: 0, volume: 0, error: "Data Fetch Failed" } as any;
                     }
                 }
@@ -51,10 +49,17 @@ export class MarketDataService {
         return results;
     }
 
-    private async fetchAlphaVantage(symbol: string): Promise<MarketData> {
+    private async fetchAlphaVantage(symbol: string, timeline: string): Promise<MarketData> {
         if (!this.alphaVantageKey) throw new Error("No API Key");
 
-        const url = `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${symbol}&apikey=${this.alphaVantageKey}`;
+        let url = `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${symbol}&apikey=${this.alphaVantageKey}`;
+
+        // INTRADAY SUPPORT
+        if (timeline === '1m' || timeline === '1h') {
+            const interval = timeline === '1m' ? '1min' : '60min';
+            url = `https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol=${symbol}&interval=${interval}&apikey=${this.alphaVantageKey}`;
+        }
+
         const response = await fetch(url);
         const data = await response.json() as any;
 
@@ -62,6 +67,31 @@ export class MarketDataService {
             throw new Error(`API Limit or Info: ${JSON.stringify(data)}`);
         }
 
+        // Handle Intraday Response
+        if (timeline === '1m' || timeline === '1h') {
+            const timeSeriesKey = `Time Series (${timeline === '1m' ? '1min' : '60min'})`;
+            const timeSeries = data[timeSeriesKey];
+            if (!timeSeries) throw new Error("Invalid Intraday format");
+
+            const timestamps = Object.keys(timeSeries).sort();
+            const latestTime = timestamps[timestamps.length - 1]; // Last candle
+            const prevTime = timestamps[timestamps.length - 2];
+            const latest = timeSeries[latestTime];
+            const prev = timeSeries[prevTime];
+
+            const price = parseFloat(latest['4. close']);
+            const prevPrice = parseFloat(prev['4. close']);
+            const change = price - prevPrice;
+            const changePercent = (change / prevPrice) * 100;
+
+            return {
+                price,
+                changePercent,
+                volume: parseFloat(latest['5. volume'])
+            };
+        }
+
+        // Handle Global Quote (Daily)
         if (!data['Global Quote'] || Object.keys(data['Global Quote']).length === 0) {
             throw new Error("Invalid response format");
         }
@@ -75,21 +105,26 @@ export class MarketDataService {
         };
     }
 
-    private async fetchYahooFinance(symbol: string): Promise<MarketData> {
-        // Fallback using unofficial Yahoo Chart API which works well for basic current price
-        // No Auth required usually
+    private async fetchYahooFinance(symbol: string, timeline: string): Promise<MarketData> {
         let ySymbol = symbol;
         if (symbol === 'BTC') ySymbol = 'BTC-USD';
         if (symbol === 'ETH') ySymbol = 'ETH-USD';
         if (symbol === 'VIX') ySymbol = '^VIX';
 
-        // https://query1.finance.yahoo.com/v8/finance/chart/AAPL?interval=1d&range=6mo
-        const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ySymbol}?interval=1d&range=6mo`;
+        // Map timeline to Yahoo Interval/Range
+        let interval = '1d';
+        let range = '6mo';
+
+        if (timeline === '1m') { interval = '1m'; range = '1d'; }
+        else if (timeline === '1h') { interval = '60m'; range = '5d'; }
+        else if (timeline === '1w') { interval = '1wk'; range = '1y'; }
+        else if (timeline === '1M') { interval = '1mo'; range = '2y'; }
+        else if (timeline === '1Y') { interval = '1mo'; range = '5y'; } // Yahoo maxes at 1mo interval usually
+
+        const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ySymbol}?interval=${interval}&range=${range}`;
 
         const response = await fetch(url, {
-            headers: {
-                'User-Agent': 'Mozilla/5.0'
-            }
+            headers: { 'User-Agent': 'Mozilla/5.0' }
         });
 
         if (!response.ok) {
@@ -102,20 +137,20 @@ export class MarketDataService {
         if (!result) throw new Error("No Yahoo data found");
 
         const meta = result.meta;
-        const price = meta.regularMarketPrice;
-        const prevClose = meta.previousClose;
-        const volume = result.indicators?.quote?.[0]?.volume?.slice(-1)[0] || 0;
+        // For accurate tracking, we want the LAST candle vs the Previous candle of this interval
+        const closes = result.indicators?.quote?.[0]?.close || [];
+        const validCloses: number[] = closes.filter((c: any) => c !== null);
+        const latestPrice = validCloses[validCloses.length - 1];
+        const prevPrice = validCloses[validCloses.length - 2] || meta.previousClose;
 
         let changePercent = 0;
-        if (price && prevClose) {
-            changePercent = ((price - prevClose) / prevClose) * 100;
+        if (latestPrice && prevPrice) {
+            changePercent = ((latestPrice - prevPrice) / prevPrice) * 100;
         }
 
-        // --- TECHNICAL ANALYSIS ---
-        const closes = result.indicators?.quote?.[0]?.close || [];
-        // Filter out nulls
-        const validCloses: number[] = closes.filter((c: any) => c !== null);
+        const volume = result.indicators?.quote?.[0]?.volume?.slice(-1)[0] || 0;
 
+        // --- TECHNICAL ANALYSIS ---
         let rsi = undefined;
         let macd = undefined;
 
@@ -125,12 +160,12 @@ export class MarketDataService {
         }
 
         return {
-            price: price || validCloses[validCloses.length - 1] || 0,
+            price: latestPrice,
             changePercent: changePercent,
             volume: volume,
             rsi,
             macd,
-            dailyClose: validCloses.slice(-50), // Send last 50 for LLM pattern matching if needed
+            dailyClose: validCloses.slice(-50),
             technicalSignal: rsi && rsi > 70 ? 'Overbought' : rsi && rsi < 30 ? 'Oversold' : 'Neutral'
         };
     }

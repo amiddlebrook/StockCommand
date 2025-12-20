@@ -17,9 +17,10 @@ const TOOL_PROXIES: Record<string, string[]> = {
 async function fetchMarketData(
     avKey: string,
     scope: 'FULL' | 'SECTOR' | 'TICKER' | 'TOOL',
-    target?: string
+    target?: string,
+    timeline: string = '1d'
 ): Promise<Record<string, MarketData>> {
-    console.log(`Fetching market data via MarketDataService (Scope: ${scope}, Target: ${target})...`);
+    console.log(`Fetching market data via MarketDataService (Scope: ${scope}, Target: ${target}, Timeline: ${timeline})...`);
     const service = new MarketDataService(avKey);
 
     let targetSymbols: string[] = [];
@@ -48,7 +49,7 @@ async function fetchMarketData(
     targetSymbols = Array.from(new Set(targetSymbols));
 
     console.log(`Identified ${targetSymbols.length} symbols to fetch.`);
-    return await service.fetchMarketData(targetSymbols);
+    return await service.fetchMarketData(targetSymbols, timeline);
 }
 
 // Mock portfolio fetcher
@@ -136,9 +137,9 @@ export async function runAgentWorkflow(
     }
 
     // 1. Refresh Data
-    // Note: In future, fetchMarketData should use 'timeline' to fetch 1m/1h candles vs daily
+    // Fetch data respecting the requested timeline (1m, 1h, etc.)
     const [marketData, portfolio] = await Promise.all([
-        fetchMarketData(AV_KEY, scope, target),
+        fetchMarketData(AV_KEY, scope, target, timeline),
         fetchPortfolioState()
     ]);
 
