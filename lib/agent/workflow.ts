@@ -3,6 +3,8 @@ import { ActionExecutor } from './actions';
 import { MarketData, PortfolioState, UserStrategy, AgentAction, StrategyTrigger, StrategyAction } from './types';
 import { UNIVERSE, SECTOR_ETFS, SectorName } from './universe';
 import { SwarmDataService } from './market-data';
+import { CoreRouter } from './cores/router';
+import { CoreContext } from './cores/types';
 
 // Env variables should be passed in from the worker
 const TOOL_PROXIES: Record<string, string[]> = {

@@ -222,20 +222,19 @@ export default {
             // Use Swarm Service for data
             const swarmService = new SwarmDataService(env.OPENROUTER_DEEPSEEK_NEX_API_KEY || '');
 
-            // Parallel fetch for all symbols
+            // Fetch all symbols in one batch call (querySwarm expects an array)
             // We use '1d' timeline for quotes as it represents "today's price action"
-            const promises = symbols.map(sym => swarmService.querySwarm(sym, '1d'));
-            const results = await Promise.all(promises);
+            const swarmResults = await swarmService.querySwarm(symbols, '1d');
 
             const quoteMap: Record<string, any> = {};
-            results.forEach((data, index) => {
-                const sym = symbols[index];
+            symbols.forEach(sym => {
+                const data = swarmResults[sym] || {};
                 quoteMap[sym] = {
                     symbol: sym,
-                    price: data.price,
-                    change: data.change,
-                    changePercent: data.changePercent,
-                    volume: data.volume,
+                    price: data.price || 0,
+                    change: data.change || 0,
+                    changePercent: data.changePercent || 0,
+                    volume: data.volume || 0,
                     // Synthesize additional quote fields from agent data
                     timestamp: Date.now(),
                     name: sym // Agent usually knows name but we keep it simple for now
