@@ -188,6 +188,98 @@ const AppContent: React.FC = () => {
     }
   };
 
+  const executeAgentScan = async (scope: 'FULL' | 'SECTOR' | 'TICKER' | 'TOOL', target?: string, toolName?: string) => {
+    // Deduct credits based on scan scope
+    const creditType = scope === 'FULL' ? 'AGENT_SCAN_FULL'
+      : scope === 'SECTOR' ? 'AGENT_SCAN_SECTOR'
+        : 'AGENT_SCAN_TICKER';
+
+    if (!CreditsService.deduct(creditType, target)) {
+      setAgentOutput(`⚠️ Insufficient credits for ${scope} scan. Please add more credits in Settings.`);
+      return null;
+    }
+    setCreditBalance(CreditsService.loadBalance().credits);
+
+    setScanningTarget(target || scope);
+    setAgentOutput(`Initializing ${scope} scan...`);
+
+    let searchContext = "";
+    try {
+      if (target) {
+        setAgentOutput(`Gathering live intelligence for ${target}...`);
+        let query = `Latest financial news and analysis for ${target} market`;
+        if (scope === 'TOOL') {
+          // Enhanced Query for Macro Tools
+          if (target.includes('LIQUIDITY')) query = "Global Liquidity Cycle current status 2024 2025 BTC HYG analysis";
+          else if (target.includes('COMMODITY')) query = "Commodity Supercycle analysis 2025 Oil Copper structural deficit";
+          else if (target.includes('VIX')) query = "VIX volatility regime analysis current market conditions";
+          else if (target.includes('INFLATION')) query = "US Inflation Trend Breakeven Rates TIPS analysis current";
+          else if (target.includes('CREDIT')) query = "Credit Impulse Global Liquidity High Yield Spreads analysis";
+          else if (target.includes('DOLLAR')) query = "US Dollar DXY Index Strength analysis 2024 2025 forecast";
+          else query = `${toolName || target} detailed analysis current market data`;
+        }
+        const searchRes = await searchWithGrounding(query);
+        if (searchRes && searchRes.response) {
+          searchContext = `\n\n### 🌐 Live Market Context (Google Grounding)\n${searchRes.response}\n\n`;
+        }
+      }
+    } catch (e) {
+      console.warn("Live search failed, falling back to cached agent logic", e);
+    }
+
+    const strategies = StorageService.loadStrategies();
+    const res = await (window.fetch as any)('/api/agent/scan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        scope,
+        target: scope === 'TOOL' ? target : target,
+        tool: toolName || (scope === 'TOOL' ? target : undefined),
+        context: searchContext,
+        strategies: strategies.filter(s => s.active)
+      })
+    });
+    const data = await res.json();
+    const finalAnalysis = searchContext ? `${data.analysis}\n${searchContext}` : (data.analysis || "Analysis complete.");
+    setAgentOutput(finalAnalysis);
+
+    if (finalAnalysis) {
+      const reportKey = scope === 'TOOL' ? (toolName || target || 'unknown') : (target || scope);
+      setResearchReports(prev => ({ ...prev, [reportKey]: finalAnalysis }));
+      setResearchHistory(prev => {
+        const entries = prev[reportKey] || [];
+        const newEntry = { content: finalAnalysis, timestamp: Date.now() };
+        return { ...prev, [reportKey]: [newEntry, ...entries].slice(0, 10) };
+      });
+    }
+
+    const timestamp = Date.now();
+
+    // UPDATE GLOBAL ANALYSIS STATE (The "Firehose" connection)
+    if (target && finalAnalysis) {
+      setAnalysisData(prev => ({
+        ...prev,
+        [target]: { symbol: target, analysis: finalAnalysis, isLoading: false }
+      }));
+    }
+
+    if (data.clocks && (data.clocks as MarketClock[]).length > 0) {
+      setMarketClocks((prev: MarketClock[]) => {
+        if (!prev) return data.clocks;
+        const newClocks = data.clocks as MarketClock[];
+        const updated = [...prev];
+        newClocks.forEach((nc: MarketClock) => {
+          const idx = updated.findIndex((oc: MarketClock) => oc.code === nc.code);
+          if (idx >= 0) updated[idx] = { ...nc, lastUpdated: timestamp };
+          else updated.push({ ...nc, lastUpdated: timestamp });
+        });
+        return updated;
+      });
+    }
+    setScanningTarget(null);
+    return finalAnalysis;
+  };
+
   // Global Auto-Scan Loop (The "Everything" Engine)
   useEffect(() => {
     if (!isAgentEnabled) return;
@@ -203,19 +295,31 @@ const AppContent: React.FC = () => {
     const uniqueQueue = [...new Set(masterQueue)];
 
     // 2. Find next target that needs analysis
-    const target = uniqueQueue.find(sym => !analysisData[sym]?.analysis && !analysisData[sym]?.isLoading);
+    // We check both analysisData availability AND clock freshness
+    // If a clock exists but is > 24h old, re-scan
+    const now = Date.now();
+    const staleThreshold = 24 * 60 * 60 * 1000;
+
+    const target = uniqueQueue.find(sym => {
+      const hasFreshAnalysis = analysisData[sym]?.analysis && !analysisData[sym].isLoading;
+      const clock = marketClocks.find(c => c.code === sym);
+      const isClockFresh = clock && (now - (clock.lastUpdated || 0) < staleThreshold);
+
+      return !hasFreshAnalysis || !isClockFresh;
+    });
 
     if (target) {
       const timer = setTimeout(() => {
-        setAgentOutput(`Background Agent: Analyzing ${target}...`);
-        fetchAgentAnalysis(target);
-      }, 3000); // 3s pacing to avoid rate limits while remaining "active"
+        // Determine Scope
+        const isSectorProxy = Object.values(SECTOR_ETFS).includes(target);
+
+        // Execute Full Scan (Hydrates Clocks + Analysis)
+        executeAgentScan(isSectorProxy ? 'SECTOR' : 'TICKER', target);
+
+      }, 5000); // 5s pacing (slightly slower for full scans)
       return () => clearTimeout(timer);
-    } else {
-      // Refresher logic: If all done, find oldest analysis (> 1 hour old) and re-scan?
-      // (Optional future enhancement for infinite loop)
     }
-  }, [isAgentEnabled, symbols, analysisData]);
+  }, [isAgentEnabled, symbols, analysisData, marketClocks, executeAgentScan]);
 
   // VIEW MODE: DATA = 2D Charts/Data, ARENA = 3D Agentic Universe (HUD)
   type ViewMode = 'DATA' | 'ARENA';
@@ -320,88 +424,9 @@ const AppContent: React.FC = () => {
     symbols.forEach(symbol => { ensureSnapshotForSymbol(symbol); });
   }, [symbols, ensureSnapshotForSymbol]);
 
-  const executeAgentScan = async (scope: 'FULL' | 'SECTOR' | 'TICKER' | 'TOOL', target?: string, toolName?: string) => {
-    // Deduct credits based on scan scope
-    const creditType = scope === 'FULL' ? 'AGENT_SCAN_FULL'
-      : scope === 'SECTOR' ? 'AGENT_SCAN_SECTOR'
-        : 'AGENT_SCAN_TICKER';
 
-    if (!CreditsService.deduct(creditType, target)) {
-      setAgentOutput(`⚠️ Insufficient credits for ${scope} scan. Please add more credits in Settings.`);
-      return null;
-    }
-    setCreditBalance(CreditsService.loadBalance().credits);
 
-    setScanningTarget(target || scope);
-    setAgentOutput(`Initializing ${scope} scan...`);
 
-    let searchContext = "";
-    try {
-      if (target) {
-        setAgentOutput(`Gathering live intelligence for ${target}...`);
-        let query = `Latest financial news and analysis for ${target} market`;
-        if (scope === 'TOOL') {
-          // Enhanced Query for Macro Tools
-          if (target.includes('LIQUIDITY')) query = "Global Liquidity Cycle current status 2024 2025 BTC HYG analysis";
-          else if (target.includes('COMMODITY')) query = "Commodity Supercycle analysis 2025 Oil Copper structural deficit";
-          else if (target.includes('VIX')) query = "VIX volatility regime analysis current market conditions";
-          else if (target.includes('INFLATION')) query = "US Inflation Trend Breakeven Rates TIPS analysis current";
-          else if (target.includes('CREDIT')) query = "Credit Impulse Global Liquidity High Yield Spreads analysis";
-          else if (target.includes('DOLLAR')) query = "US Dollar DXY Index Strength analysis 2024 2025 forecast";
-          else query = `${toolName || target} detailed analysis current market data`;
-        }
-        const searchRes = await searchWithGrounding(query);
-        if (searchRes && searchRes.response) {
-          searchContext = `\n\n### 🌐 Live Market Context (Google Grounding)\n${searchRes.response}\n\n`;
-        }
-      }
-    } catch (e) {
-      console.warn("Live search failed, falling back to cached agent logic", e);
-    }
-
-    const strategies = StorageService.loadStrategies();
-    const res = await (window.fetch as any)('/api/agent/scan', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        scope,
-        target: scope === 'TOOL' ? target : target,
-        tool: toolName || (scope === 'TOOL' ? target : undefined),
-        context: searchContext,
-        strategies: strategies.filter(s => s.active)
-      })
-    });
-    const data = await res.json();
-    const finalAnalysis = searchContext ? `${data.analysis}\n${searchContext}` : (data.analysis || "Analysis complete.");
-    setAgentOutput(finalAnalysis);
-
-    if (finalAnalysis) {
-      const reportKey = scope === 'TOOL' ? (toolName || target || 'unknown') : (target || scope);
-      setResearchReports(prev => ({ ...prev, [reportKey]: finalAnalysis }));
-      setResearchHistory(prev => {
-        const entries = prev[reportKey] || [];
-        const newEntry = { content: finalAnalysis, timestamp: Date.now() };
-        return { ...prev, [reportKey]: [newEntry, ...entries].slice(0, 10) };
-      });
-    }
-
-    const timestamp = Date.now();
-    if (data.clocks && (data.clocks as MarketClock[]).length > 0) {
-      setMarketClocks((prev: MarketClock[]) => {
-        if (!prev) return data.clocks;
-        const newClocks = data.clocks as MarketClock[];
-        const updated = [...prev];
-        newClocks.forEach((nc: MarketClock) => {
-          const idx = updated.findIndex((oc: MarketClock) => oc.code === nc.code);
-          if (idx >= 0) updated[idx] = { ...nc, lastUpdated: timestamp };
-          else updated.push({ ...nc, lastUpdated: timestamp });
-        });
-        return updated;
-      });
-    }
-    setScanningTarget(null);
-    return finalAnalysis;
-  };
 
   const handleRunAgentScan = async (scope: 'FULL' | 'SECTOR' | 'TICKER' | 'TOOL', target?: string, toolName?: string) => {
     const scanLabel = scope === 'TOOL' ? (toolName || target) : (target || scope);
@@ -492,11 +517,7 @@ const AppContent: React.FC = () => {
 
           // Send to LLM with explicit ticker context
           const context = {
-            latestReport: agentOutput,
-            activeTickers: [potentialTicker, ...selectedSymbols],
-            currentView: activeTab,
-            activeTarget: potentialTicker,
-            // Explicit instruction that this is a ticker
+            tickers: selectedSymbols,
             currentView: activeTab,
             activeTarget: potentialTicker,
             // Explicit instruction that this is a ticker
