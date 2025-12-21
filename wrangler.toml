@@ -20,12 +20,12 @@ persist = true
 # Environment variables
 [vars]
 # App configuration
-APP_NAME = "StockBrain"
-APP_VERSION = "1.0.0"
+APP_NAME = "StockCommand"
+APP_VERSION = "2.0.0"
 ENVIRONMENT = "production"
 
 # CORS configuration
-ALLOWED_ORIGINS = "https://stockbrain.averymiddlebrook2014.workers.dev,https://localhost:3000"
+ALLOWED_ORIGINS = "https://stockcommand.averymiddlebrook2014.workers.dev,https://localhost:3000"
 
 # Rate limiting
 RATE_LIMIT_REQUESTS = "100"
@@ -34,12 +34,8 @@ RATE_LIMIT_WINDOW = "60"
 # Cache configuration
 CACHE_TTL = "3600"
 
-# The following OpenRouter API keys need to be configured in Cloudflare dashboard or via CLI:
-# - OPENROUTER_OLMO_THINK_API_KEY
-# - OPENROUTER_NEMOTRON_NANO_API_KEY
-# - OPENROUTER_DEEPSEEK_NEX_API_KEY
-# - OPENROUTER_KATCODER_PRO_API_KEY
-# - OPENROUTER_GPT_OSS_API_KEY
+# OpenRouter API keys (configured in Cloudflare dashboard or via CLI)
+# - OPENROUTER_API_KEY (primary key for all models)
 
 # KV Namespaces for caching
 [[kv_namespaces]]
@@ -63,14 +59,30 @@ database_id = "4827eede-850e-469c-9ea4-4b17a79408aa"
 binding = "STORAGE"
 bucket_name = "stockbrain-storage"
 
+# Vectorize for RAG embeddings
+[[vectorize]]
+binding = "VECTORIZE"
+index_name = "stockcommand-embeddings"
+
+# Durable Objects for agent swarm coordination
+[[durable_objects.bindings]]
+name = "AGENT_SWARM"
+class_name = "AgentSwarmDO"
+
+[[migrations]]
+tag = "v1"
+new_classes = ["AgentSwarmDO"]
+
 # Queue for background stock data processing
 [[queues.producers]]
 binding = "STOCK_DATA_QUEUE"
 queue = "stockbrain-queue"
 
-# Note: Queue consumer handler needs to be implemented
-# [[queues.consumers]]
-# queue = "stockbrain-queue"
+# Queue consumer for async processing
+[[queues.consumers]]
+queue = "stockbrain-queue"
+max_batch_size = 10
+max_batch_timeout = 30
 
 # Analytics Engine for usage tracking
 [[analytics_engine_datasets]]

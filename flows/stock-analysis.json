@@ -1,0 +1,81 @@
+{
+    "name": "stock-analysis",
+    "version": "1.0",
+    "description": "Basic stock analysis flow using multi-agent approach",
+    "nodes": [
+        {
+            "id": "input",
+            "type": "input",
+            "config": {
+                "fields": [
+                    "ticker",
+                    "timeframe"
+                ]
+            }
+        },
+        {
+            "id": "data_fetch",
+            "type": "tool",
+            "config": {
+                "tool": "market_data",
+                "params": {
+                    "symbols": "{{input.ticker}}",
+                    "timeframe": "{{input.timeframe}}"
+                }
+            },
+            "depends": [
+                "input"
+            ]
+        },
+        {
+            "id": "quant_analysis",
+            "type": "llm",
+            "config": {
+                "model": "deepseek/deepseek-chat",
+                "system_prompt": "You are a quantitative analyst. Analyze the provided market data for technical patterns and signals.",
+                "user_prompt": "Analyze the following market data for {{input.ticker}}:\n\n{{data_fetch.result}}\n\nProvide technical analysis including RSI, MACD, and trend direction."
+            },
+            "depends": [
+                "data_fetch"
+            ]
+        },
+        {
+            "id": "sentiment_analysis",
+            "type": "llm",
+            "config": {
+                "model": "deepseek/deepseek-chat",
+                "system_prompt": "You are a sentiment analyst. Gauge market sentiment from price action and context.",
+                "user_prompt": "Based on recent price action for {{input.ticker}}:\n{{data_fetch.result}}\n\nWhat is the current market sentiment? Rate from -1 (very bearish) to +1 (very bullish)."
+            },
+            "depends": [
+                "data_fetch"
+            ]
+        },
+        {
+            "id": "combine",
+            "type": "llm",
+            "config": {
+                "model": "deepseek/deepseek-chat",
+                "system_prompt": "You are a portfolio manager synthesizing multiple analyses.",
+                "user_prompt": "Combine the following analyses for {{input.ticker}}:\n\nTechnical Analysis:\n{{quant_analysis.result}}\n\nSentiment Analysis:\n{{sentiment_analysis.result}}\n\nProvide a unified recommendation with confidence level."
+            },
+            "depends": [
+                "quant_analysis",
+                "sentiment_analysis"
+            ]
+        },
+        {
+            "id": "output",
+            "type": "output",
+            "config": {
+                "format": "markdown",
+                "fields": [
+                    "combine.result"
+                ]
+            },
+            "depends": [
+                "combine"
+            ]
+        }
+    ]
+}

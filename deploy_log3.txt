@@ -1,0 +1,36 @@
+﻿
+ ⛅️ wrangler 4.56.0
+───────────────────
+🌀 Building list of assets...
+✨ Read 4 files from the assets directory C:\Users\avery\Desktop\StockCommand\StockCommand\dist
+🌀 Starting asset upload...
+No updated asset files to upload. Proceeding with deployment...
+Total Upload: 217.28 KiB / gzip: 50.56 KiB
+Worker Startup Time: 20 ms
+Your Worker has access to the following bindings:
+Binding                                                                   Resource                      
+env.AGENT_SWARM (AgentSwarmDO)                                            Durable Object                
+env.STOCK_CACHE_KV (fa0ae101b0174f93a89abf2cfaa68f9f)                     KV Namespace                  
+env.USER_SESSIONS_KV (10f7f3c4a0ed4c069ce1802d06393ca8)                   KV Namespace                  
+env.STOCK_DATA_QUEUE (stockbrain-queue)                                   Queue                         
+env.DB (stockbrain-db)                                                    D1 Database                   
+env.VECTORIZE (stockcommand-embeddings)                                   Vectorize Index               
+env.STORAGE (stockbrain-storage)                                          R2 Bucket                     
+env.ANALYTICS (ANALYTICS)                                                 Analytics Engine Dataset      
+env.AI                                                                    AI                            
+env.ASSETS                                                                Assets                        
+env.APP_NAME ("StockCommand")                                             Environment Variable          
+env.APP_VERSION ("2.0.0")                                                 Environment Variable          
+env.ENVIRONMENT ("production")                                            Environment Variable          
+env.ALLOWED_ORIGINS ("https://stockcommand.averymiddlebrook...")          Environment Variable          
+env.RATE_LIMIT_REQUESTS ("100")                                           Environment Variable          
+env.RATE_LIMIT_WINDOW ("60")                                              Environment Variable          
+env.CACHE_TTL ("3600")                                                    Environment Variable          
+
+Uploaded stockcommand (5.00 sec)
+Deployed stockcommand triggers (1.94 sec)
+  https://stockcommand.averymiddlebrook2014.workers.dev
+  schedule: 0 * * * *
+  Producer for stockbrain-queue
+  Consumer for stockbrain-queue
+Current Version ID: defe1895-5099-4951-b5f3-fb99fc79bd93

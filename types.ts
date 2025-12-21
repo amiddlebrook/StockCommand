@@ -70,12 +70,11 @@ export interface Env {
   // Assets binding for static files
   ASSETS: Fetcher;
 
-  // External API keys (secrets) - Only 5 OpenRouter models
-  OPENROUTER_OLMO_THINK_API_KEY?: string;
-  OPENROUTER_NEMOTRON_NANO_API_KEY?: string;
+  // OpenRouter API key (primary key for all LLM calls)
+  OPENROUTER_API_KEY?: string;
+  
+  // Legacy OpenRouter keys (deprecated, kept for migration)
   OPENROUTER_DEEPSEEK_NEX_API_KEY?: string;
-  OPENROUTER_KATCODER_PRO_API_KEY?: string;
-  OPENROUTER_GPT_OSS_API_KEY?: string;
 
   // Environment variables
   APP_NAME: string;
@@ -96,9 +95,16 @@ export interface Env {
   // R2 Storage
   STORAGE: R2Bucket;
 
+  // Vectorize for RAG embeddings
+  VECTORIZE: VectorizeIndex;
+
+  // Durable Objects for agent swarm coordination
+  AGENT_SWARM: DurableObjectNamespace;
+
   // Queue
   STOCK_DATA_QUEUE: Queue<unknown>;
 
   // Analytics Engine
   ANALYTICS: AnalyticsEngineDataset;
 }
+

@@ -1,4 +1,5 @@
-// Worker Entry Point
+// Worker Entry Point - StockCommand v2.0
+// Production-grade Cloudflare-native AI architecture
 import { Env } from './types';
 import { runAgentWorkflow } from './lib/agent/workflow';
 import { hashPassword, verifyPassword, createSession, getSession, destroySession, createSessionCookie, createClearSessionCookie } from './lib/auth';
@@ -23,6 +24,16 @@ import {
     getSharedStrategies
 } from './lib/social';
 import { SwarmDataService } from './lib/agent/market-data';
+
+// New Architecture Imports
+import { AgentSwarmDO } from './lib/swarm/AgentSwarmDO';
+import { RAGService } from './lib/langchain/rag-service';
+import { FlowRunner } from './lib/flow-runner';
+import { CostTracker } from './lib/cost-tracker';
+import { OpenRouterLLM, ChainBuilder } from './lib/langchain/orchestrator';
+
+// Export Durable Object for Cloudflare
+export { AgentSwarmDO };
 
 export default {
     async fetch(request: Request, env: any, ctx: any): Promise<Response> {
@@ -1326,6 +1337,53 @@ Communication style:
             console.log("[Worker] Scan complete:", result);
         } catch (e) {
             console.error("[Worker] Scan failed:", e);
+        }
+    },
+
+    // QUEUE CONSUMER - Async background processing
+    async queue(batch: MessageBatch, env: Env): Promise<void> {
+        console.log(`[Queue] Processing batch with ${batch.messages.length} messages`);
+
+        for (const message of batch.messages) {
+            try {
+                const body = message.body as any;
+
+                switch (body.type) {
+                    case 'refresh':
+                        // Stock data refresh
+                        const symbols = body.symbols || [];
+                        for (const symbol of symbols) {
+                            await env.STOCK_CACHE_KV.delete(`quote:${symbol}`);
+                        }
+                        break;
+
+                    case 'embed':
+                        // Generate embeddings for RAG
+                        const ragService = new RAGService(env);
+                        await ragService.indexDocuments(body.documents || []);
+                        break;
+
+                    case 'flow':
+                        // Execute a flow in background
+                        const apiKey = env.OPENROUTER_API_KEY || env.OPENROUTER_DEEPSEEK_NEX_API_KEY || '';
+                        const runner = new FlowRunner(env, apiKey);
+                        await runner.execute(body.flowName, body.inputs || {});
+                        break;
+
+                    case 'cleanup':
+                        // Cleanup old data
+                        console.log('[Queue] Running cleanup tasks');
+                        break;
+
+                    default:
+                        console.warn('[Queue] Unknown message type:', body.type);
+                }
+
+                message.ack();
+            } catch (error: any) {
+                console.error('[Queue] Error processing message:', error);
+                message.retry();
+            }
         }
     }
 };

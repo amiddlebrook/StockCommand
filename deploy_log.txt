@@ -1,0 +1,86 @@
+﻿
+ ⛅️ wrangler 4.56.0
+───────────────────
+
+node.exe : [31mX 
+[41;31m[[41;97mERROR[41;31m][0m 
+[1mBuild failed with 3 errors:[0m
+At C:\Program Files\nodejs\npx.ps1:29 char:3
++   & $NODE_EXE $NPX_CLI_JS $args
++   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: 
+    ([31mX [41;31m...h 3 errors:[0m:Str  
+  ing) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommand 
+   Error
+ 
+
+  [31mX 
+[41;31m[[41;97mERROR[41;31m][0m 
+[1mMultiple exports with the same name 
+"OpenRouterLLM"[0m
+  
+      lib/langchain/orchestrator.ts:332:9:
+  [37m      332 │ export { 
+[32mOpenRouterLLM[37m, ChainBuilder, 
+AgentExecutor };
+            ╵          
+[32m~~~~~~~~~~~~~[0m
+  
+    The name "OpenRouterLLM" was originally 
+exported here:
+  
+      lib/langchain/orchestrator.ts:18:13:
+  [37m      18 │ export class 
+[32mOpenRouterLLM[37m {
+           ╵              
+[32m~~~~~~~~~~~~~[0m
+  
+  
+  [31mX 
+[41;31m[[41;97mERROR[41;31m][0m 
+[1mMultiple exports with the same name 
+"ChainBuilder"[0m
+  
+      lib/langchain/orchestrator.ts:332:24:
+  [37m      332 │ export { OpenRouterLLM, 
+[32mChainBuilder[37m, AgentExecutor };
+            ╵                         
+[32m~~~~~~~~~~~~[0m
+  
+    The name "ChainBuilder" was originally 
+exported here:
+  
+      lib/langchain/orchestrator.ts:123:13:
+  [37m      123 │ export class 
+[32mChainBuilder[37m {
+            ╵              
+[32m~~~~~~~~~~~~[0m
+  
+  
+  [31mX 
+[41;31m[[41;97mERROR[41;31m][0m 
+[1mMultiple exports with the same name 
+"AgentExecutor"[0m
+  
+      lib/langchain/orchestrator.ts:332:38:
+  [37m      332 │ export { OpenRouterLLM, 
+ChainBuilder, [32mAgentExecutor[37m };
+            ╵                               
+        [32m~~~~~~~~~~~~~[0m
+  
+    The name "AgentExecutor" was originally 
+exported here:
+  
+      lib/langchain/orchestrator.ts:246:13:
+  [37m      246 │ export class 
+[32mAgentExecutor[37m {
+            ╵              
+[32m~~~~~~~~~~~~~[0m
+  
+  
+
+
+🪵  Logs were written to "C:\Users\avery\App
+Data\Roaming\xdg.config\.wrangler\logs\wrang
+ler-2025-12-21_23-35-29_151.log"
