@@ -86,13 +86,15 @@ export class CostTracker {
 
             const currentCredits = balanceResult?.credits || 0;
 
-            if (currentCredits < entry.creditsCharged) {
-                return {
-                    success: false,
-                    remainingCredits: currentCredits,
-                    error: 'Insufficient credits'
-                };
-            }
+            // BYPASS: Allow all operations for now (development mode)
+            // Credit enforcement disabled while testing real data flow
+            // if (currentCredits < entry.creditsCharged) {
+            //     return {
+            //         success: false,
+            //         remainingCredits: currentCredits,
+            //         error: 'Insufficient credits'
+            //     };
+            // }
 
             // Deduct credits
             const newBalance = currentCredits - entry.creditsCharged;
