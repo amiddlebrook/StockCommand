@@ -115,23 +115,25 @@ export class SwarmDataService {
     private async runPriceAgent(symbol: string, timeline: string): Promise<any> {
         const prompt = `
         ROLE: Market Data Agent (Price Specialist).
-        TASK: generated plausible, realistic market data for ${symbol}.
-        TIMELINE: ${timeline} (Data must reflect this period).
+        TASK: SEARCH THE WEB for the REAL, CURRENT stock price data for ${symbol}.
+        TIMELINE: ${timeline}
         
-        CONTEXT:
-        - If ${timeline} is intraday (1m, 1h), focus on small moves.
-        - If ${timeline} is long (1Y, 5Y), focus on macro trend.
+        INSTRUCTIONS:
+        1. Use your web search capabilities to find the ACTUAL current price for ${symbol}
+        2. Look for real-time quotes from Yahoo Finance, Google Finance, Bloomberg, or MarketWatch
+        3. DO NOT make up or estimate prices - search for real data only
+        4. If you cannot find real data, return zeros
         
         OUTPUT JSON ONLY:
         {
-            "price": number (current price),
-            "changePercent": number (change over ${timeline}),
-            "volume": number (volume for this period)
+            "price": number (REAL current price from search),
+            "changePercent": number (REAL % change from search),
+            "volume": number (REAL trading volume if available, else 0)
         }
         `;
 
         try {
-            return await this.callLLM(this.models.price, prompt);
+            return await this.callLLM(this.models.price, prompt, true); // true = use web search
         } catch (e) {
             console.error(`Price Agent failed for ${symbol}:`, e);
             return { price: 0, changePercent: 0, volume: 0 };
@@ -141,17 +143,23 @@ export class SwarmDataService {
     private async runNewsAgent(symbol: string, timeline: string): Promise<any[]> {
         const prompt = `
         ROLE: Financial News Agent.
-        TASK: generate/retrieve top 2 headlines/events driving ${symbol}.
-        TIMELINE: ${timeline}.
+        TASK: SEARCH THE WEB for the latest REAL news headlines about ${symbol}.
+        TIMELINE: ${timeline}
+        
+        INSTRUCTIONS:
+        1. Search for recent news articles about ${symbol} from financial news sources
+        2. Find REAL headlines from Reuters, Bloomberg, CNBC, Yahoo Finance, or other reputable sources
+        3. DO NOT make up news - only return actual headlines you find
+        4. If you cannot find real news, return an empty array []
         
         OUTPUT JSON ONLY (Array):
         [
-            { "headline": "string", "sentiment": "Positive"|"Negative"|"Neutral", "source": "Analyst Wire" }
+            { "headline": "REAL headline text", "sentiment": "Positive"|"Negative"|"Neutral", "source": "actual source name" }
         ]
         `;
 
         try {
-            const res = await this.callLLM(this.models.news, prompt);
+            const res = await this.callLLM(this.models.news, prompt, true); // true = use web search
             return Array.isArray(res) ? res : [];
         } catch (e) {
             return [];
@@ -161,19 +169,24 @@ export class SwarmDataService {
     private async runTechAgent(symbol: string, timeline: string): Promise<any> {
         const prompt = `
         ROLE: Technical Analysis Agent.
-        TASK: Estimate technical indicators for ${symbol} based on standard market behavior.
-        TIMELINE: ${timeline}.
+        TASK: SEARCH THE WEB for REAL technical analysis data for ${symbol}.
+        TIMELINE: ${timeline}
+        
+        INSTRUCTIONS:
+        1. Search for actual RSI, MACD values for ${symbol} from TradingView, Yahoo Finance, or Barchart
+        2. Look for real technical indicator data, not estimates
+        3. If you cannot find real data, return neutral values with rsi: 50
         
         OUTPUT JSON ONLY:
         {
-            "rsi": number (0-100),
+            "rsi": number (REAL RSI value from search, 0-100),
             "macd": { "macd": number, "signal": number, "histogram": number },
             "technicalSignal": "Buy"|"Sell"|"Neutral"
         }
         `;
 
         try {
-            return await this.callLLM(this.models.tech, prompt);
+            return await this.callLLM(this.models.tech, prompt, true); // true = use web search
         } catch (e) {
             return { rsi: 50, technicalSignal: "Neutral" };
         }
@@ -202,7 +215,7 @@ export class SwarmDataService {
         `;
 
         try {
-            const result = await this.callLLM(this.models.price, prompt);
+            const result = await this.callLLM(this.models.price, prompt, true); // true = use web search
             if (Array.isArray(result) && result.length > 0) {
                 // Validate data structure
                 return result.map(p => ({
@@ -219,16 +232,33 @@ export class SwarmDataService {
         }
     }
 
-    // --- HELPER: LLM CALL ---
-    private async callLLM(model: string, systemPrompt: string): Promise<any> {
+    // --- HELPER: LLM CALL WITH OPTIONAL WEB SEARCH ---
+    private async callLLM(model: string, systemPrompt: string, useWebSearch: boolean = false): Promise<any> {
         if (!this.apiKey) {
             console.error("SwarmDataService: No API Key provided");
             throw new Error("No API Key");
         }
 
-        console.log(`[Swarm] calling LLM ${model} with key length ${this.apiKey.length}...`);
+        // Use :online suffix for web search enabled calls
+        const finalModel = useWebSearch ? `${model}:online` : model;
+        console.log(`[Swarm] calling LLM ${finalModel} (webSearch: ${useWebSearch}) with key length ${this.apiKey.length}...`);
 
         try {
+            const requestBody: any = {
+                model: finalModel,
+                messages: [
+                    { role: "system", content: systemPrompt }
+                ],
+                max_tokens: 2000,
+                temperature: 0.2, // Low temp for JSON stability
+                response_format: { type: "json_object" }
+            };
+
+            // Add web plugin if web search is enabled
+            if (useWebSearch) {
+                requestBody.plugins = [{ id: "web" }];
+            }
+
             const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
                 method: "POST",
                 headers: {
@@ -237,15 +267,7 @@ export class SwarmDataService {
                     "HTTP-Referer": "https://stockcommand.workers.dev",
                     "X-Title": "StockCommand Swarm"
                 },
-                body: JSON.stringify({
-                    model: model,
-                    messages: [
-                        { role: "system", content: systemPrompt }
-                    ],
-                    max_tokens: 2000,
-                    temperature: 0.2, // Low temp for JSON stability
-                    response_format: { type: "json_object" } // Force JSON if supported, else rely on prompt
-                })
+                body: JSON.stringify(requestBody)
             });
 
             if (!response.ok) {
