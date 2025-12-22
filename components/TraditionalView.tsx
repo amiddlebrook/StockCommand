@@ -246,17 +246,17 @@ export const TraditionalView: React.FC<TraditionalViewProps> = ({
             const customSymbols = [...symbols, ...localSymbols];
             const sectorSymbols = [...Object.values(SECTOR_ETFS), 'SPY'];
 
-            // Combine priority symbols (no duplicates)
-            const prioritySymbols = [...new Set([...openChartSymbols, ...universeSymbols, ...customSymbols, ...sectorSymbols])];
+            // Combine priority symbols (no duplicates) - Put Sectors FIRST to ensure chart works
+            const prioritySymbols = [...new Set([...openChartSymbols, ...sectorSymbols, ...universeSymbols, ...customSymbols])];
 
             if (prioritySymbols.length === 0) return;
 
             setIsLoadingQuotes(true);
             try {
-                // Single batch for priority symbols (should be ~10-15 max)
-                const res = await fetch(`/api/quotes?symbols=${prioritySymbols.slice(0, 10).join(',')}`);
+                // Fetch up to 50 symbols (Agent Swarm is parallelized)
+                const res = await fetch(`/api/quotes?symbols=${prioritySymbols.slice(0, 50).join(',')}`);
                 if (res.ok) {
-                    const data = await res.json();
+                    const data = await res.json() as Record<string, any>;
                     setRealQuotes(prev => ({ ...prev, ...data }));
                 }
             } catch (e) {

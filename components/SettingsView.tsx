@@ -3,25 +3,10 @@ import { Icon } from './Icon';
 import { GlassButton } from './ui/GlassButton';
 import { ModelSelector } from './ModelSelector';
 import { SystemHealth } from './SystemHealth';
-import { CreditsService, CREDIT_COSTS } from '../lib/credits';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 
 export const SettingsView: React.FC = () => {
     const [activeSection, setActiveSection] = useState<'GENERAL' | 'MODELS' | 'OPTIMIZER' | 'HEALTH' | 'CREDITS' | 'BILLING'>('MODELS');
     const [isPro, setIsPro] = useState(false); // Mock User State
-    const [creditBalance, setCreditBalance] = useState(0);
-    const [creditHistory, setCreditHistory] = useState<any[]>([]);
-
-    // Load credits on mount
-    useEffect(() => {
-        const balance = CreditsService.loadBalance();
-        setCreditBalance(balance.credits);
-        setCreditHistory(CreditsService.getHistory(10));
-    }, []);
-
-    // Get usage data for pie chart
-    const usageData = CreditsService.getUsageByCategory();
-    const totalUsage = usageData.reduce((sum, item) => sum + item.value, 0);
 
     // Mobile Navigation State
     const [showMobileSidebar, setShowMobileSidebar] = useState(true);
@@ -48,7 +33,7 @@ export const SettingsView: React.FC = () => {
         { id: 'MODELS', label: 'Default Models', icon: 'cpu' },
         { id: 'OPTIMIZER', label: 'Agent Optimizer', icon: 'zap' },
         { id: 'HEALTH', label: 'System Health', icon: 'activity' },
-        { id: 'CREDITS', label: 'Credits & Usage', icon: 'zap' },
+        { id: 'CREDITS', label: 'API Usage', icon: 'zap' },
         { id: 'BILLING', label: 'Plan & Billing', icon: 'credit-card' },
     ];
 
@@ -71,7 +56,7 @@ export const SettingsView: React.FC = () => {
                         <Icon icon="settings" className="text-cyan-500 w-5 h-5" />
                         SETTINGS
                     </h2>
-                    <p className="text-xs text-slate-500 mt-1">System Configuration</p>
+                    <p className="text-xs text-slate-500 mt-1">System Configuration (v2.3)</p>
                 </div>
 
                 <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
@@ -254,116 +239,23 @@ export const SettingsView: React.FC = () => {
 
                     {activeSection === 'CREDITS' && (
                         <div className="space-y-6">
-                            {/* Credit Balance Card */}
-                            <div className="p-6 bg-gradient-to-r from-amber-900/20 to-slate-900 border border-amber-500/30 rounded-xl">
-                                <div className="flex items-center justify-between mb-4">
-                                    <div>
-                                        <h3 className="text-lg font-bold text-amber-400 flex items-center gap-2">
-                                            <Icon icon="zap" className="w-5 h-5" />
-                                            CREDIT BALANCE
-                                        </h3>
-                                        <p className="text-sm text-amber-500/60 mt-1">Available for API operations</p>
-                                    </div>
-                                    <div className="text-right">
-                                        <div className="text-3xl font-bold text-amber-400 font-mono">{creditBalance.toLocaleString()}</div>
-                                        <div className="text-xs text-slate-500">= ${(creditBalance * 0.0001).toFixed(2)} USD (actual API costs)</div>
-                                    </div>
-                                </div>
-                                <button
-                                    onClick={() => {
-                                        CreditsService.addCredits(500, 'Demo Purchase');
-                                        setCreditBalance(CreditsService.loadBalance().credits);
-                                        setCreditHistory(CreditsService.getHistory(10));
-                                    }}
-                                    className="w-full py-2 bg-amber-500 hover:bg-amber-400 text-black font-bold text-sm rounded transition-all"
+                            <div className="p-6 bg-slate-900/30 border border-slate-800 rounded-xl">
+                                <h3 className="text-lg font-bold text-white mb-2 flex items-center gap-2">
+                                    <Icon icon="zap" className="w-5 h-5 text-cyan-400" />
+                                    API Usage
+                                </h3>
+                                <p className="text-slate-400 text-sm">
+                                    This application uses your OpenRouter API key directly.
+                                    Usage costs are billed directly by OpenRouter and can be viewed on their dashboard.
+                                </p>
+                                <a
+                                    href="https://openrouter.ai/activity"
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="mt-4 inline-block px-4 py-2 bg-slate-800 hover:bg-slate-700 text-cyan-400 text-sm font-medium rounded transition-colors"
                                 >
-                                    + Add 500 Credits (Demo)
-                                </button>
-                            </div>
-
-                            {/* Usage Breakdown Pie Chart */}
-                            <div className="bg-slate-900/30 border border-slate-800 rounded-xl p-6">
-                                <h3 className="text-sm font-bold text-white mb-2 uppercase tracking-wider">Your Credit Usage</h3>
-                                <p className="text-xs text-slate-500 mb-4">Breakdown of where your credits are being spent. 1 credit = $0.0001 USD.</p>
-
-                                <div className="flex flex-col lg:flex-row gap-6">
-                                    {/* Pie Chart */}
-                                    <div className="h-64 flex-1">
-                                        <ResponsiveContainer width="100%" height="100%">
-                                            <PieChart>
-                                                <Pie
-                                                    data={usageData}
-                                                    cx="50%"
-                                                    cy="50%"
-                                                    innerRadius={50}
-                                                    outerRadius={80}
-                                                    paddingAngle={2}
-                                                    dataKey="value"
-                                                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                                                    labelLine={false}
-                                                >
-                                                    {usageData.map((entry, index) => (
-                                                        <Cell key={`cell-${index}`} fill={entry.color} />
-                                                    ))}
-                                                </Pie>
-                                                <Tooltip
-                                                    formatter={(value: number) => [`${value.toLocaleString()} credits ($${(value * 0.0001).toFixed(4)})`, 'Usage']}
-                                                    contentStyle={{ background: '#0f172a', border: '1px solid #334155', borderRadius: '8px' }}
-                                                />
-                                            </PieChart>
-                                        </ResponsiveContainer>
-                                    </div>
-
-                                    {/* Legend with values */}
-                                    <div className="flex-1 space-y-3">
-                                        {usageData.map((item, index) => (
-                                            <div key={index} className="flex items-center justify-between p-3 bg-slate-900/50 rounded-lg">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
-                                                    <span className="text-sm text-slate-300">{item.name}</span>
-                                                </div>
-                                                <div className="text-right">
-                                                    <div className="text-sm font-mono text-amber-400">{item.value.toLocaleString()} cr</div>
-                                                    <div className="text-[10px] text-slate-500">${(item.value * 0.0001).toFixed(4)}</div>
-                                                </div>
-                                            </div>
-                                        ))}
-                                        <div className="pt-2 border-t border-slate-700">
-                                            <div className="flex items-center justify-between p-3 bg-amber-900/20 rounded-lg border border-amber-500/30">
-                                                <span className="text-sm font-bold text-amber-400">Total Usage</span>
-                                                <div className="text-right">
-                                                    <div className="text-sm font-mono font-bold text-amber-400">{totalUsage.toLocaleString()} cr</div>
-                                                    <div className="text-[10px] text-amber-500/60">${(totalUsage * 0.0001).toFixed(4)} USD</div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Recent Usage */}
-                            <div className="bg-slate-900/30 border border-slate-800 rounded-xl p-6">
-                                <h3 className="text-sm font-bold text-white mb-4 uppercase tracking-wider">Recent Usage</h3>
-                                {creditHistory.length === 0 ? (
-                                    <p className="text-xs text-slate-500 text-center py-4">No recent transactions</p>
-                                ) : (
-                                    <div className="space-y-2">
-                                        {creditHistory.slice(0, 5).map((txn) => (
-                                            <div key={txn.id} className="flex items-center justify-between p-2 bg-slate-900/50 rounded">
-                                                <div className="flex items-center gap-2">
-                                                    <Icon icon="zap" className="w-3 h-3 text-amber-400" />
-                                                    <span className="text-xs text-slate-400">{txn.type.replace(/_/g, ' ')}</span>
-                                                    {txn.target && <span className="text-xs text-slate-600">({txn.target})</span>}
-                                                </div>
-                                                <div className="text-right">
-                                                    <span className={`text-xs font-mono ${txn.amount > 0 ? 'text-red-400' : 'text-green-400'}`}>
-                                                        {txn.amount > 0 ? `-${txn.amount}` : `+${Math.abs(txn.amount)}`} cr
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
+                                    View OpenRouter Dashboard →
+                                </a>
                             </div>
                         </div>
                     )}

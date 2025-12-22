@@ -224,37 +224,42 @@ export default {
         }
 
         // GET /api/quotes - Real-time quotes via Swarm Agents
-        if (url.pathname === "/api/quotes" && request.method === "GET") {
-            const symbolsParam = url.searchParams.get("symbols");
-            if (!symbolsParam) return new Response("Missing symbols", { status: 400 });
+        if (url.pathname.startsWith("/api/quotes") && request.method === "GET") {
+            try {
+                const symbolsParam = url.searchParams.get("symbols");
+                if (!symbolsParam) return new Response("Missing symbols", { status: 400 });
 
-            const symbols = symbolsParam.split(",").map(s => s.trim().toUpperCase());
+                const symbols = symbolsParam.split(",").map(s => s.trim().toUpperCase());
 
-            // Use Swarm Service for data
-            const swarmService = new SwarmDataService(env.OPENROUTER_DEEPSEEK_NEX_API_KEY || '');
+                // Use Swarm Service for data
+                const swarmService = new SwarmDataService(env.OPENROUTER_DEEPSEEK_NEX_API_KEY || '');
 
-            // Fetch all symbols in one batch call (querySwarm expects an array)
-            // We use '1d' timeline for quotes as it represents "today's price action"
-            const swarmResults = await swarmService.querySwarm(symbols, '1d');
+                // Fetch all symbols in one batch call (querySwarm expects an array)
+                // We use '1d' timeline for quotes as it represents "today's price action"
+                const swarmResults = await swarmService.querySwarm(symbols, '1d');
 
-            const quoteMap: Record<string, any> = {};
-            symbols.forEach(sym => {
-                const data = swarmResults[sym] || {};
-                quoteMap[sym] = {
-                    symbol: sym,
-                    price: data.price || 0,
-                    change: data.change || 0,
-                    changePercent: data.changePercent || 0,
-                    volume: data.volume || 0,
-                    // Synthesize additional quote fields from agent data
-                    timestamp: Date.now(),
-                    name: sym // Agent usually knows name but we keep it simple for now
-                };
-            });
+                const quoteMap: Record<string, any> = {};
+                symbols.forEach(sym => {
+                    const data = swarmResults[sym] || {};
+                    quoteMap[sym] = {
+                        symbol: sym,
+                        price: data.price || 0,
+                        change: data.change || 0,
+                        changePercent: data.changePercent || 0,
+                        volume: data.volume || 0,
+                        // Synthesize additional quote fields from agent data
+                        timestamp: Date.now(),
+                        name: sym // Agent usually knows name but we keep it simple for now
+                    };
+                });
 
-            return new Response(JSON.stringify(quoteMap), {
-                headers: { ...corsHeaders, "Content-Type": "application/json" }
-            });
+                return new Response(JSON.stringify(quoteMap), {
+                    headers: { ...corsHeaders, "Content-Type": "application/json" }
+                });
+            } catch (e: any) {
+                console.error("Error in /api/quotes:", e);
+                return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: corsHeaders });
+            }
         }
 
         // GET /api/swarm/intraday - Agent-Generated History
