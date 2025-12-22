@@ -47,7 +47,8 @@ import { MarketClock, UserStrategy } from './lib/agent/types';
 import { JobProvider, useJobContext } from './contexts/JobContext';
 import { getClocksForEntity, getGlobalClocks } from './lib/clockData';
 import { StorageService } from './lib/storage';
-import { CreditsService, CREDIT_COSTS } from './lib/credits';
+
+// Logic Pipeline Analysis Steps (Mocked based on activity)
 
 const GREETING_BLACKLIST = ['HI', 'HEY', 'HELLO', 'OK', 'NO', 'YES', 'BYE', 'THANKS', 'COOL', 'WOW'];
 
@@ -66,8 +67,8 @@ const AppContent: React.FC = () => {
   const { startJob, activeJobsCount } = useJobContext();
   console.log("AppContent Mounting");
 
-  // Credit balance state
-  const [creditBalance, setCreditBalance] = useState(() => CreditsService.loadBalance().credits);
+
+  // Agent implicitly active based on Timeline interactions
 
   // Agent implicitly active based on Timeline interactions
   // const [isAgentEnabled, setIsAgentEnabled] = useState(() => StorageService.loadSettings().agentEnabled ?? false);
@@ -195,15 +196,7 @@ const AppContent: React.FC = () => {
 
   const executeAgentScan = async (scope: 'FULL' | 'SECTOR' | 'TICKER' | 'TOOL', target?: string, toolName?: string) => {
     // Deduct credits based on scan scope
-    const creditType = scope === 'FULL' ? 'AGENT_SCAN_FULL'
-      : scope === 'SECTOR' ? 'AGENT_SCAN_SECTOR'
-        : 'AGENT_SCAN_TICKER';
-
-    if (!CreditsService.deduct(creditType, target)) {
-      setAgentOutput(`⚠️ Insufficient credits for ${scope} scan. Please add more credits in Settings.`);
-      return null;
-    }
-    setCreditBalance(CreditsService.loadBalance().credits);
+    // (Credit check removed for web search update)
 
     setScanningTarget(target || scope);
     setAgentOutput(`Initializing ${scope} scan...`);
@@ -475,16 +468,9 @@ const AppContent: React.FC = () => {
   const handleSendMessage = async (message: string, image?: File) => {
     if (!message.trim() && !image) return;
 
-    // Deduct credits for chat message
-    if (!CreditsService.deduct('AGENT_CHAT_MESSAGE', undefined)) {
-      setMessages(prev => [...prev, {
-        id: `error-${Date.now()}`,
-        role: 'model',
-        content: '⚠️ **Insufficient credits** for chat. Please add more credits in Settings → Credits & Usage.'
-      }]);
-      return;
-    }
-    setCreditBalance(CreditsService.loadBalance().credits);
+    if (!message.trim() && !image) return;
+
+    // Deduct credits removed
 
     setIsConsoleOpen(true); // Auto-open on interaction
     const userMessage: ChatMessageType = { id: `user-${Date.now()}`, role: 'user', content: message };
@@ -719,15 +705,6 @@ const AppContent: React.FC = () => {
 
 
 
-          {/* Agent Fuel Balance Mini-Display */}
-          <div
-            className="hidden md:flex items-center gap-2 px-3 py-1 bg-slate-800/50 border border-slate-700/50 rounded-full cursor-pointer hover:border-amber-500/50 transition-colors"
-            onClick={() => setActiveTab('settings')}
-            title="View Credits & Usage"
-          >
-            <Icon icon="zap" className="w-3 h-3 text-amber-400" />
-            <span className="text-[10px] font-mono text-amber-400">{creditBalance.toLocaleString()} CR</span>
-          </div>
         </div>
 
         <div className="flex items-center gap-3">
@@ -745,14 +722,14 @@ const AppContent: React.FC = () => {
           {/* Data Freshness Indicator */}
           <div className="flex items-center gap-1.5 mr-3 bg-slate-900/50 px-2 py-1 rounded border border-slate-800/50">
             <div className={`w-2 h-2 rounded-full ${scanningTarget ? 'bg-yellow-400 animate-pulse shadow-[0_0_8px_rgba(250,204,21,0.6)]' :
-                (analysisData && Object.values(analysisData).some(d => d.timeline === timeline && (Date.now() - d.lastUpdated < 300000))) // 5m fresh
-                  ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]'
-                  : 'bg-slate-600'
+              (analysisData && Object.values(analysisData).some(d => d.timeline === timeline && (Date.now() - d.lastUpdated < 300000))) // 5m fresh
+                ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]'
+                : 'bg-slate-600'
               }`} />
             <span className={`text-[10px] font-mono tracking-wider ${scanningTarget ? 'text-yellow-400' :
-                (analysisData && Object.values(analysisData).some(d => d.timeline === timeline && (Date.now() - d.lastUpdated < 300000)))
-                  ? 'text-green-400'
-                  : 'text-slate-500'
+              (analysisData && Object.values(analysisData).some(d => d.timeline === timeline && (Date.now() - d.lastUpdated < 300000)))
+                ? 'text-green-400'
+                : 'text-slate-500'
               }`}>
               {scanningTarget ? 'AGENTS_WORKING' : 'DATA_FRESH'}
             </span>
@@ -808,171 +785,175 @@ const AppContent: React.FC = () => {
             <Icon icon="user" className="w-4 h-4" />
           </button>
         </div>
-      </div>
+      </div >
 
       {/* 3. MAIN VIEWPORT (STACKED CONTENT & DRAWER) */}
-      <div className="hud-cell-main flex flex-col">
+      < div className="hud-cell-main flex flex-col" >
         {/* TOP: Dynamic Content (Full width now) */}
-        <div className="flex-1 overflow-hidden relative">
+        < div className="flex-1 overflow-hidden relative" >
           {/* 2D Mode: Traditional View for most tabs */}
           {/* View Mode Switching: TACTICAL (Charts) vs SPATIAL (Console/3D) */}
-          {activeTab === 'command-center' ? (
-            <CentralCommand
-              activeMode="READY"
-              viewMode={viewMode}
-              activeTab={activeTab}
-              onNavigate={(tab) => setActiveTab(tab as any)}
-              clocks={marketClocks}
-              symbols={symbols}
-              onAddSymbol={(sym) => setSymbols(prev => [...prev, sym])}
-              isAgentActive={true} // Implicitly active
-              analysisData={analysisData}
-            />
-          ) : activeTab === 'portfolio' ? (
-            <div className="h-full overflow-y-auto">
-              {hasBrokerConnection ? (
-                <div className="h-full overflow-hidden"><BrokerPortfolioView onOpenBrokerModal={() => setIsBrokerModalOpen(true)} /></div>
-              ) : (
-                <PortfolioView sectorsWithStats={sectorsWithStats} onTickerClick={() => { }} />
-              )}
-            </div>
-          ) : activeTab === 'trade' ? (
-            <div className="h-full overflow-hidden"><TradeExecutionPanel /></div>
-          ) : activeTab === 'comms' ? (
-            <div className="h-full overflow-hidden"><SocialView /></div>
-          ) : activeTab === 'news' ? (
-            <div className="h-full overflow-hidden"><NewsSynthesisView /></div>
-          ) : activeTab === 'settings' ? (
-            <div className="h-full overflow-hidden"><SettingsView /></div>
-          ) : activeTab === 'market-clocks' ? (
-            <div className="h-full overflow-y-auto"><MarketClocksView clocks={marketClocks} onClockClick={() => { }} onPinClock={() => { }} /></div>
-          ) : activeTab === 'competitions' ? (
-            <div className="h-full overflow-y-auto"><CompetitionsView clocks={marketClocks} onSubmitPortfolio={() => { }} /></div>
-          ) : activeTab === 'creator' ? (
-            <div className="h-full overflow-y-auto"><CreatorModeView clocks={marketClocks} /></div>
-          ) : activeTab === 'screener' ? (
-            <div className="h-full overflow-hidden"><ScreenerView /></div>
-          ) : activeTab === 'calendar' ? (
-            <div className="h-full overflow-hidden"><CalendarView /></div>
-          ) : activeTab === 'leaderboards' ? (
-            <div className="h-full overflow-hidden"><LeaderboardsView /></div>
-          ) : activeTab === 'duels' ? (
-            <div className="h-full overflow-hidden"><DuelsView /></div>
-          ) : activeTab === 'teams' ? (
-            <div className="h-full overflow-hidden"><TeamsView /></div>
-          ) : activeTab === 'marketplace' ? (
-            <div className="h-full overflow-hidden"><MarketplaceView /></div>
-          ) : activeTab === 'features' ? (
-            <div className="h-full overflow-y-auto p-4">
-              <h2 className="text-xl font-bold mb-4 font-mono text-cyan-400">AVAILABLE_MODULES</h2>
-              <div className="grid grid-cols-2 gap-4">
-                {Object.entries(FEATURE_CONFIG).map(([name, config]) => (
-                  <div key={name} className="bg-slate-900/40 border border-cyan-900/30 p-4 hover:border-cyan-500 hover:bg-cyan-900/10 cursor-pointer transition-all" onClick={() => { setActiveFeature({ name, symbols: ['SPY'], content: null }); setActiveTab('feature-detail'); }}>
-                    <h3 className="text-cyan-400 font-bold font-mono text-sm mb-1">{name}</h3>
-                    <p className="text-[10px] text-slate-500">{config.description}</p>
-                  </div>
-                ))}
+          {
+            activeTab === 'command-center' ? (
+              <CentralCommand
+                activeMode="READY"
+                viewMode={viewMode}
+                activeTab={activeTab}
+                onNavigate={(tab) => setActiveTab(tab as any)}
+                clocks={marketClocks}
+                symbols={symbols}
+                onAddSymbol={(sym) => setSymbols(prev => [...prev, sym])}
+                isAgentActive={true} // Implicitly active
+                analysisData={analysisData}
+              />
+            ) : activeTab === 'portfolio' ? (
+              <div className="h-full overflow-y-auto">
+                {hasBrokerConnection ? (
+                  <div className="h-full overflow-hidden"><BrokerPortfolioView onOpenBrokerModal={() => setIsBrokerModalOpen(true)} /></div>
+                ) : (
+                  <PortfolioView sectorsWithStats={sectorsWithStats} onTickerClick={() => { }} />
+                )}
               </div>
-            </div>
-          ) : activeTab === 'feature-detail' && activeFeature ? (
-            <FeatureDetailView featureName={activeFeature.name} symbols={activeFeature.symbols} content={activeFeature.content} isLoading={false} onBack={() => setActiveTab('features')} onRerun={() => { }} />
-          ) : activeTab === 'entity-detail' && selectedEntity ? (
-            <EntityDetailView entity={selectedEntity} freshnessThreshold={0} onBack={() => setActiveTab('command-center')} onRunAnalysis={() => { }} researchContent={null} />
-          ) : null}
-        </div>
+            ) : activeTab === 'trade' ? (
+              <div className="h-full overflow-hidden"><TradeExecutionPanel /></div>
+            ) : activeTab === 'comms' ? (
+              <div className="h-full overflow-hidden"><SocialView /></div>
+            ) : activeTab === 'news' ? (
+              <div className="h-full overflow-hidden"><NewsSynthesisView /></div>
+            ) : activeTab === 'settings' ? (
+              <div className="h-full overflow-hidden"><SettingsView /></div>
+            ) : activeTab === 'market-clocks' ? (
+              <div className="h-full overflow-y-auto"><MarketClocksView clocks={marketClocks} onClockClick={() => { }} onPinClock={() => { }} /></div>
+            ) : activeTab === 'competitions' ? (
+              <div className="h-full overflow-y-auto"><CompetitionsView clocks={marketClocks} onSubmitPortfolio={() => { }} /></div>
+            ) : activeTab === 'creator' ? (
+              <div className="h-full overflow-y-auto"><CreatorModeView clocks={marketClocks} /></div>
+            ) : activeTab === 'screener' ? (
+              <div className="h-full overflow-hidden"><ScreenerView /></div>
+            ) : activeTab === 'calendar' ? (
+              <div className="h-full overflow-hidden"><CalendarView /></div>
+            ) : activeTab === 'leaderboards' ? (
+              <div className="h-full overflow-hidden"><LeaderboardsView /></div>
+            ) : activeTab === 'duels' ? (
+              <div className="h-full overflow-hidden"><DuelsView /></div>
+            ) : activeTab === 'teams' ? (
+              <div className="h-full overflow-hidden"><TeamsView /></div>
+            ) : activeTab === 'marketplace' ? (
+              <div className="h-full overflow-hidden"><MarketplaceView /></div>
+            ) : activeTab === 'features' ? (
+              <div className="h-full overflow-y-auto p-4">
+                <h2 className="text-xl font-bold mb-4 font-mono text-cyan-400">AVAILABLE_MODULES</h2>
+                <div className="grid grid-cols-2 gap-4">
+                  {Object.entries(FEATURE_CONFIG).map(([name, config]) => (
+                    <div key={name} className="bg-slate-900/40 border border-cyan-900/30 p-4 hover:border-cyan-500 hover:bg-cyan-900/10 cursor-pointer transition-all" onClick={() => { setActiveFeature({ name, symbols: ['SPY'], content: null }); setActiveTab('feature-detail'); }}>
+                      <h3 className="text-cyan-400 font-bold font-mono text-sm mb-1">{name}</h3>
+                      <p className="text-[10px] text-slate-500">{config.description}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : activeTab === 'feature-detail' && activeFeature ? (
+              <FeatureDetailView featureName={activeFeature.name} symbols={activeFeature.symbols} content={activeFeature.content} isLoading={false} onBack={() => setActiveTab('features')} onRerun={() => { }} />
+            ) : activeTab === 'entity-detail' && selectedEntity ? (
+              <EntityDetailView entity={selectedEntity} freshnessThreshold={0} onBack={() => setActiveTab('command-center')} onRunAnalysis={() => { }} researchContent={null} />
+            ) : null
+          }
+        </div >
 
         {/* BOTTOM: Collapsible Console Drawer */}
-        {(
-          <div
-            className={`
+        {
+          (
+            <div
+              className={`
                   flex-shrink-0 relative z-20 shadow-[0_-5px_20px_rgba(0,0,0,0.5)] border-t border-slate-800 bg-slate-950
                   ${isDraggingConsole ? '' : 'transition-all duration-300 ease-in-out'}
               `}
-            style={{ height: isConsoleOpen ? `${consoleHeight}px` : '64px' }}
-          >
-            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-900 via-cyan-500 to-cyan-900 opacity-20"></div>
+              style={{ height: isConsoleOpen ? `${consoleHeight}px` : '64px' }}
+            >
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-900 via-cyan-500 to-cyan-900 opacity-20"></div>
 
-            {/* Resize Handle - visible when open */}
-            {isConsoleOpen && (
+              {/* Resize Handle - visible when open */}
+              {isConsoleOpen && (
+                <div
+                  className="absolute top-0 left-0 w-full h-2 cursor-ns-resize hover:bg-cyan-500/20 transition-colors z-40"
+                  onMouseDown={handleConsoleDragStart}
+                  onTouchStart={handleConsoleDragStart}
+                >
+                  <div className="absolute top-0.5 left-1/2 -translate-x-1/2 w-12 h-1 bg-slate-600 rounded-full" />
+                </div>
+              )}
+
+              {/* Toggle Handle */}
               <div
-                className="absolute top-0 left-0 w-full h-2 cursor-ns-resize hover:bg-cyan-500/20 transition-colors z-40"
-                onMouseDown={handleConsoleDragStart}
-                onTouchStart={handleConsoleDragStart}
-              >
-                <div className="absolute top-0.5 left-1/2 -translate-x-1/2 w-12 h-1 bg-slate-600 rounded-full" />
-              </div>
-            )}
-
-            {/* Toggle Handle */}
-            <div
-              className={`
+                className={`
                 absolute -top-5 left-1/2 -translate-x-1/2 h-8 rounded-t-xl flex items-center justify-center z-30 transition-all
                 ${isConsoleOpen
-                  ? 'w-56 bg-slate-900 border-t border-x border-slate-700 shadow-[0_-4px_10px_rgba(0,0,0,0.5)]'
-                  : 'w-48 bg-cyan-900/80 border-t border-x border-cyan-500/50 shadow-[0_-4px_10px_rgba(6,182,212,0.3)] hover:bg-cyan-600 cursor-pointer'}
+                    ? 'w-56 bg-slate-900 border-t border-x border-slate-700 shadow-[0_-4px_10px_rgba(0,0,0,0.5)]'
+                    : 'w-48 bg-cyan-900/80 border-t border-x border-cyan-500/50 shadow-[0_-4px_10px_rgba(6,182,212,0.3)] hover:bg-cyan-600 cursor-pointer'}
               `}
-              onClick={() => !isConsoleOpen && setIsConsoleOpen(true)}
-            >
-              {isConsoleOpen ? (
-                /* Open state: drag handle + close button */
-                <div className="flex items-center justify-between w-full px-3">
-                  <div
-                    className="flex items-center gap-2 cursor-ns-resize flex-1"
-                    onMouseDown={handleConsoleDragStart}
-                    onTouchStart={handleConsoleDragStart}
-                  >
-                    <span className="text-[9px] font-bold text-slate-400 tracking-widest uppercase">Drag to resize</span>
+                onClick={() => !isConsoleOpen && setIsConsoleOpen(true)}
+              >
+                {isConsoleOpen ? (
+                  /* Open state: drag handle + close button */
+                  <div className="flex items-center justify-between w-full px-3">
+                    <div
+                      className="flex items-center gap-2 cursor-ns-resize flex-1"
+                      onMouseDown={handleConsoleDragStart}
+                      onTouchStart={handleConsoleDragStart}
+                    >
+                      <span className="text-[9px] font-bold text-slate-400 tracking-widest uppercase">Drag to resize</span>
+                    </div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsConsoleOpen(false);
+                      }}
+                      className="flex items-center gap-1 px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 cursor-pointer transition-colors"
+                    >
+                      <span className="text-[9px] font-bold text-cyan-400 tracking-wider uppercase">Close</span>
+                      <Icon icon="chevron-down" className="w-3 h-3 text-cyan-400" />
+                    </button>
                   </div>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setIsConsoleOpen(false);
-                    }}
-                    className="flex items-center gap-1 px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 cursor-pointer transition-colors"
-                  >
-                    <span className="text-[9px] font-bold text-cyan-400 tracking-wider uppercase">Close</span>
-                    <Icon icon="chevron-down" className="w-3 h-3 text-cyan-400" />
-                  </button>
-                </div>
+                ) : (
+                  /* Closed state */
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-bold text-white tracking-widest uppercase">Terminal</span>
+                    <Icon icon="chevron-down" className="w-4 h-4 text-white rotate-180" />
+                  </div>
+                )}
+              </div>
+
+              {isConsoleOpen ? (
+                <ConsoleWidget
+                  messages={messages}
+                  onSendMessage={handleSendMessage}
+                  isLoading={isChatLoading}
+                  isRecording={isRecording}
+                  onStartRecording={handleStartRecording}
+                  onStopRecording={handleStopRecording}
+                />
               ) : (
-                /* Closed state */
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-bold text-white tracking-widest uppercase">Terminal</span>
-                  <Icon icon="chevron-down" className="w-4 h-4 text-white rotate-180" />
+                /* Minimized State: Active Chat Input */
+                <div className="h-full flex flex-col bg-slate-950 border-t border-slate-800">
+                  <div className="flex-1 px-2 pt-1">
+                    <ChatInput
+                      onSendMessage={(msg, img) => {
+                        handleSendMessage(msg, img);
+                        setIsConsoleOpen(true);
+                      }}
+                      isLoading={isChatLoading}
+                      isRecording={isRecording}
+                      onStartRecording={handleStartRecording}
+                      onStopRecording={handleStopRecording}
+                      compact={true}
+                    />
+                  </div>
                 </div>
               )}
             </div>
-
-            {isConsoleOpen ? (
-              <ConsoleWidget
-                messages={messages}
-                onSendMessage={handleSendMessage}
-                isLoading={isChatLoading}
-                isRecording={isRecording}
-                onStartRecording={handleStartRecording}
-                onStopRecording={handleStopRecording}
-              />
-            ) : (
-              /* Minimized State: Active Chat Input */
-              <div className="h-full flex flex-col bg-slate-950 border-t border-slate-800">
-                <div className="flex-1 px-2 pt-1">
-                  <ChatInput
-                    onSendMessage={(msg, img) => {
-                      handleSendMessage(msg, img);
-                      setIsConsoleOpen(true);
-                    }}
-                    isLoading={isChatLoading}
-                    isRecording={isRecording}
-                    onStartRecording={handleStartRecording}
-                    onStopRecording={handleStopRecording}
-                    compact={true}
-                  />
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+          )
+        }
+      </div >
 
       {/* Footer removed - was cutting off chat area */}
 
