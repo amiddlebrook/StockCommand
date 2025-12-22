@@ -25,11 +25,11 @@ const TIMELINE_TTLS: Record<string, number> = {
 export class SwarmDataService {
     private apiKey: string;
 
-    // Model Config
+    // Model Config - Using Perplexity for native web search
     private models = {
-        price: "nex-agi/deepseek-v3.1-nex-n1:free", // Fast for logic
-        news: "nex-agi/deepseek-v3.1-nex-n1:free",  // Good for summary
-        tech: "nex-agi/deepseek-v3.1-nex-n1:free"   // Good for analysis
+        price: "perplexity/llama-3.1-sonar-small-128k-online", // Native web search
+        news: "perplexity/llama-3.1-sonar-small-128k-online",  // Native web search
+        tech: "perplexity/llama-3.1-sonar-small-128k-online"   // Native web search
     };
 
     constructor(apiKey: string) {
@@ -232,20 +232,19 @@ export class SwarmDataService {
         }
     }
 
-    // --- HELPER: LLM CALL WITH OPTIONAL WEB SEARCH ---
+    // --- HELPER: LLM CALL ---
     private async callLLM(model: string, systemPrompt: string, useWebSearch: boolean = false): Promise<any> {
         if (!this.apiKey) {
             console.error("SwarmDataService: No API Key provided");
             throw new Error("No API Key");
         }
 
-        // Use :online suffix for web search enabled calls
-        const finalModel = useWebSearch ? `${model}:online` : model;
-        console.log(`[Swarm] calling LLM ${finalModel} (webSearch: ${useWebSearch}) with key length ${this.apiKey.length}...`);
+        // Perplexity models already have web search built in, no suffix needed
+        console.log(`[Swarm] calling LLM ${model} (webSearch: ${useWebSearch}) with key length ${this.apiKey.length}...`);
 
         try {
             const requestBody: any = {
-                model: finalModel,
+                model: model,
                 messages: [
                     { role: "system", content: systemPrompt }
                 ],
