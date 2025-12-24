@@ -4,7 +4,7 @@ import { Env } from '../../types';
 export type AgentType = 'ANALYST' | 'CODER' | 'CHAT';
 
 export async function routeUserMessage(env: Env, message: string): Promise<AgentType> {
-    const apiKey = env.OPENROUTER_DEEPSEEK_NEX_API_KEY; // Use same key for OpenRouter
+    const apiKey = env.STOCK_COMMAND_OPENROUTER_API_KEY || env.OPENROUTER_DEEPSEEK_NEX_API_KEY || env.OPENROUTER_API_KEY; // Use same key for OpenRouter
     if (!apiKey) return 'ANALYST'; // Default to Analyst if no key
 
     try {
@@ -17,7 +17,7 @@ export async function routeUserMessage(env: Env, message: string): Promise<Agent
                 "X-Title": "StockCommand Router"
             },
             body: JSON.stringify({
-                model: "nvidia/nemotron-3-nano-30b-a3b:free",
+                model: "xiaomi/mimo-v2-flash:free", // Fast routing model
                 messages: [
                     {
                         role: "system",

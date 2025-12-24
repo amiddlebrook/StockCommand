@@ -1127,7 +1127,7 @@ Communication style:
                 console.log(`[Router] Dispatched to: ${agentType} `);
 
                 // Select Model & Tools based on Agent Type
-                let selectedModel = "nex-agi/deepseek-v3.1-nex-n1:free"; // Default Analyst
+                let selectedModel = "nex-agi/deepseek-v3.1-nex-n1:free"; // Default Analyst (DeepSeek V3)
                 let useTools = true;
 
                 if (agentType === 'CODER') {
