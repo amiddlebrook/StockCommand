@@ -17,8 +17,9 @@ import { OpenRouterLLM, ChainBuilder } from './lib/langchain/orchestrator';
 // Two-Plane Architecture Imports
 import { EntityLockDO } from './src/do/EntityLockDO';
 import { getAllClocksFromCache, getTickerFromCache, addToWatchlist, getUserWatchlist } from './src/lib/caching';
-import { refreshClock } from './src/lib/refresh/clock-refresher';
-import { refreshTicker } from './src/lib/refresh/ticker-refresher';
+import { refreshClock, refreshAllClocks } from './src/lib/refresh/clock-refresher';
+import { refreshTicker, refreshTickers } from './src/lib/refresh/ticker-refresher';
+import { batchGetTickers } from './src/lib/caching';
 import { CLOCK_DEFINITIONS, BUCKET_CONFIG } from './src/lib/types/artifacts';
 
 // Export Durable Objects for Cloudflare
@@ -289,16 +290,68 @@ export default {
         }
 
         // =============================================================================
-        // END OF V2 API - Fall through to Legacy / Chat
+        // QUOTES API - Frontend-facing endpoint
         // =============================================================================
 
-        // Continue to check for other routes...
+        // GET /api/quotes - Batch get quotes (used by TraditionalView)
+        if (url.pathname === "/api/quotes" && request.method === "GET") {
+            try {
+                const symbolsParam = url.searchParams.get('symbols') || '';
+                const symbols = symbolsParam.split(',').filter(s => s.trim()).map(s => s.trim().toUpperCase());
 
+                if (symbols.length === 0) {
+                    return new Response(JSON.stringify({}), {
+                        headers: { ...corsHeaders, "Content-Type": "application/json" }
+                    });
+                }
 
-        // --- EXISTING ROUTES ---
+                // Get from cache
+                const { tickers, needsRefresh } = await batchGetTickers(env.STOCK_CACHE_KV, symbols, 'brief');
 
+                // Build response in format frontend expects
+                const quotes: Record<string, any> = {};
+                for (const symbol of symbols) {
+                    const ticker = tickers[symbol];
+                    if (ticker) {
+                        quotes[symbol] = {
+                            price: ticker.price || 0,
+                            change: ticker.change || 0,
+                            changePercent: ticker.changePercent || 0,
+                            volume: 0,
+                            lastUpdated: ticker.createdAt,
+                        };
+                    } else {
+                        // No cache - return zeros, frontend will show loading state
+                        quotes[symbol] = { price: 0, change: 0, changePercent: 0, volume: 0 };
+                    }
+                }
 
+                // Trigger background refresh for stale/missing data
+                if (needsRefresh.length > 0) {
+                    const apiKey = env.STOCK_COMMAND_OPENROUTER_API_KEY;
+                    if (apiKey) {
+                        ctx.waitUntil(
+                            refreshTickers(needsRefresh.slice(0, 10), env.STOCK_CACHE_KV, apiKey)
+                                .catch(e => console.error('[Quotes] Background refresh failed:', e))
+                        );
+                    }
+                }
 
+                return new Response(JSON.stringify(quotes), {
+                    headers: { ...corsHeaders, "Content-Type": "application/json" }
+                });
+            } catch (e: any) {
+                console.error('[/api/quotes] Error:', e);
+                return new Response(JSON.stringify({ error: e.message }), {
+                    status: 500,
+                    headers: { ...corsHeaders, "Content-Type": "application/json" }
+                });
+            }
+        }
+
+        // =============================================================================
+        // CHAT API
+        // =============================================================================
 
         if (url.pathname === "/api/chat" && request.method === "POST") {
             try {
@@ -594,13 +647,33 @@ INSTRUCTIONS:
         return new Response("StockCommand Worker Active. Endpoints: /api/auth/*, /api/agent/*, /api/chat", { status: 200 });
     },
 
-    // BACKGROUND SCANNER (Cron Trigger)
-    // This runs autonomously to check markets and generate "Revenue" (Agent Action)
-    // BACKGROUND SCANNER (Cron Trigger) - REMOVED LEGACY SCANNER
-    // TODO: Implement V2 Swarm Cron if needed
+    // BACKGROUND CRON - Refresh clocks and popular tickers
     async scheduled(event: any, env: Env, ctx: any) {
-        // Legacy scanner removed.
-        // Future: Trigger AgentSwarmDO for periodic updates?
+        console.log('[Cron] Starting scheduled refresh...');
+        const apiKey = env.STOCK_COMMAND_OPENROUTER_API_KEY;
+
+        if (!apiKey) {
+            console.error('[Cron] No API key found!');
+            return;
+        }
+
+        try {
+            // Refresh all clocks in parallel
+            const clockResult = await refreshAllClocks(env.STOCK_CACHE_KV, apiKey);
+            console.log(`[Cron] Clocks: ${clockResult.succeeded} succeeded, ${clockResult.failed} failed`);
+
+            // Refresh sector ETFs + popular tickers
+            const prioritySymbols = [
+                'SPY', 'QQQ', 'DIA', 'IWM',  // Indices
+                'XLK', 'XLF', 'XLE', 'XLV', 'XLI', 'XLP', 'XLY', 'XLB', 'XLU', 'XLRE', 'XLC',  // Sectors
+                'NVDA', 'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'META', 'TSLA',  // Magnificent 7
+            ];
+            const tickerResult = await refreshTickers(prioritySymbols, env.STOCK_CACHE_KV, apiKey);
+            console.log(`[Cron] Tickers: ${tickerResult.succeeded} succeeded, ${tickerResult.failed} failed`);
+
+        } catch (error: any) {
+            console.error('[Cron] Error:', error.message);
+        }
     },
 
     // QUEUE CONSUMER - Async background processing
