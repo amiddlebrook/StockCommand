@@ -23,7 +23,7 @@ import {
     getGlobalLeaderboard,
     getSharedStrategies
 } from './lib/social';
-import { SwarmDataService } from './lib/agent/market-data';
+
 
 // New Architecture Imports
 import { AgentSwarmDO } from './lib/swarm/AgentSwarmDO';
@@ -405,76 +405,7 @@ export default {
             }
         }
 
-        // GET /api/quotes - Real-time quotes via Swarm Agents
-        if (url.pathname.startsWith("/api/quotes") && request.method === "GET") {
-            try {
-                const symbolsParam = url.searchParams.get("symbols");
-                if (!symbolsParam) return new Response("Missing symbols", { status: 400 });
 
-                const symbols = symbolsParam.split(",").map(s => s.trim().toUpperCase());
-
-                // Use Swarm Service for data
-                const swarmService = new SwarmDataService(env.OPENROUTER_DEEPSEEK_NEX_API_KEY || '');
-
-                // Fetch all symbols in one batch call (querySwarm expects an array)
-                // We use '1d' timeline for quotes as it represents "today's price action"
-                const swarmResults = await swarmService.querySwarm(symbols, '1d');
-
-                const quoteMap: Record<string, any> = {};
-                symbols.forEach(sym => {
-                    const data = swarmResults[sym] || {};
-                    quoteMap[sym] = {
-                        symbol: sym,
-                        price: data.price || 0,
-                        change: data.change || 0,
-                        changePercent: data.changePercent || 0,
-                        volume: data.volume || 0,
-                        // Synthesize additional quote fields from agent data
-                        timestamp: Date.now(),
-                        name: sym // Agent usually knows name but we keep it simple for now
-                    };
-                });
-
-                return new Response(JSON.stringify(quoteMap), {
-                    headers: { ...corsHeaders, "Content-Type": "application/json" }
-                });
-            } catch (e: any) {
-                console.error("Error in /api/quotes:", e);
-                return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: corsHeaders });
-            }
-        }
-
-        // GET /api/swarm/intraday - Agent-Generated History
-        if (url.pathname === "/api/swarm/intraday" && request.method === "GET") {
-            const symbol = url.searchParams.get("symbol");
-            const interval = url.searchParams.get("interval") || "5min";
-
-            if (!symbol) return new Response("Missing symbol", { status: 400 });
-
-            // Use Swarm Service
-            const swarmService = new SwarmDataService(env.OPENROUTER_DEEPSEEK_NEX_API_KEY || '');
-            const history = await swarmService.generateIntradayHistory(symbol, interval);
-
-            return new Response(JSON.stringify({ data: history }), {
-                headers: { ...corsHeaders, "Content-Type": "application/json" }
-            });
-        }
-
-        // GET /api/intraday - Synthetic/Agent History for Charts
-        if (url.pathname === "/api/intraday" && request.method === "GET") {
-            const symbol = url.searchParams.get("symbol");
-            const interval = url.searchParams.get("interval") || "5min";
-
-            if (!symbol) return new Response("Missing symbol", { status: 400 });
-
-            // Use Swarm Service
-            const swarmService = new SwarmDataService(env.OPENROUTER_DEEPSEEK_NEX_API_KEY || '');
-            const history = await swarmService.generateIntradayHistory(symbol, interval);
-
-            return new Response(JSON.stringify({ data: history }), {
-                headers: { ...corsHeaders, "Content-Type": "application/json" }
-            });
-        }
 
         // --- SUBSCRIPTION ROUTES ---
 
@@ -1076,201 +1007,8 @@ export default {
 
         // --- EXISTING ROUTES ---
 
-        if (url.pathname === "/api/agent/scan" && request.method === "POST") {
-            try {
-                const body = await request.json() as any;
 
-                // Run the agent
-                const result = await runAgentWorkflow(env, body.scope, body.target, body.tool, body.strategies, body.timeline);
 
-                // Persist the result to KV
-                if (env.STOCK_CACHE_KV) {
-                    const storedData = {
-                        ...result,
-                        timestamp: new Date().toISOString(),
-                        scope: body.scope,
-                        target: body.target,
-                        tool: body.tool,
-                        timeline: body.timeline
-                    };
-                    await env.STOCK_CACHE_KV.put("latest_agent_run", JSON.stringify(storedData));
-                }
-
-                return new Response(JSON.stringify(result), {
-                    headers: {
-                        "Content-Type": "application/json",
-                        "Access-Control-Allow-Origin": "*"
-                    }
-                });
-            } catch (e: any) {
-                return new Response(JSON.stringify({ error: e.message }), {
-                    status: 500,
-                    headers: { "Access-Control-Allow-Origin": "*" }
-                });
-            }
-        }
-
-        if (url.pathname === "/api/agent/latest" && request.method === "GET") {
-            if (!env.STOCK_CACHE_KV) {
-                return new Response(JSON.stringify({ error: "No KV binding" }), { status: 500 });
-            }
-            const data = await env.STOCK_CACHE_KV.get("latest_agent_run");
-            return new Response(data || JSON.stringify({ analysis: null, actions: [] }), {
-                headers: {
-                    "Content-Type": "application/json",
-                    "Access-Control-Allow-Origin": "*"
-                }
-            });
-        }
-
-        // GET /api/quote - Get real-time stock quote via LLM
-        if (url.pathname === "/api/quote" && request.method === "GET") {
-            try {
-                const symbol = url.searchParams.get("symbol");
-                if (!symbol) {
-                    return new Response(JSON.stringify({ error: "Missing symbol parameter" }), {
-                        status: 400,
-                        headers: { ...corsHeaders, "Content-Type": "application/json" }
-                    });
-                }
-
-                // Use SwarmDataService for LLM-based quote
-                const swarmService = new SwarmDataService(env.OPENROUTER_DEEPSEEK_NEX_API_KEY || '');
-                const swarmData = await swarmService.querySwarm([symbol.toUpperCase()], '1d');
-                const data = swarmData[symbol.toUpperCase()] || {};
-
-                return new Response(JSON.stringify({
-                    symbol: symbol.toUpperCase(),
-                    price: data.price || 0,
-                    changePercent: data.changePercent || 0,
-                    volume: data.volume || 0,
-                    timestamp: Date.now()
-                }), {
-                    headers: { ...corsHeaders, "Content-Type": "application/json" }
-                });
-            } catch (e: any) {
-                return new Response(JSON.stringify({ error: e.message }), {
-                    status: 500,
-                    headers: { ...corsHeaders, "Content-Type": "application/json" }
-                });
-            }
-        }
-
-        // GET /api/quotes - Get multiple stock quotes in batch via LLM
-        if (url.pathname === "/api/quotes" && request.method === "GET") {
-            try {
-                const symbols = url.searchParams.get("symbols")?.split(",") || [];
-                if (symbols.length === 0) {
-                    return new Response(JSON.stringify({ error: "Missing symbols parameter" }), {
-                        status: 400,
-                        headers: { ...corsHeaders, "Content-Type": "application/json" }
-                    });
-                }
-
-                // Use SwarmDataService for LLM-based quotes
-                const swarmService = new SwarmDataService(env.OPENROUTER_DEEPSEEK_NEX_API_KEY || '');
-                const symbolList = symbols.slice(0, 10).map(s => s.toUpperCase());
-                const swarmData = await swarmService.querySwarm(symbolList, '1d');
-
-                const quotes: Record<string, any> = {};
-                symbolList.forEach(symbol => {
-                    const data = swarmData[symbol] || {};
-                    quotes[symbol] = {
-                        symbol,
-                        price: data.price || 0,
-                        changePercent: data.changePercent || 0,
-                        volume: data.volume || 0,
-                        timestamp: Date.now()
-                    };
-                });
-
-                return new Response(JSON.stringify(quotes), {
-                    headers: { ...corsHeaders, "Content-Type": "application/json" }
-                });
-            } catch (e: any) {
-                return new Response(JSON.stringify({ error: e.message }), {
-                    status: 500,
-                    headers: { ...corsHeaders, "Content-Type": "application/json" }
-                });
-            }
-        }
-
-        // GET /api/intraday - Get intraday price data for charts via LLM
-        if (url.pathname === "/api/intraday" && request.method === "GET") {
-            try {
-                const symbol = url.searchParams.get("symbol");
-                const interval = url.searchParams.get("interval") || "5min";
-
-                if (!symbol) {
-                    return new Response(JSON.stringify({ error: "Missing symbol parameter" }), {
-                        status: 400,
-                        headers: { ...corsHeaders, "Content-Type": "application/json" }
-                    });
-                }
-
-                // Use SwarmDataService for LLM-based intraday data
-                const swarmService = new SwarmDataService(env.OPENROUTER_DEEPSEEK_NEX_API_KEY || '');
-                const data = await swarmService.generateIntradayHistory(symbol.toUpperCase(), interval);
-
-                return new Response(JSON.stringify({ symbol: symbol.toUpperCase(), interval, data }), {
-                    headers: { ...corsHeaders, "Content-Type": "application/json" }
-                });
-            } catch (e: any) {
-                return new Response(JSON.stringify({ error: e.message }), {
-                    status: 500,
-                    headers: { ...corsHeaders, "Content-Type": "application/json" }
-                });
-            }
-        }
-
-        if (url.pathname === "/api/agent/analyze" && request.method === "GET") {
-            try {
-                const ticker = url.searchParams.get("ticker");
-                if (!ticker) throw new Error("Missing ticker");
-
-                // Use SwarmDataService for LLM-based data
-                const apiKey = env.OPENROUTER_DEEPSEEK_NEX_API_KEY;
-                if (!apiKey) throw new Error("Missing API Key");
-
-                const swarmService = new SwarmDataService(apiKey);
-                const swarmData = await swarmService.querySwarm([ticker.toUpperCase()], '1d');
-                const quoteData = swarmData[ticker.toUpperCase()] || {};
-
-                // Call LLM for instant analysis
-                const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-                    method: "POST",
-                    headers: {
-                        "Authorization": `Bearer ${apiKey}`,
-                        "Content-Type": "application/json",
-                        "HTTP-Referer": "https://stockcommand.workers.dev",
-                        "X-Title": "StockCommand Analyst"
-                    },
-                    body: JSON.stringify({
-                        model: "nex-agi/deepseek-v3.1-nex-n1:free",
-                        messages: [
-                            { role: "system", content: "You are a Senior Market Analyst. Analyze the provided stock data. Be extremely concise. Max 2 sentences. Focus on sentiment and trend." },
-                            { role: "user", content: `Analyze ${ticker}. Price: $${quoteData.price || 0}. Change: ${quoteData.changePercent || 0}%.` }
-                        ],
-                        max_tokens: 150
-                    })
-                });
-
-                const data: any = await response.json();
-                const analysis = data.choices?.[0]?.message?.content || "Analysis unavailable.";
-
-                return new Response(JSON.stringify({
-                    symbol: ticker,
-                    price: quoteData.price || 0,
-                    analysis,
-                    quote: { price: quoteData.price || 0, changePercent: quoteData.changePercent || 0, volume: quoteData.volume || 0 }
-                }), {
-                    headers: { ...corsHeaders, "Content-Type": "application/json" }
-                });
-
-            } catch (e: any) {
-                return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: corsHeaders });
-            }
-        }
 
         if (url.pathname === "/api/chat" && request.method === "POST") {
             try {
@@ -1439,7 +1177,8 @@ Communication style:
                     messages.push(data.choices[0].message);
 
                     // Use SwarmDataService for LLM-based data
-                    const swarmService = new SwarmDataService(apiKey);
+                    // Use cache for tool calls
+                    // const swarmService = new SwarmDataService(apiKey);
 
                     for (const toolCall of toolCalls) {
                         if (toolCall.function.name === "get_stock_quote") {
@@ -1447,9 +1186,9 @@ Communication style:
                                 const args = JSON.parse(toolCall.function.arguments);
                                 console.log(`[Agent] Calling Tool: get_stock_quote(${args.symbol})`);
 
-                                // Execute the tool via SwarmDataService
-                                const swarmData = await swarmService.querySwarm([args.symbol.toUpperCase()], '1d');
-                                const quoteData = swarmData[args.symbol.toUpperCase()] || {};
+                                // Execute the tool via Cache
+                                const result = await getTickerFromCache(env.STOCK_CACHE_KV, args.symbol, 'brief');
+                                const quoteData: any = result.data || {};
                                 const quote = {
                                     symbol: args.symbol.toUpperCase(),
                                     price: quoteData.price || 0,
