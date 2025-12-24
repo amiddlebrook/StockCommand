@@ -19,6 +19,7 @@ export interface CompletionOptions {
     maxTokens?: number;
     stream?: boolean;
     jsonMode?: boolean;
+    plugins?: any[];
 }
 
 /**
@@ -45,6 +46,7 @@ export async function complete(
             temperature,
             max_tokens: maxTokens,
             response_format: jsonMode ? { type: 'json_object' } : undefined,
+            plugins: options.plugins,
         }),
     });
 

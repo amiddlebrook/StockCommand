@@ -81,7 +81,8 @@ export async function raceModels(
     apiKey: string,
     models: string[],
     baseUrl?: string,
-    timeoutMs: number = 5000
+    timeoutMs: number = 5000,
+    plugins: any[] = []
 ): Promise<RaceResult> {
     const startTime = Date.now();
 
@@ -97,7 +98,7 @@ export async function raceModels(
                     const config: OpenRouterConfig = { apiKey, model, baseUrl };
                     const response = await complete(config, [
                         { role: 'user', content: prompt },
-                    ], { temperature: 0.3, maxTokens: 1000 });
+                    ], { temperature: 0.3, maxTokens: 1000, plugins });
 
                     // Only return if we got a valid response
                     if (response && response.length > 10) {
@@ -171,16 +172,16 @@ export async function fastClockAnalysis(
 // SPEED-OPTIMIZED TICKER RESEARCH
 // =============================================================================
 
-const TICKER_PROMPT = `You are a stock analyst. Provide a brief on this ticker. Respond ONLY in JSON:
-{"bullets":["point1","point2","point3"],"riskNotes":["risk1"],"sentiment":"bullish|bearish|neutral"}
+const TICKER_PROMPT = `You are a stock analyst. Use search to find the latest real-time data for this ticker. Respond ONLY in JSON:
+{"price":123.45,"change":1.23,"changePercent":1.5,"volume":1000000,"bullets":["point1","point2"],"sentiment":"bullish|bearish|neutral"}
 
-Be concise. Max 3 bullets, 2 risks.`;
+IMPORTANT: You MUST search for the LATEST price.`;
 
 export async function fastTickerAnalysis(
     symbol: string,
     apiKey: string,
     baseUrl?: string
-): Promise<{ bullets: string[]; riskNotes: string[]; sentiment: string; latencyMs: number }> {
+): Promise<{ price: number; change: number; changePercent: number; volume: number; bullets: string[]; riskNotes: string[]; sentiment: string; latencyMs: number }> {
     const startTime = Date.now();
 
     // Race all fast models
@@ -189,12 +190,17 @@ export async function fastTickerAnalysis(
         apiKey,
         [SPEED_MODELS.mimoFlash, SPEED_MODELS.deepseekNex, SPEED_MODELS.deepResearch],
         baseUrl,
-        4000 // 4 second timeout
+        10000, // Increased timeout for search
+        [{ id: "web" }] // Enable Web Search
     );
 
-    const parsed = parseJsonResponse<{ bullets: string[]; riskNotes: string[]; sentiment: string }>(result.content);
+    const parsed = parseJsonResponse<{ price: number; change: number; changePercent: number; volume: number; bullets: string[]; riskNotes: string[]; sentiment: string }>(result.content);
 
     return {
+        price: parsed?.price || 0,
+        change: parsed?.change || 0,
+        changePercent: parsed?.changePercent || 0,
+        volume: parsed?.volume || 0,
         bullets: parsed?.bullets || ['Loading analysis...'],
         riskNotes: parsed?.riskNotes || [],
         sentiment: parsed?.sentiment || 'neutral',
