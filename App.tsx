@@ -376,6 +376,78 @@ const AppContent: React.FC = () => {
   useEffect(() => { StorageService.saveResearchHistory(researchHistory); }, [researchHistory]);
   useEffect(() => { StorageService.saveWatchlist(symbols); }, [symbols]);
 
+  // =============================================================================
+  // AUTO-INITIALIZATION ON MOUNT - Load Sectors, Clocks, News automatically
+  // =============================================================================
+  useEffect(() => {
+    const initializeData = async () => {
+      console.log('[Auto-Init] Starting automatic data initialization...');
+
+      // 1. Trigger refresh for all clocks (background, fire-and-forget)
+      const clockCodes = [
+        'CLOCK_LIQUIDITY_CYCLE', 'CLOCK_COMMODITY_CYCLE', 'CLOCK_VIX_REGIME',
+        'CLOCK_INFLATION_TREND', 'CLOCK_CREDIT_IMPULSE', 'CLOCK_DOLLAR_STRENGTH'
+      ];
+
+      // Fire all clock refreshes in parallel (background)
+      clockCodes.forEach(code => {
+        fetch('/api/v2/refresh', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: 'clock', id: code })
+        }).catch(e => console.warn(`[Auto-Init] Clock refresh failed for ${code}:`, e));
+      });
+
+      // 2. Pre-fetch sector ETF quotes for immediate display
+      const sectorSymbols = [...Object.values(SECTOR_ETFS), 'SPY', 'QQQ', 'IWM', 'VIX'];
+      try {
+        const quotesRes = await fetch(`/api/quotes?symbols=${sectorSymbols.join(',')}`);
+        if (quotesRes.ok) {
+          console.log('[Auto-Init] Sector ETF quotes loaded successfully');
+        }
+      } catch (e) {
+        console.warn('[Auto-Init] Sector quotes pre-fetch failed:', e);
+      }
+
+      // 3. Trigger first ticker in watchlist for immediate analysis
+      if (symbols.length > 0) {
+        const firstSymbol = symbols[0];
+        fetch('/api/v2/refresh', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: 'ticker', id: firstSymbol })
+        }).catch(e => console.warn(`[Auto-Init] Ticker refresh failed for ${firstSymbol}:`, e));
+      }
+
+      // 4. Fetch latest clock states from cache (for immediate UI population)
+      try {
+        const clocksRes = await fetch('/api/v2/clocks');
+        if (clocksRes.ok) {
+          const data = await clocksRes.json() as { clocks: any[] };
+          if (data.clocks && data.clocks.length > 0) {
+            setMarketClocks(prev => {
+              const updated = [...prev];
+              data.clocks.forEach((c: any) => {
+                const idx = updated.findIndex(oc => oc.code === c.code);
+                if (idx >= 0) {
+                  updated[idx] = { ...updated[idx], status: c.status, reason: c.reason, lastUpdated: c.lastUpdated };
+                }
+              });
+              return updated;
+            });
+            console.log('[Auto-Init] Clock states loaded from cache');
+          }
+        }
+      } catch (e) {
+        console.warn('[Auto-Init] Clock state fetch failed:', e);
+      }
+
+      console.log('[Auto-Init] Initialization complete');
+    };
+
+    initializeData();
+  }, []); // Run once on mount
+
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const loadedSnapshotsRef = useRef<Set<string>>(new Set());
