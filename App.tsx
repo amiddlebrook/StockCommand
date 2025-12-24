@@ -45,7 +45,7 @@ import { fetchStockSnapshot } from './services/stockData';
 import { UNIVERSE, SECTOR_ETFS } from './lib/agent/universe';
 import { MarketClock, UserStrategy } from './lib/agent/types';
 import { JobProvider, useJobContext } from './contexts/JobContext';
-import { getClocksForEntity, getGlobalClocks } from './lib/clockData';
+// import { getClocksForEntity, getGlobalClocks } from './lib/clockData';
 import { StorageService } from './lib/storage';
 
 // Logic Pipeline Analysis Steps (Mocked based on activity)
@@ -164,7 +164,7 @@ const AppContent: React.FC = () => {
 
   const [marketClocks, setMarketClocks] = useState<MarketClock[]>(() => {
     const saved = StorageService.loadClocks();
-    return saved || getGlobalClocks();
+    return saved || []; // getGlobalClocks() removed
   });
 
   const [researchHistory, setResearchHistory] = useState<Record<string, { content: string; timestamp: number; status?: string }[]>>(() => StorageService.loadResearchHistory());
@@ -604,7 +604,7 @@ const AppContent: React.FC = () => {
           // Add to symbols if not already there
           if (!symbols.includes(potentialTicker)) {
             setSymbols(prev => [...prev, potentialTicker]);
-            const newClocks = getClocksForEntity('TICKER', potentialTicker);
+            const newClocks: any[] = []; // getClocksForEntity('TICKER', potentialTicker);
             setMarketClocks(prev => [...prev, ...newClocks]);
           }
 
@@ -632,7 +632,7 @@ const AppContent: React.FC = () => {
               setSymbols(prev => [...prev, detectedTicker]);
               // Auto-add to a "Watchlist" sector if not exists (Logic stub)
               // Trigger immediate Clock Generation for this ticker
-              const newClocks = getClocksForEntity('TICKER', detectedTicker);
+              const newClocks: any[] = []; // getClocksForEntity('TICKER', detectedTicker);
               setMarketClocks(prev => [...prev, ...newClocks]);
             }
           }

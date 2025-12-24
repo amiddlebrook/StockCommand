@@ -3,7 +3,7 @@ import { Icon } from './Icon';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, Cell } from 'recharts';
 import { UNIVERSE, SECTOR_ETFS, SectorName } from '../lib/agent/universe';
 import { MarketClock } from '../lib/agent/types';
-import { getClocksForEntity } from '../lib/clockData';
+// import { getClocksForEntity } from '../lib/clockData';
 import { StorageService } from '../lib/storage';
 
 interface TraditionalViewProps {
@@ -69,7 +69,7 @@ interface AnalysisData {
 
 // Get all clock statuses for a ticker (4 metrics)
 function getTickerClocks(symbol: string): TickerClocks {
-    const clocks = getClocksForEntity('TICKER', symbol);
+    const clocks: any[] = []; // getClocksForEntity('TICKER', symbol);
 
     // Map clock codes to their statuses
     const findClockStatus = (suffix: string): 'green' | 'yellow' | 'red' => {

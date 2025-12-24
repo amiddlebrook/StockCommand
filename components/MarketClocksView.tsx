@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Icon } from './Icon';
 import { MarketClock } from '../lib/agent/types';
-import { getClocksForEntity } from '../lib/clockData';
+// import { getClocksForEntity } from '../lib/clockData';
 
 interface MarketClocksViewProps {
     clocks: MarketClock[];
@@ -85,7 +85,7 @@ export const MarketClocksView: React.FC<MarketClocksViewProps> = ({ clocks, watc
                     ) : (
                         watchlist.map(symbol => {
                             const isExpanded = expandedTickers.has(symbol);
-                            const subClocks = isExpanded ? getClocksForEntity('TICKER', symbol) : [];
+                            const subClocks: any[] = []; // isExpanded ? getClocksForEntity('TICKER', symbol) : [];
 
                             return (
                                 <div key={symbol} className="border border-slate-800/50 bg-slate-950/50 rounded-lg overflow-hidden">
