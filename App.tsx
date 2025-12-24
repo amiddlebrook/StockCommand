@@ -290,11 +290,10 @@ const AppContent: React.FC = () => {
     // Implicit Agent: Always scans, but respects freshness intervals per timeline
     // if (!isAgentEnabled) return;
 
-    // 1. Build the Master Queue (All Stocks + All Sectors)
+    // 1. Build the Master Queue (User's watchlist + Sectors only)
     const masterQueue = [
       ...symbols, // User's watchlist first
-      ...Object.values(SECTOR_ETFS), // Then Sectors
-      ...UNIVERSE.map(u => u.symbol) // Then the rest of the Universe
+      ...Object.values(SECTOR_ETFS), // Then Sector ETFs
     ];
 
     // Remove duplicates
@@ -895,7 +894,7 @@ const AppContent: React.FC = () => {
             ) : activeTab === 'settings' ? (
               <div className="h-full overflow-hidden"><SettingsView /></div>
             ) : activeTab === 'market-clocks' ? (
-              <div className="h-full overflow-y-auto"><MarketClocksView clocks={marketClocks} onClockClick={() => { }} onPinClock={() => { }} /></div>
+              <div className="h-full overflow-y-auto"><MarketClocksView clocks={marketClocks} watchlist={symbols} onClockClick={() => { }} onPinClock={() => { }} /></div>
             ) : activeTab === 'competitions' ? (
               <div className="h-full overflow-y-auto"><CompetitionsView clocks={marketClocks} onSubmitPortfolio={() => { }} /></div>
             ) : activeTab === 'creator' ? (

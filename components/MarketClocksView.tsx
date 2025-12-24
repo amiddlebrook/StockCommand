@@ -1,17 +1,16 @@
 import React, { useMemo, useState } from 'react';
 import { Icon } from './Icon';
-import { GlassButton } from './ui/GlassButton';
 import { MarketClock } from '../lib/agent/types';
-import { UNIVERSE } from '../lib/agent/universe';
 import { getClocksForEntity } from '../lib/clockData';
 
 interface MarketClocksViewProps {
     clocks: MarketClock[];
+    watchlist: string[]; // User's symbols - passed from parent
     onClockClick: (clock: MarketClock) => void;
     onPinClock: (clock: MarketClock) => void;
 }
 
-export const MarketClocksView: React.FC<MarketClocksViewProps> = ({ clocks, onClockClick, onPinClock }) => {
+export const MarketClocksView: React.FC<MarketClocksViewProps> = ({ clocks, watchlist, onClockClick, onPinClock }) => {
 
     // Group clocks by category - EXCLUDE ticker-specific clocks (those with tickerSymbol)
     const groupedClocks = useMemo(() => {
@@ -66,52 +65,59 @@ export const MarketClocksView: React.FC<MarketClocksViewProps> = ({ clocks, onCl
                 </div>
             </div>
 
-            {/* 1. TICKER CLOCKS SECTION */}
+            {/* 1. TICKER CLOCKS SECTION - Uses user's watchlist */}
             <details className="group border border-slate-800 bg-slate-900/20 rounded-xl overflow-hidden" open>
                 <summary className="flex items-center justify-between p-4 cursor-pointer hover:bg-slate-800/50 transition-colors list-none select-none">
                     <h3 className="text-sm font-bold text-white uppercase tracking-widest flex items-center gap-2">
                         <Icon icon="chevron-down" className="w-4 h-4 transition-transform group-open:rotate-180" />
-                        ACTIVE TICKER MONITORS
+                        YOUR TICKER MONITORS
                     </h3>
-                    <span className="text-xs text-slate-500 font-mono">{UNIVERSE.length} TRACKED</span>
+                    <span className="text-xs text-slate-500 font-mono">{watchlist.length} TRACKED</span>
                 </summary>
 
                 <div className="p-4 border-t border-slate-800/50 space-y-2">
-                    {UNIVERSE.map(ticker => {
-                        const isExpanded = expandedTickers.has(ticker.symbol);
-                        const subClocks = isExpanded ? getClocksForEntity('TICKER', ticker.symbol) : [];
+                    {watchlist.length === 0 ? (
+                        <div className="text-center py-8">
+                            <Icon icon="plus" className="w-10 h-10 text-slate-600 mx-auto mb-3" />
+                            <p className="text-sm text-slate-500">No tickers tracked yet</p>
+                            <p className="text-xs text-slate-600 mt-1">Add tickers using the search or chat</p>
+                        </div>
+                    ) : (
+                        watchlist.map(symbol => {
+                            const isExpanded = expandedTickers.has(symbol);
+                            const subClocks = isExpanded ? getClocksForEntity('TICKER', symbol) : [];
 
-                        return (
-                            <div key={ticker.symbol} className="border border-slate-800/50 bg-slate-950/50 rounded-lg overflow-hidden">
-                                <div
-                                    onClick={() => toggleTicker(ticker.symbol)}
-                                    className="flex items-center justify-between p-3 cursor-pointer hover:bg-slate-900 transition-colors"
-                                >
-                                    <div className="flex items-center gap-3">
-                                        <div className={`w-2 h-2 rounded-full ${isExpanded ? 'bg-cyan-500 shadow-[0_0_8px_rgba(6,182,212,0.8)]' : 'bg-slate-700'}`}></div>
-                                        <span className="font-bold text-white font-mono">{ticker.symbol}</span>
-                                        <span className="text-xs text-slate-500 ml-2">{ticker.role}</span>
+                            return (
+                                <div key={symbol} className="border border-slate-800/50 bg-slate-950/50 rounded-lg overflow-hidden">
+                                    <div
+                                        onClick={() => toggleTicker(symbol)}
+                                        className="flex items-center justify-between p-3 cursor-pointer hover:bg-slate-900 transition-colors"
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <div className={`w-2 h-2 rounded-full ${isExpanded ? 'bg-cyan-500 shadow-[0_0_8px_rgba(6,182,212,0.8)]' : 'bg-slate-700'}`}></div>
+                                            <span className="font-bold text-white font-mono">{symbol}</span>
+                                        </div>
+                                        <Icon icon="chevron-down" className={`w-3 h-3 text-slate-600 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
                                     </div>
-                                    <Icon icon="chevron-down" className={`w-3 h-3 text-slate-600 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-                                </div>
 
-                                {/* Sub-clocks Grid for Ticker */}
-                                {isExpanded && (
-                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 p-3 bg-black/20 border-t border-slate-800/50 animate-fadeIn">
-                                        {subClocks.map(clock => (
-                                            <div key={clock.code} className="bg-slate-900 p-2 rounded border border-slate-800 flex flex-col gap-1 hover:border-cyan-900 transition-colors cursor-pointer" onClick={() => onClockClick(clock)}>
-                                                <span className="text-[10px] text-slate-500 uppercase">{clock.label}</span>
-                                                <div className="flex items-center justify-between">
-                                                    <span className="text-xs font-bold text-white">{clock.reason || "Neutral"}</span>
-                                                    <div className={`w-1.5 h-1.5 rounded-full ${clock.status === 'green' ? 'bg-green-500' : clock.status === 'red' ? 'bg-red-500' : 'bg-slate-600'}`}></div>
+                                    {/* Sub-clocks Grid for Ticker */}
+                                    {isExpanded && (
+                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 p-3 bg-black/20 border-t border-slate-800/50 animate-fadeIn">
+                                            {subClocks.map(clock => (
+                                                <div key={clock.code} className="bg-slate-900 p-2 rounded border border-slate-800 flex flex-col gap-1 hover:border-cyan-900 transition-colors cursor-pointer" onClick={() => onClockClick(clock)}>
+                                                    <span className="text-[10px] text-slate-500 uppercase">{clock.label}</span>
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="text-xs font-bold text-white">{clock.reason || "Neutral"}</span>
+                                                        <div className={`w-1.5 h-1.5 rounded-full ${clock.status === 'green' ? 'bg-green-500' : clock.status === 'red' ? 'bg-red-500' : 'bg-slate-600'}`}></div>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        );
-                    })}
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })
+                    )}
                 </div>
             </details>
 
