@@ -790,6 +790,30 @@ const AppContent: React.FC = () => {
             </button>
           )}
 
+          {/* GLOBAL SCAN TRIGGER */}
+          <button
+            onClick={async (e) => {
+              const btn = e.currentTarget;
+              const originalText = btn.innerHTML;
+              btn.innerHTML = '<span class="animate-spin">↻</span>';
+              btn.disabled = true;
+              try {
+                await fetch('/api/admin/scan');
+                // Don't fully reload, just refetch keys if possible, but reload is safest for full refresh
+                window.location.reload();
+              } catch (err) {
+                console.error("Manual scan failed", err);
+                btn.innerHTML = '❌';
+                setTimeout(() => { btn.innerHTML = originalText; btn.disabled = false; }, 2000);
+              }
+            }}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded transition-all bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500 hover:text-white"
+            title="Trigger Full System Scan"
+          >
+            <Icon icon="refresh" className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">SCAN</span>
+          </button>
+
           {/* Data Freshness Indicator */}
           <div className="flex items-center gap-1.5 mr-3 bg-slate-900/50 px-2 py-1 rounded border border-slate-800/50">
             <div className={`w-2 h-2 rounded-full ${scanningTarget ? 'bg-yellow-400 animate-pulse shadow-[0_0_8px_rgba(250,204,21,0.6)]' :
