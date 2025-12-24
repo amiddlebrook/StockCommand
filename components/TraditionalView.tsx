@@ -66,52 +66,6 @@ interface AnalysisData {
     isLoading: boolean;
 }
 
-// Mock price data generator - structured for future API integration
-function generateMockPriceData(symbol: string): PricePoint[] {
-    // Seed based on symbol for consistency across renders
-    const seed = symbol.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    const basePrice = (seed % 200) + 50;
-    return Array.from({ length: 30 }, (_, i) => ({
-        day: i + 1,
-        price: basePrice + Math.sin((i + seed) / 3) * 10 + ((seed * i) % 5),
-        volume: Math.floor(((seed * (i + 1)) % 900000) + 100000),
-    }));
-}
-
-// Generate mock sector performance (ETF % change relative to SPY)
-// Scale values based on time period
-function generateSectorPerformance(period: TimePeriod): SectorPerformance[] {
-    const sectors = Object.entries(SECTOR_ETFS) as [SectorName, string][];
-
-    // Scale factor based on period (longer periods = larger swings)
-    const periodMultiplier: Record<TimePeriod, number> = {
-        '1D': 1,
-        '1W': 2,
-        '1M': 3,
-        '1Y': 5,
-        '5Y': 8
-    };
-    const multiplier = periodMultiplier[period];
-
-    return sectors.map(([sectorName, etf]) => {
-        // Seed based on sector name + period for varied results
-        const seed = sectorName.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) + period.charCodeAt(0);
-        const baseChange = ((seed % 100) - 50) / 10; // -5% to +5%
-        const changePercent = baseChange * multiplier;
-        const status: 'green' | 'yellow' | 'red' =
-            changePercent > 1 ? 'green' :
-                changePercent < -1 ? 'red' : 'yellow';
-
-        return {
-            name: sectorName.slice(0, 12),
-            fullName: sectorName,
-            etf,
-            changePercent: Math.round(changePercent * 100) / 100, // Round to 2 decimals
-            status
-        };
-    });
-}
-
 // Get all clock statuses for a ticker (4 metrics)
 function getTickerClocks(symbol: string): TickerClocks {
     const clocks = getClocksForEntity('TICKER', symbol);
