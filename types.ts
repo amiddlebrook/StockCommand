@@ -115,5 +115,15 @@ export interface Env {
   OPENROUTER_MODEL_RENDER?: string;
   OPENROUTER_MODEL_EXTRACT?: string;
   OPENROUTER_API_BASE?: string;
+
+  // Key Pools for Maximum Speed (horizontal scaling)
+  OPENROUTER_ROUTER_KEY_1?: string;
+  OPENROUTER_ROUTER_KEY_2?: string;
+  OPENROUTER_ROUTER_KEY_3?: string;
+  OPENROUTER_RENDER_KEY_1?: string;
+  OPENROUTER_RENDER_KEY_2?: string;
+  OPENROUTER_EXTRACT_KEY_1?: string;
+  OPENROUTER_SYNTH_KEY_1?: string;
+  OPENROUTER_VALID_KEY_1?: string;
 }
 
