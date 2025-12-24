@@ -84,23 +84,6 @@ function getTickerClocks(symbol: string): TickerClocks {
     };
 }
 
-// Generate mock ticker data
-function generateTickerData(symbol: string, sector: string): TickerData {
-    const seed = symbol.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    const changePercent = ((seed % 100) - 50) / 10;
-    const price = (seed % 300) + 50;
-
-    return {
-        symbol,
-        price,
-        change: price * (changePercent / 100),
-        changePercent,
-        volume: (seed * 1000) % 10000000 + 100000,
-        sector,
-        clocks: getTickerClocks(symbol)
-    };
-}
-
 // Collapsible section component
 const CollapsibleSection: React.FC<{
     title: string;
