@@ -174,11 +174,11 @@ export async function fastClockAnalysis(
 }
 
 // =============================================================================
-// BLAZING FAST TICKER ANALYSIS (No Web Search = 10x Faster)
+// TICKER ANALYSIS (Web Search for Real Data - Runs in BACKGROUND CRON)
 // =============================================================================
 
-const FAST_TICKER_PROMPT = `Stock: {SYMBOL}. JSON only:
-{"price":0,"change":0,"changePercent":0,"sentiment":"neutral","bullet":"one line"}`;
+const TICKER_PROMPT = `Get current stock data for {SYMBOL}. JSON only:
+{"price":0,"change":0,"changePercent":0,"sentiment":"neutral","bullet":"one line summary"}`;
 
 export async function fastTickerAnalysis(
     symbol: string,
@@ -187,15 +187,15 @@ export async function fastTickerAnalysis(
 ): Promise<{ price: number; change: number; changePercent: number; volume: number; bullets: string[]; riskNotes: string[]; sentiment: string; latencyMs: number }> {
     const startTime = Date.now();
 
-    // SPEED MODE: No web search, use LLM's training knowledge
-    // This is 10x faster (~1-3s vs 15-30s)
+    // WEB SEARCH ENABLED - This runs in BACKGROUND CRON, not blocking user requests
+    // Cache serves users instantly, cron does the heavy lifting
     const result = await raceModels(
-        FAST_TICKER_PROMPT.replace('{SYMBOL}', symbol),
+        TICKER_PROMPT.replace('{SYMBOL}', symbol),
         apiKey,
-        [ROLE_MODELS.FAST], // Use FAST model, not ANALYST
+        [ROLE_MODELS.FAST],
         baseUrl,
-        5000, // 5 second timeout (was 15s)
-        [] // NO plugins - pure speed
+        10000, // 10 second timeout - cron can wait
+        [{ id: "web" }] // WEB SEARCH for REAL DATA
     );
 
     const parsed = parseJsonResponse<{ price: number; change: number; changePercent: number; sentiment: string; bullet: string }>(result.content);
