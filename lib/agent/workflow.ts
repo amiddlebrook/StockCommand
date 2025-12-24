@@ -76,14 +76,13 @@ async function fetchMarketData(
     return marketData;
 }
 
-// Mock portfolio fetcher
+// Portfolio fetcher - returns empty state when no broker connected
+// TODO: Integrate with broker connection to fetch real portfolio
 async function fetchPortfolioState(): Promise<PortfolioState> {
+    // No broker connected - return empty portfolio
     return {
-        cashBalance: 50000,
-        holdings: {
-            'NVDA': { quantity: 10, costBasis: 400 },
-            'MSFT': { quantity: 20, costBasis: 300 }
-        },
+        cashBalance: 0,
+        holdings: {},
         lastUpdated: new Date().toISOString()
     };
 }
@@ -102,10 +101,19 @@ function evaluateStrategies(strategies: UserStrategy[], marketData: Record<strin
             const data = marketData[trigger.metric] || marketData['SPY'];
 
             let currentValue = 0;
-            if (trigger.metric === 'VIX') currentValue = 20; // Mock
-            else if (trigger.metric === 'RSI') currentValue = 50; // Mock
-            else if (trigger.metric === 'PRICE' && data) currentValue = data.price;
-            else if (trigger.metric === 'DEFCON') currentValue = 3; // Mock
+            // Use real data from cache - no more hardcoded values
+            if (trigger.metric === 'VIX') {
+                const vixData = marketData['VIX'];
+                currentValue = vixData?.price || 0; // VIX spot price
+            } else if (trigger.metric === 'RSI') {
+                // RSI should come from technical analysis in cache
+                currentValue = (data as any)?.rsi || 0;
+            } else if (trigger.metric === 'PRICE' && data) {
+                currentValue = data.price;
+            } else if (trigger.metric === 'DEFCON') {
+                // DEFCON is calculated from market conditions - default to neutral (3) only if no clocks
+                currentValue = 3; // This would need clock aggregation logic
+            }
 
             switch (trigger.operator) {
                 case '>': return currentValue > trigger.value;

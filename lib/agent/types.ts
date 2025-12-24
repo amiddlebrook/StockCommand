@@ -36,9 +36,12 @@ export interface MarketData {
   volume: number;
   rsi?: number;
   macd?: { macd: number; signal: number; histogram: number };
+  ma50?: number;  // 50-day moving average
+  ma200?: number; // 200-day moving average
   dailyClose?: number[]; // For chart pattern analysis
   technicalSignal?: string; // "Buy", "Sell", "Neutral" (simple heuristic)
   news?: { headline: string; sentiment: 'Positive' | 'Negative' | 'Neutral'; source: string }[];
+  timestamp?: string | number; // Last update timestamp
 }
 
 export interface AgentAction {

@@ -25,45 +25,9 @@ interface TradeExecutionPanelProps {
     onExecuteTrade?: (signal: TradingSignal, broker: string, qty: number) => void;
 }
 
-// Mock signals for demonstration
-const MOCK_SIGNALS: TradingSignal[] = [
-    {
-        id: '1',
-        symbol: 'NVDA',
-        signalType: 'BUY',
-        confidence: 0.87,
-        targetPrice: 142.50,
-        stopLoss: 128.00,
-        reasoning: 'Strong momentum detected. AI chips demand surge. Multiple market clocks green.',
-        source: 'AI',
-        createdAt: Date.now() - 3600000,
-        expiresAt: Date.now() + 86400000
-    },
-    {
-        id: '2',
-        symbol: 'TSLA',
-        signalType: 'SELL',
-        confidence: 0.72,
-        targetPrice: 380.00,
-        reasoning: 'Overbought on multiple timeframes. Competition pressure increasing.',
-        source: 'CROWD_WISDOM',
-        createdAt: Date.now() - 7200000,
-        expiresAt: Date.now() + 43200000
-    },
-    {
-        id: '3',
-        symbol: 'AAPL',
-        signalType: 'HOLD',
-        confidence: 0.65,
-        reasoning: 'Neutral indicators. Waiting for earnings catalyst.',
-        source: 'MARKET_CLOCK',
-        createdAt: Date.now() - 1800000,
-        expiresAt: Date.now() + 172800000
-    }
-];
-
+// No mock signals - component shows empty state when no signals available
 export const TradeExecutionPanel: React.FC<TradeExecutionPanelProps> = ({
-    signals = MOCK_SIGNALS,
+    signals = [], // Empty by default - signals come from agent workflow
     onExecuteTrade
 }) => {
     const [connections, setConnections] = useState<BrokerConnection[]>([]);

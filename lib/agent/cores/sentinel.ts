@@ -67,18 +67,28 @@ If no specific news is available, infer sentiment from general market conditions
             const llmData: any = await response.json();
             const analysis = llmData.choices?.[0]?.message?.content || "Sentinel Uplink Failed.";
 
-            // Extract sentiment score if possible (mock parsing logic for now)
+            // Parse sentiment score from LLM response
+            // Look for patterns like "sentiment: 75" or "score: 80" or "ranking: 65"
+            let sentimentScore = 50; // Default neutral if parsing fails
+            const scoreMatch = analysis.match(/(?:sentiment|score|ranking)[:\s]*(\d{1,3})/i);
+            if (scoreMatch && scoreMatch[1]) {
+                const parsed = parseInt(scoreMatch[1], 10);
+                if (parsed >= 0 && parsed <= 100) {
+                    sentimentScore = parsed;
+                }
+            }
+
             return {
                 analysis,
                 actions: [],
-                sentimentScore: 50 // TODO: parse from LLM
+                sentimentScore
             };
 
         } catch (e: any) {
             return {
                 analysis: `### 📡 Sentinel Intelligence\n - ** Status **: Uplink Failed(${e.message}) \n`,
                 actions: [],
-                sentimentScore: 50
+                sentimentScore: 50 // Default on error
             };
         }
     }

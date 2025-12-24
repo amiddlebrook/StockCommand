@@ -157,11 +157,13 @@ export class StrategyOptimizer {
 
         switch (trigger.metric) {
             case 'PRICE': return tick.price;
-            case 'RSI': return tick.rsi || 50;
+            case 'RSI': return tick.rsi || 0; // Real RSI from data, 0 if unavailable
             case 'CHANGE_PCT': return tick.changePercent;
-            // Mocking others
-            case 'VIX': return 20;
-            case 'MA_50': return tick.price * 0.95;
+            // Use real data - backtesting requires historical snapshots with these values
+            case 'VIX':
+                const vixTick = data['VIX'];
+                return vixTick?.price || 0;
+            case 'MA_50': return tick.ma50 || 0; // Requires technical indicators in snapshot
             default: return 0;
         }
     }
