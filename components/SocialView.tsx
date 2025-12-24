@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Icon } from './Icon';
 import { GlassButton } from './ui/GlassButton';
 
@@ -13,13 +13,6 @@ interface Channel {
     unread?: number;
 }
 
-interface User {
-    id: string;
-    name: string;
-    status: 'online' | 'idle' | 'dnd' | 'offline';
-    avatar?: string;
-}
-
 interface Message {
     id: string;
     user: string;
@@ -28,55 +21,28 @@ interface Message {
     role?: 'admin' | 'mod' | 'user';
 }
 
-export const SocialView: React.FC = () => {
-    const [activeChannel, setActiveChannel] = useState('global-trade');
-    const [isLoading, setIsLoading] = useState(true);
+interface SocialViewProps {
+    // Messages come from agent analysis or user input, passed via props
+    recentMessages?: Message[];
+}
 
-    // Static channels (these are navigation items, not user data)
+export const SocialView: React.FC<SocialViewProps> = ({ recentMessages = [] }) => {
+    const [activeChannel, setActiveChannel] = useState('global-trade');
+
+    // Static channels (navigation items)
     const channels: Channel[] = [
         { id: 'leaderboard', name: 'Global Rankings', type: 'app' },
         { id: 'competitions', name: 'Competitions', type: 'app' },
         { id: 'strategy-registry', name: 'Strategy Registry', type: 'app' },
         { id: 'global-trade', name: 'global-trade', type: 'text' },
         { id: 'alpha-leaks', name: 'alpha-leaks', type: 'text' },
-        { id: 'voice-general', name: 'General Voice', type: 'voice' }
     ];
 
-    // Friends and messages come from API
-    const [friends, setFriends] = useState<User[]>([]);
-    const [messages, setMessages] = useState<Message[]>([]);
+    const [messages, setMessages] = useState<Message[]>(recentMessages);
     const [input, setInput] = useState('');
-
-    // Fetch friends and messages on mount
-    useEffect(() => {
-        const fetchData = async () => {
-            setIsLoading(true);
-            try {
-                // Fetch friends/online users
-                const friendsRes = await fetch('/api/social/friends');
-                if (friendsRes.ok) {
-                    const data = await friendsRes.json() as User[];
-                    setFriends(Array.isArray(data) ? data : []);
-                }
-
-                // Fetch recent messages
-                const messagesRes = await fetch('/api/social/messages');
-                if (messagesRes.ok) {
-                    const data = await messagesRes.json() as Message[];
-                    setMessages(Array.isArray(data) ? data : []);
-                }
-            } catch (e) {
-                console.warn('Social data fetch error:', e);
-            } finally {
-                setIsLoading(false);
-            }
-        };
-        fetchData();
-    }, []);
 
     const handleSend = () => {
         if (!input.trim()) return;
-        // Optimistically add message
         setMessages([...messages, {
             id: Date.now().toString(),
             user: 'You',
@@ -85,7 +51,6 @@ export const SocialView: React.FC = () => {
             role: 'user'
         }]);
         setInput('');
-        // TODO: POST to /api/social/messages
     };
 
     // Render Logic
@@ -99,15 +64,11 @@ export const SocialView: React.FC = () => {
             <div className="flex-1 flex flex-col h-full bg-slate-900/30">
                 {/* Messages */}
                 <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                    {isLoading ? (
-                        <div className="flex items-center justify-center h-32">
-                            <div className="w-6 h-6 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin" />
-                        </div>
-                    ) : messages.length === 0 ? (
+                    {messages.length === 0 ? (
                         <div className="text-center py-12">
                             <Icon icon="message-circle" className="w-12 h-12 text-slate-600 mx-auto mb-3" />
                             <p className="text-sm text-slate-500">No messages yet</p>
-                            <p className="text-xs text-slate-600 mt-1">Be the first to start a conversation</p>
+                            <p className="text-xs text-slate-600 mt-1">Start a conversation</p>
                         </div>
                     ) : (
                         messages.map(msg => (
@@ -149,10 +110,9 @@ export const SocialView: React.FC = () => {
                             placeholder={`Message #${activeChannel}`}
                             className="flex-1 bg-transparent border-none outline-none text-white placeholder-slate-500"
                         />
-                        <div className="flex gap-2 text-slate-400">
-                            <Icon icon="mic" className="w-5 h-5 hover:text-white cursor-pointer" />
-                            <Icon icon="check" className="w-5 h-5 hover:text-white cursor-pointer" />
-                        </div>
+                        <button onClick={handleSend} className="text-slate-400 hover:text-white">
+                            <Icon icon="send" className="w-5 h-5" />
+                        </button>
                     </div>
                 </div>
             </div>
@@ -172,9 +132,7 @@ export const SocialView: React.FC = () => {
                 <div className="flex-1 overflow-y-auto p-3 space-y-6">
                     {/* CHANNELS */}
                     <div>
-                        <h3 className="text-xs font-bold text-slate-500 uppercase px-2 mb-2 flex justify-between group cursor-pointer hover:text-slate-300">
-                            CHANNELS <Icon icon="plus" className="w-3 h-3 opacity-0 group-hover:opacity-100" />
-                        </h3>
+                        <h3 className="text-xs font-bold text-slate-500 uppercase px-2 mb-2">CHANNELS</h3>
                         <div className="space-y-0.5">
                             {channels.map(channel => (
                                 <div
@@ -194,38 +152,6 @@ export const SocialView: React.FC = () => {
                             ))}
                         </div>
                     </div>
-
-                    {/* DIRECT MESSAGES */}
-                    <div>
-                        <h3 className="text-xs font-bold text-slate-500 uppercase px-2 mb-2 flex justify-between group cursor-pointer hover:text-slate-300">
-                            DIRECT MESSAGES <Icon icon="plus" className="w-3 h-3 opacity-0 group-hover:opacity-100" />
-                        </h3>
-                        {friends.length === 0 ? (
-                            <div className="px-2 py-4 text-center">
-                                <p className="text-xs text-slate-500">No friends online</p>
-                            </div>
-                        ) : (
-                            <div className="space-y-0.5">
-                                {friends.map(friend => (
-                                    <div key={friend.id} className="flex items-center px-2 py-1.5 rounded cursor-pointer hover:bg-slate-800/50 group transition-colors">
-                                        <div className="relative mr-3">
-                                            <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-xs font-bold text-slate-300 border border-slate-600">
-                                                {friend.name.substr(0, 2).toUpperCase()}
-                                            </div>
-                                            <div className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-slate-950 
-                                                ${friend.status === 'online' ? 'bg-green-500' :
-                                                    friend.status === 'idle' ? 'bg-amber-500' :
-                                                        friend.status === 'dnd' ? 'bg-red-500' : 'bg-slate-500'}`}
-                                            />
-                                        </div>
-                                        <span className={`text-sm group-hover:text-cyan-400 transition-colors ${friend.status === 'offline' ? 'text-slate-600' : 'text-slate-400'}`}>
-                                            {friend.name}
-                                        </span>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
                 </div>
 
                 <div className="p-3 bg-slate-900/80 border-t border-slate-800 flex items-center gap-3">
@@ -233,46 +159,14 @@ export const SocialView: React.FC = () => {
                         <Icon icon="user" className="w-4 h-4 text-cyan-400" />
                     </div>
                     <div className="flex-1 overflow-hidden">
-                        <div className="text-xs font-bold text-white truncate">Guest User</div>
-                        <div className="text-[10px] text-slate-500 truncate">Log in to chat</div>
+                        <div className="text-xs font-bold text-white truncate">Guest</div>
+                        <div className="text-[10px] text-slate-500 truncate">Local Mode</div>
                     </div>
-                    <Icon icon="check" className="w-4 h-4 text-slate-500 hover:text-white cursor-pointer" />
                 </div>
             </div>
 
             {/* MAIN CONTENT AREA */}
             {renderMainContent()}
-
-            {/* RIGHT SIDEBAR: MEMBER LIST */}
-            <div className="w-60 bg-slate-950 border-l border-slate-800 hidden xl:flex flex-col p-4">
-                <h3 className="text-xs font-bold text-slate-500 uppercase mb-4">ONLINE — {friends.filter(f => f.status === 'online').length}</h3>
-                {friends.length === 0 ? (
-                    <div className="text-center py-8">
-                        <p className="text-xs text-slate-500">No users online</p>
-                    </div>
-                ) : (
-                    <div className="space-y-3">
-                        {friends.map(user => (
-                            <div key={user.id} className="flex items-center gap-3 opacity-80 hover:opacity-100 cursor-pointer">
-                                <div className="relative">
-                                    <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-[10px] font-bold border border-slate-700">
-                                        {user.name.substr(0, 2).toUpperCase()}
-                                    </div>
-                                    <div className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-slate-950 
-                                                ${user.status === 'online' ? 'bg-green-500' :
-                                            user.status === 'idle' ? 'bg-amber-500' :
-                                                user.status === 'dnd' ? 'bg-red-500' : 'bg-slate-500'}`}
-                                    />
-                                </div>
-                                <div>
-                                    <div className="text-sm font-bold text-slate-300">{user.name}</div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                )}
-            </div>
-
         </div>
     );
 };

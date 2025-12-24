@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Icon } from './Icon';
 
 interface TeamMember {
@@ -17,45 +17,10 @@ interface Team {
     memberList?: TeamMember[];
 }
 
-interface TeamsViewProps { }
-
-export const TeamsView: React.FC<TeamsViewProps> = () => {
-    const [myTeam, setMyTeam] = useState<Team | null>(null);
-    const [topTeams, setTopTeams] = useState<Team[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
-
-    useEffect(() => {
-        const fetchTeams = async () => {
-            setIsLoading(true);
-            try {
-                const res = await fetch('/api/social/teams');
-                if (res.ok) {
-                    const data = await res.json() as { myTeam?: Team; topTeams?: Team[] };
-                    setMyTeam(data.myTeam || null);
-                    setTopTeams(data.topTeams || []);
-                } else {
-                    setMyTeam(null);
-                    setTopTeams([]);
-                }
-            } catch (e) {
-                console.warn('Teams fetch error:', e);
-                setMyTeam(null);
-                setTopTeams([]);
-            } finally {
-                setIsLoading(false);
-            }
-        };
-        fetchTeams();
-    }, []);
-
-    if (isLoading) {
-        return (
-            <div className="h-full flex flex-col items-center justify-center">
-                <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mb-4" />
-                <p className="text-sm text-slate-400 font-mono">Loading teams...</p>
-            </div>
-        );
-    }
+export const TeamsView: React.FC = () => {
+    // In future, will come from API
+    const [myTeam] = useState<Team | null>(null);
+    const [topTeams] = useState<Team[]>([]);
 
     return (
         <div className="h-full overflow-y-auto p-6 space-y-6">
@@ -76,34 +41,7 @@ export const TeamsView: React.FC<TeamsViewProps> = () => {
                 <div className="lg:col-span-2 space-y-4">
                     {myTeam ? (
                         <div className="p-6 bg-gradient-to-br from-blue-900/30 to-purple-900/30 border border-blue-500/30 rounded-lg">
-                            <div className="flex items-center justify-between mb-4">
-                                <div>
-                                    <h3 className="text-2xl font-bold text-blue-400">{myTeam.name}</h3>
-                                    <p className="text-slate-400">Rank #{myTeam.rank} • {myTeam.members} members</p>
-                                </div>
-                                <div className="text-right">
-                                    <div className="text-2xl font-bold text-green-400">+{myTeam.totalReturns}%</div>
-                                    <div className="text-sm text-slate-400">+{myTeam.weeklyReturns}% this week</div>
-                                </div>
-                            </div>
-
-                            {myTeam.memberList && myTeam.memberList.length > 0 && (
-                                <>
-                                    <h4 className="text-sm text-slate-400 uppercase tracking-wider mb-2">Team Members</h4>
-                                    <div className="space-y-2">
-                                        {myTeam.memberList.map((member, idx) => (
-                                            <div key={idx} className="flex items-center justify-between p-3 bg-slate-900/50 rounded-lg">
-                                                <div className="flex items-center gap-3">
-                                                    <div className={`w-2 h-2 rounded-full ${member.online ? 'bg-green-500' : 'bg-slate-600'}`}></div>
-                                                    <span className={member.name === 'You' ? 'text-cyan-400 font-bold' : ''}>{member.name}</span>
-                                                    <span className="text-xs text-slate-500 bg-slate-800 px-2 py-0.5 rounded">{member.role}</span>
-                                                </div>
-                                                <span className="text-green-400 font-mono">+{member.returns}%</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </>
-                            )}
+                            {/* Team Details */}
                         </div>
                     ) : (
                         <div className="p-8 bg-slate-900/50 border border-slate-800 rounded-lg text-center">
@@ -126,20 +64,7 @@ export const TeamsView: React.FC<TeamsViewProps> = () => {
                         </div>
                     ) : (
                         <div className="space-y-3">
-                            {topTeams.map((team, idx) => (
-                                <div key={idx} className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg hover:bg-slate-800 transition-colors cursor-pointer">
-                                    <div className="flex items-center gap-3">
-                                        <span className={`font-bold ${idx < 3 ? 'text-amber-400' : 'text-slate-500'}`}>
-                                            #{idx + 1}
-                                        </span>
-                                        <div>
-                                            <div className="font-medium">{team.name}</div>
-                                            <div className="text-xs text-slate-400">{team.members} members</div>
-                                        </div>
-                                    </div>
-                                    <span className="text-green-400 font-mono text-sm">+{team.totalReturns}%</span>
-                                </div>
-                            ))}
+                            {/* Top Teams List */}
                         </div>
                     )}
                 </div>

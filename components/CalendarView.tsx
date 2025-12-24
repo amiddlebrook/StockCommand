@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Icon } from './Icon';
 
 interface CalendarEvent {
@@ -9,32 +9,9 @@ interface CalendarEvent {
     impact: 'high' | 'medium' | 'low';
 }
 
-interface CalendarViewProps { }
-
-export const CalendarView: React.FC<CalendarViewProps> = () => {
-    const [events, setEvents] = useState<CalendarEvent[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
-
-    useEffect(() => {
-        const fetchEvents = async () => {
-            setIsLoading(true);
-            try {
-                const res = await fetch('/api/calendar');
-                if (res.ok) {
-                    const data = await res.json() as CalendarEvent[];
-                    setEvents(Array.isArray(data) ? data : []);
-                } else {
-                    setEvents([]);
-                }
-            } catch (e) {
-                console.warn('Calendar fetch error:', e);
-                setEvents([]);
-            } finally {
-                setIsLoading(false);
-            }
-        };
-        fetchEvents();
-    }, []);
+export const CalendarView: React.FC = () => {
+    // In future, this will come from agent analysis via props
+    const [events] = useState<CalendarEvent[]>([]);
 
     const getTypeIcon = (type: string) => {
         switch (type) {
@@ -75,9 +52,6 @@ export const CalendarView: React.FC<CalendarViewProps> = () => {
                     <button className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-sm rounded-lg transition-colors">
                         This Week
                     </button>
-                    <button className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-sm rounded-lg transition-colors">
-                        This Month
-                    </button>
                 </div>
             </div>
 
@@ -99,12 +73,7 @@ export const CalendarView: React.FC<CalendarViewProps> = () => {
 
             {/* Events List */}
             <div className="space-y-3">
-                {isLoading ? (
-                    <div className="flex flex-col items-center justify-center py-16">
-                        <div className="w-8 h-8 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin mb-4" />
-                        <p className="text-sm text-slate-400 font-mono">Loading calendar events...</p>
-                    </div>
-                ) : events.length === 0 ? (
+                {events.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-16 text-center">
                         <Icon icon="calendar" className="w-12 h-12 text-slate-600 mb-4" />
                         <h3 className="text-lg font-bold text-slate-400 mb-2">No Upcoming Events</h3>

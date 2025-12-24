@@ -365,40 +365,11 @@ export const TraditionalView: React.FC<TraditionalViewProps> = ({
     const [realChartData, setRealChartData] = useState<Record<string, PricePoint[]>>({});
 
     // Fetch chart data when a chart is opened
+    // Fetch chart data when a chart is opened
     useEffect(() => {
-        const fetchChartData = async () => {
-            for (const chart of openCharts) {
-                if (realChartData[chart.symbol]) continue; // Already fetched
-
-                try {
-                    const res = await fetch(`/api/swarm/intraday?symbol=${chart.symbol}&interval=5min`);
-                    if (res.ok) {
-                        const data = await res.json() as { data?: Array<{ close?: number; price?: number; volume?: number }> };
-                        if (data.data && Array.isArray(data.data)) {
-                            const points: PricePoint[] = data.data.slice(-30).map((d, i: number) => ({
-                                day: i + 1,
-                                price: d.close || d.price || 0,
-                                volume: d.volume || 0
-                            }));
-                            setRealChartData(prev => ({ ...prev, [chart.symbol]: points }));
-                        } else {
-                            // Empty data
-                            setRealChartData(prev => ({ ...prev, [chart.symbol]: [] }));
-                        }
-                    } else {
-                        // Error response
-                        setRealChartData(prev => ({ ...prev, [chart.symbol]: [] }));
-                    }
-                } catch (e) {
-                    console.warn(`Failed to fetch chart data for ${chart.symbol}:`, e);
-                    setRealChartData(prev => ({ ...prev, [chart.symbol]: [] }));
-                }
-            }
-        };
-
-        if (openCharts.length > 0) {
-            fetchChartData();
-        }
+        // Intraday data is not yet available from the swarm
+        // In the future this will fetch from /api/v2/tickers/:symbol?kind=history
+        setRealChartData({});
     }, [openCharts]);
 
     // Track which charts are loading

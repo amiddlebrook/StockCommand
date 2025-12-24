@@ -42,23 +42,10 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) =
 
     const handleSubscribe = async () => {
         setIsLoading(true);
-        try {
-            const res = await fetch('/api/stripe/create-checkout-session', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({}) // Add priceId here if multiple plans
-            });
-            const data = await res.json();
-            if (data.url) {
-                window.location.href = data.url;
-            } else {
-                throw new Error("No checkout URL returned");
-            }
-        } catch (err: any) {
-            alert("Subscription failed: " + err.message);
-        } finally {
-            setIsLoading(false);
-        }
+        // Subscription API not yet active
+        await new Promise(resolve => setTimeout(resolve, 500));
+        alert('StockCommand Pro subscriptions will be available in v2.1');
+        setIsLoading(false);
     };
 
     // Unauthenticated View

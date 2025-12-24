@@ -4,11 +4,11 @@ import { Icon } from './Icon';
 interface MarketplaceStrategy {
     id: number;
     name: string;
-    creator: string;
+    description: string;
+    author: string;
     price: number;
-    returns: number;
+    likes: number;
     subscribers: number;
-    rating: number;
 }
 
 interface MarketplaceViewProps { }
@@ -22,7 +22,8 @@ export const MarketplaceView: React.FC<MarketplaceViewProps> = () => {
         const fetchStrategies = async () => {
             setIsLoading(true);
             try {
-                const res = await fetch(`/api/marketplace/strategies?tab=${activeTab}`);
+                // Use the valid /api/social/strategies endpoint
+                const res = await fetch(`/api/social/strategies`);
                 if (res.ok) {
                     const data = await res.json();
                     setStrategies(Array.isArray(data) ? data : []);
@@ -102,24 +103,15 @@ export const MarketplaceView: React.FC<MarketplaceViewProps> = () => {
                                 <div className="flex items-start justify-between mb-3">
                                     <div>
                                         <h3 className="font-bold text-lg">{strategy.name}</h3>
-                                        <p className="text-sm text-slate-400">by {strategy.creator}</p>
+                                        <p className="text-sm text-slate-400">by {strategy.author}</p>
                                     </div>
                                     <div className="flex items-center gap-1 text-amber-400">
                                         <Icon icon="star" className="w-4 h-4 fill-current" />
-                                        <span className="text-sm font-medium">{strategy.rating}</span>
+                                        <span className="text-sm font-medium">{strategy.likes}</span>
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-4 mb-4">
-                                    <div>
-                                        <div className="text-xs text-slate-400 uppercase">Returns</div>
-                                        <div className="text-lg font-bold text-green-400">+{strategy.returns}%</div>
-                                    </div>
-                                    <div>
-                                        <div className="text-xs text-slate-400 uppercase">Subscribers</div>
-                                        <div className="text-lg font-bold">{strategy.subscribers}</div>
-                                    </div>
-                                </div>
+                                <p className="text-sm text-slate-400 mb-4 h-10 overflow-hidden">{strategy.description}</p>
 
                                 <div className="flex items-center justify-between">
                                     <span className="text-2xl font-bold text-emerald-400">${strategy.price}</span>
