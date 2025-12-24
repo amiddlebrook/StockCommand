@@ -298,3 +298,41 @@
   /* animation: fadeIn 0.3s ease-in-out forwards; */
   opacity: 1;
 }
+
+/* Custom Animation Utilities to shim tailwindcss-animate used in TraditionalView */
+@keyframes slideInFromBottom {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+.animate-in {
+    animation-duration: 0.5s;
+    animation-fill-mode: both;
+    animation-timing-function: ease-out;
+}
+
+.slide-in-from-bottom-4 {
+    animation-name: slideInFromBottom;
+}
+
+.fade-in {
+    animation-name: hud-fade-in;
+}
+
+@keyframes hud-fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.zoom-in-50 {
+    animation-name: hud-zoom-in;
+}
+
+@keyframes hud-zoom-in {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+.fill-mode-backwards {
+    animation-fill-mode: backwards;
+}
