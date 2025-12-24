@@ -30,6 +30,7 @@ import { LeaderboardsView } from './components/LeaderboardsView';
 import { DuelsView } from './components/DuelsView';
 import { TeamsView } from './components/TeamsView';
 import { MarketplaceView } from './components/MarketplaceView';
+import { NotificationCenter, AgentNotification, AgentMessage } from './components/NotificationCenter';
 
 import type { ChatMessage as ChatMessageType, Source } from './types';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -173,6 +174,10 @@ const AppContent: React.FC = () => {
 
   // Agent Analysis State (Global)
   const [analysisData, setAnalysisData] = useState<Record<string, AnalysisData>>({});
+
+  // Notification Center State
+  const [agentNotifications, setAgentNotifications] = useState<AgentNotification[]>([]);
+  const [agentMessages, setAgentMessages] = useState<AgentMessage[]>([]);
 
   const fetchAgentAnalysis = async (symbol: string) => {
     // Don't re-fetch if we already have it
@@ -890,6 +895,24 @@ const AppContent: React.FC = () => {
               ARENA
             </button>
           </div>
+
+          {/* Notification Center */}
+          <NotificationCenter
+            notifications={agentNotifications}
+            messages={agentMessages}
+            onNotificationClick={(notification) => {
+              setAgentNotifications(prev => prev.map(n => n.id === notification.id ? { ...n, read: true } : n));
+              if (notification.actionTarget) {
+                // Navigate to the target
+                setActiveTab('command-center');
+              }
+            }}
+            onMessageClick={(message) => {
+              setAgentMessages(prev => prev.map(m => m.id === message.id ? { ...m, read: true } : m));
+            }}
+            onClearNotifications={() => setAgentNotifications([])}
+            onClearMessages={() => setAgentMessages([])}
+          />
 
           {/* Connect Broker Button */}
           <button

@@ -2,7 +2,7 @@
 import React from 'react';
 
 interface IconProps {
-  icon: 'send' | 'upload' | 'mic' | 'search' | 'chart' | 'strategy' | 'ghost' | 'close' | 'bot' | 'portfolio' | 'user' | 'chevron-down' | 'check' | 'message' | 'terminal' | 'briefcase' | 'clock' | 'trophy' | 'code' | 'activity' | 'loader' | 'settings' | 'trash' | 'alert' | 'menu' | 'award' | 'users' | 'store' | 'calendar' | 'plus' | 'star' | 'zap' | 'command' | 'building';
+  icon: 'send' | 'upload' | 'mic' | 'search' | 'chart' | 'strategy' | 'ghost' | 'close' | 'bot' | 'portfolio' | 'user' | 'chevron-down' | 'check' | 'message' | 'terminal' | 'briefcase' | 'clock' | 'trophy' | 'code' | 'activity' | 'loader' | 'settings' | 'trash' | 'alert' | 'menu' | 'award' | 'users' | 'store' | 'calendar' | 'plus' | 'star' | 'zap' | 'command' | 'building' | 'bell' | 'mail';
   className?: string;
 }
 
@@ -178,6 +178,16 @@ export const Icon: React.FC<IconProps> = ({ icon, className = 'w-6 h-6' }) => {
     building: (
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3.75h.008v.008h-.008v-.008Zm0 3h.008v.008h-.008v-.008Zm0 3h.008v.008h-.008v-.008Z" />
+      </svg>
+    ),
+    bell: (
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
+      </svg>
+    ),
+    mail: (
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
       </svg>
     )
   };
