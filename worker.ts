@@ -1056,7 +1056,7 @@ export default {
             try {
                 const body = await request.json() as any;
                 const { message, history, context } = body;
-                const apiKey = env.OPENROUTER_DEEPSEEK_NEX_API_KEY || env.OPENROUTER_API_KEY;
+                const apiKey = env.STOCK_COMMAND_OPENROUTER_API_KEY || env.OPENROUTER_DEEPSEEK_NEX_API_KEY || env.OPENROUTER_API_KEY;
 
                 if (!apiKey) {
                     throw new Error("Missing LLM API Key");

@@ -6,7 +6,7 @@ export async function runMarketScanner(env: Env) {
     console.log("[Scanner] Starting autonomous market scan...");
 
     // 1. Fetch Real Data via Cache (was SwarmDataService)
-    const apiKey = env.OPENROUTER_DEEPSEEK_NEX_API_KEY;
+    const apiKey = env.STOCK_COMMAND_OPENROUTER_API_KEY || env.OPENROUTER_DEEPSEEK_NEX_API_KEY || env.OPENROUTER_API_KEY;
     if (!apiKey) throw new Error("Missing API Key");
 
     const watchlist = ['SPY', 'QQQ', 'NVDA', 'AAPL', 'TSLA', 'AMD'];
