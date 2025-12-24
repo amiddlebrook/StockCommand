@@ -35,7 +35,8 @@ const TOOL_PROXIES: Record<string, string[]> = {
 
 export class LLMService {
     private apiKey: string;
-    private modelName: string = "deepseek/deepseek-chat";
+    // Use :online suffix for web search to get REAL market data
+    private modelName: string = "nex-agi/deepseek-v3.1-nex-n1:free:online";
 
     constructor(apiKey: string) {
         this.apiKey = apiKey;

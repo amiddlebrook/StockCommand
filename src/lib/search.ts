@@ -154,13 +154,14 @@ export async function fastClockAnalysis(
     const startTime = Date.now();
 
     // SPEED MODE: Use FAST model with web search for current data
+    // :online suffix enables web search per OpenRouter docs
     const result = await raceModels(
         CLOCK_PROMPT.replace('{LABEL}', clockLabel) + `\nContext: ${query}`,
         apiKey,
-        [ROLE_MODELS.FAST],
+        [`${ROLE_MODELS.FAST}:online`], // :online suffix enables web search
         baseUrl,
-        8000, // 8 second timeout
-        [{ id: "web" }] // Clocks need web for current conditions
+        8000,
+        [] // No plugins needed - :online handles it
     );
 
     const parsed = parseJsonResponse<{ status: 'green' | 'yellow' | 'red'; reason: string }>(result.content);
@@ -187,15 +188,14 @@ export async function fastTickerAnalysis(
 ): Promise<{ price: number; change: number; changePercent: number; volume: number; bullets: string[]; riskNotes: string[]; sentiment: string; latencyMs: number }> {
     const startTime = Date.now();
 
-    // WEB SEARCH ENABLED - This runs in BACKGROUND CRON, not blocking user requests
-    // Cache serves users instantly, cron does the heavy lifting
+    // WEB SEARCH via :online suffix - runs in BACKGROUND CRON
     const result = await raceModels(
         TICKER_PROMPT.replace('{SYMBOL}', symbol),
         apiKey,
-        [ROLE_MODELS.FAST],
+        [`${ROLE_MODELS.FAST}:online`], // :online suffix enables web search
         baseUrl,
-        10000, // 10 second timeout - cron can wait
-        [{ id: "web" }] // WEB SEARCH for REAL DATA
+        10000,
+        [] // No plugins needed - :online handles it
     );
 
     const parsed = parseJsonResponse<{ price: number; change: number; changePercent: number; sentiment: string; bullet: string }>(result.content);
