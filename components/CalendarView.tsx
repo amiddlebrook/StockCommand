@@ -1,18 +1,40 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Icon } from './Icon';
+
+interface CalendarEvent {
+    date: string;
+    time: string;
+    type: 'fed' | 'earnings' | 'economic';
+    title: string;
+    impact: 'high' | 'medium' | 'low';
+}
 
 interface CalendarViewProps { }
 
 export const CalendarView: React.FC<CalendarViewProps> = () => {
-    const mockEvents = [
-        { date: 'Dec 18', time: '14:00', type: 'fed', title: 'FOMC Rate Decision', impact: 'high' },
-        { date: 'Dec 19', time: '08:30', type: 'earnings', title: 'FDX Earnings', impact: 'medium' },
-        { date: 'Dec 20', time: '10:00', type: 'economic', title: 'Consumer Confidence', impact: 'medium' },
-        { date: 'Dec 21', time: '08:30', type: 'economic', title: 'GDP Final Q3', impact: 'high' },
-        { date: 'Dec 22', time: '08:30', type: 'economic', title: 'PCE Price Index', impact: 'high' },
-        { date: 'Jan 03', time: '09:45', type: 'economic', title: 'PMI Manufacturing', impact: 'medium' },
-        { date: 'Jan 05', time: '08:30', type: 'economic', title: 'Nonfarm Payrolls', impact: 'high' },
-    ];
+    const [events, setEvents] = useState<CalendarEvent[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchEvents = async () => {
+            setIsLoading(true);
+            try {
+                const res = await fetch('/api/calendar');
+                if (res.ok) {
+                    const data = await res.json() as CalendarEvent[];
+                    setEvents(Array.isArray(data) ? data : []);
+                } else {
+                    setEvents([]);
+                }
+            } catch (e) {
+                console.warn('Calendar fetch error:', e);
+                setEvents([]);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        fetchEvents();
+    }, []);
 
     const getTypeIcon = (type: string) => {
         switch (type) {
@@ -77,29 +99,42 @@ export const CalendarView: React.FC<CalendarViewProps> = () => {
 
             {/* Events List */}
             <div className="space-y-3">
-                {mockEvents.map((event, idx) => (
-                    <div key={idx} className={`p-4 border rounded-lg ${getTypeColor(event.type)} transition-all hover:scale-[1.01]`}>
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-4">
-                                <div className="text-center">
-                                    <div className="text-xs text-slate-500 uppercase">{event.date.split(' ')[0]}</div>
-                                    <div className="text-lg font-bold">{event.date.split(' ')[1]}</div>
+                {isLoading ? (
+                    <div className="flex flex-col items-center justify-center py-16">
+                        <div className="w-8 h-8 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin mb-4" />
+                        <p className="text-sm text-slate-400 font-mono">Loading calendar events...</p>
+                    </div>
+                ) : events.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-16 text-center">
+                        <Icon icon="calendar" className="w-12 h-12 text-slate-600 mb-4" />
+                        <h3 className="text-lg font-bold text-slate-400 mb-2">No Upcoming Events</h3>
+                        <p className="text-sm text-slate-500">Economic calendar events will appear here when available</p>
+                    </div>
+                ) : (
+                    events.map((event, idx) => (
+                        <div key={idx} className={`p-4 border rounded-lg ${getTypeColor(event.type)} transition-all hover:scale-[1.01]`}>
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-4">
+                                    <div className="text-center">
+                                        <div className="text-xs text-slate-500 uppercase">{event.date.split(' ')[0]}</div>
+                                        <div className="text-lg font-bold">{event.date.split(' ')[1]}</div>
+                                    </div>
+                                    <div className="w-px h-10 bg-slate-700"></div>
+                                    <div>
+                                        <div className="font-medium">{event.title}</div>
+                                        <div className="text-sm text-slate-400">{event.time} ET</div>
+                                    </div>
                                 </div>
-                                <div className="w-px h-10 bg-slate-700"></div>
-                                <div>
-                                    <div className="font-medium">{event.title}</div>
-                                    <div className="text-sm text-slate-400">{event.time} ET</div>
+                                <div className="flex items-center gap-3">
+                                    <span className={`text-xs uppercase font-mono ${getImpactColor(event.impact)}`}>
+                                        {event.impact} impact
+                                    </span>
+                                    <Icon icon={getTypeIcon(event.type) as any} className="w-5 h-5" />
                                 </div>
-                            </div>
-                            <div className="flex items-center gap-3">
-                                <span className={`text-xs uppercase font-mono ${getImpactColor(event.impact)}`}>
-                                    {event.impact} impact
-                                </span>
-                                <Icon icon={getTypeIcon(event.type) as any} className="w-5 h-5" />
                             </div>
                         </div>
-                    </div>
-                ))}
+                    ))
+                )}
             </div>
         </div>
     );

@@ -7,54 +7,17 @@ interface IntelligencePanelProps {
     clocks: MarketClock[];
     onClockClick: (clock: MarketClock) => void;
     onCloneStrategy: (strategy: UserStrategy) => void;
+    communityStrategies?: UserStrategy[]; // Optional - fetched from API
 }
 
 type Tab = 'REGIME' | 'LIBRARY' | 'SIGNALS';
 
-const MOCK_COMMUNITY_STRATEGIES: UserStrategy[] = [
-    {
-        id: 'COMM_1',
-        name: 'Hive Mind Alpha V1',
-        triggers: [{ id: 't1', metric: 'VIX', operator: '>', value: 30 }],
-        actions: [{ id: 'a1', type: 'REBALANCE', target: 'Defensive Tech' }],
-        active: true,
-        createdAt: Date.now(),
-        author: 'HIVE_MIND_CORE',
-        performance: 42.8
-    },
-    {
-        id: 'COMM_2',
-        name: 'Citadel HFT Logic',
-        triggers: [{ id: 't2', metric: 'RSI', operator: '<', value: 20 }],
-        actions: [{ id: 'a2', type: 'BUY', target: 'Growth' }],
-        active: true,
-        createdAt: Date.now(),
-        author: 'Citadel_Alpha',
-        performance: 38.5
-    },
-    {
-        id: 'COMM_3',
-        name: 'YOLO Momentum',
-        triggers: [{ id: 't3', metric: 'CHANGE_PCT', operator: '>', value: 5 }],
-        actions: [{ id: 'a3', type: 'BUY', target: 'Options' }],
-        active: true,
-        createdAt: Date.now(),
-        author: 'Retail_Whale',
-        performance: 12.2
-    },
-    {
-        id: 'COMM_4',
-        name: 'Earnings Momentum',
-        triggers: [{ id: 't4', metric: 'EARNINGS_SURPRISE', operator: '>', value: 10 }],
-        actions: [{ id: 'a4', type: 'BUY', target: 'Growth' }],
-        active: true,
-        createdAt: Date.now(),
-        author: 'AlphaSeeker',
-        performance: 28.3
-    }
-];
-
-export const IntelligencePanel: React.FC<IntelligencePanelProps> = ({ clocks, onClockClick, onCloneStrategy }) => {
+export const IntelligencePanel: React.FC<IntelligencePanelProps> = ({
+    clocks,
+    onClockClick,
+    onCloneStrategy,
+    communityStrategies = [] // Empty by default
+}) => {
     const [activeTab, setActiveTab] = useState<Tab>('REGIME');
 
     const macroClocks = clocks.filter(c => c.code.startsWith('CLOCK_'));
@@ -154,33 +117,41 @@ export const IntelligencePanel: React.FC<IntelligencePanelProps> = ({ clocks, on
                                 <Icon icon="zap" className="w-3 h-3 text-purple-500" />
                                 Strategy Exchange
                             </span>
-                            <span className="text-purple-500/60 font-mono">{MOCK_COMMUNITY_STRATEGIES.length} AVAILABLE</span>
+                            <span className="text-purple-500/60 font-mono">{communityStrategies.length} AVAILABLE</span>
                         </div>
 
-                        {MOCK_COMMUNITY_STRATEGIES.map(strategy => (
-                            <div key={strategy.id} className="float-card glass-panel p-3.5 rounded-lg group">
-                                <div className="flex justify-between items-start mb-2">
-                                    <h4 className="text-sm font-bold text-slate-200 group-hover:text-white transition-colors">{strategy.name}</h4>
-                                    <span className="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded font-mono">{strategy.author}</span>
-                                </div>
-                                <div className="flex items-center gap-3 text-xs mb-3">
-                                    <span className={`font-mono ${strategy.performance && strategy.performance > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                                        {strategy.performance && strategy.performance > 0 ? '+' : ''}{strategy.performance}%
-                                    </span>
-                                    <span className="text-slate-700">|</span>
-                                    <span className="text-slate-500">{strategy.triggers.length} triggers</span>
-                                </div>
-                                <GlassButton
-                                    size="sm"
-                                    variant="glass"
-                                    className="w-full justify-center text-[10px] h-8 hover:bg-purple-500/10 hover:border-purple-500/50"
-                                    onClick={() => onCloneStrategy(strategy)}
-                                >
-                                    <Icon icon="copy" className="w-3 h-3 mr-1.5" />
-                                    CLONE TO FORGE
-                                </GlassButton>
+                        {communityStrategies.length === 0 ? (
+                            <div className="glass-panel p-6 rounded-lg text-center">
+                                <Icon icon="book" className="w-12 h-12 text-slate-600 mx-auto mb-3" />
+                                <p className="text-xs text-slate-500">No strategies available</p>
+                                <p className="text-[10px] text-slate-600 mt-1">Community strategies will appear here</p>
                             </div>
-                        ))}
+                        ) : (
+                            communityStrategies.map(strategy => (
+                                <div key={strategy.id} className="float-card glass-panel p-3.5 rounded-lg group">
+                                    <div className="flex justify-between items-start mb-2">
+                                        <h4 className="text-sm font-bold text-slate-200 group-hover:text-white transition-colors">{strategy.name}</h4>
+                                        <span className="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded font-mono">{strategy.author}</span>
+                                    </div>
+                                    <div className="flex items-center gap-3 text-xs mb-3">
+                                        <span className={`font-mono ${strategy.performance && strategy.performance > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                                            {strategy.performance && strategy.performance > 0 ? '+' : ''}{strategy.performance}%
+                                        </span>
+                                        <span className="text-slate-700">|</span>
+                                        <span className="text-slate-500">{strategy.triggers.length} triggers</span>
+                                    </div>
+                                    <GlassButton
+                                        size="sm"
+                                        variant="glass"
+                                        className="w-full justify-center text-[10px] h-8 hover:bg-purple-500/10 hover:border-purple-500/50"
+                                        onClick={() => onCloneStrategy(strategy)}
+                                    >
+                                        <Icon icon="copy" className="w-3 h-3 mr-1.5" />
+                                        CLONE TO FORGE
+                                    </GlassButton>
+                                </div>
+                            ))
+                        )}
                     </div>
                 )}
 
