@@ -24,15 +24,15 @@ export interface SkeletonProps {
  * 
  * TODO: Add wave animation
  */
-export function Skeleton({
+export const Skeleton: React.FC<SkeletonProps> = ({
   variant = 'rectangular',
   width,
   height,
   className = '',
   animation = 'pulse',
-}: SkeletonProps) {
+}) => {
   const baseStyles = 'bg-gray-800';
-  
+
   const variantStyles = {
     text: 'rounded',
     circular: 'rounded-full',
@@ -56,7 +56,7 @@ export function Skeleton({
       style={style}
     />
   );
-}
+};
 
 /**
  * Skeleton Group Component - for common loading patterns

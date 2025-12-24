@@ -2,7 +2,7 @@ import { AgentEngine } from './engine';
 import { ActionExecutor } from './actions';
 import { MarketData, PortfolioState, UserStrategy, AgentAction, StrategyTrigger, StrategyAction } from './types';
 import { UNIVERSE, SECTOR_ETFS, SectorName } from './universe';
-import { SwarmDataService } from './market-data';
+import { getTickerFromCache } from '../../src/lib/caching';
 import { CoreRouter } from './cores/router';
 import { CoreContext } from './cores/types';
 
@@ -19,13 +19,12 @@ const TOOL_PROXIES: Record<string, string[]> = {
 
 
 async function fetchMarketData(
-    agentKey: string,
+    env: any,
     scope: 'FULL' | 'SECTOR' | 'TICKER' | 'TOOL',
     target?: string,
     timeline: string = '1d'
 ): Promise<Record<string, MarketData>> {
-    console.log(`Fetching market data via SwarmDataService (Scope: ${scope}, Target: ${target}, Timeline: ${timeline})...`);
-    const service = new SwarmDataService(agentKey);
+    console.log(`Fetching market data via Cache (Scope: ${scope}, Target: ${target}, Timeline: ${timeline})...`);
 
     let targetSymbols: string[] = [];
 
@@ -53,8 +52,28 @@ async function fetchMarketData(
     targetSymbols = Array.from(new Set(targetSymbols));
 
     console.log(`Identified ${targetSymbols.length} symbols to fetch.`);
-    // Use the Swarm Query
-    return await service.querySwarm(targetSymbols, timeline);
+
+    if (!env || !env.STOCK_CACHE_KV) {
+        console.warn("Missing STOCK_CACHE_KV in fetchMarketData");
+        return {};
+    }
+
+    const results = await Promise.all(targetSymbols.map(sym => getTickerFromCache(env.STOCK_CACHE_KV, sym, 'quote')));
+    const marketData: Record<string, MarketData> = {};
+
+    targetSymbols.forEach((sym, i) => {
+        const res = results[i];
+        if (res.data) {
+            marketData[sym] = {
+                price: res.data.price,
+                changePercent: res.data.changePercent || 0,
+                volume: 0, // Not in TickerArtifact
+                timestamp: res.data.createdAt
+            } as MarketData;
+        }
+    });
+
+    return marketData;
 }
 
 // Mock portfolio fetcher

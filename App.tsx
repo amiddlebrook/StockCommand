@@ -722,12 +722,12 @@ const AppContent: React.FC = () => {
           {/* Data Freshness Indicator */}
           <div className="flex items-center gap-1.5 mr-3 bg-slate-900/50 px-2 py-1 rounded border border-slate-800/50">
             <div className={`w-2 h-2 rounded-full ${scanningTarget ? 'bg-yellow-400 animate-pulse shadow-[0_0_8px_rgba(250,204,21,0.6)]' :
-              (analysisData && Object.values(analysisData).some(d => d.timeline === timeline && (Date.now() - d.lastUpdated < 300000))) // 5m fresh
+              (analysisData && (Object.values(analysisData) as AnalysisData[]).some(d => d.timeline === timeline && (Date.now() - d.lastUpdated < 300000))) // 5m fresh
                 ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]'
                 : 'bg-slate-600'
               }`} />
             <span className={`text-[10px] font-mono tracking-wider ${scanningTarget ? 'text-yellow-400' :
-              (analysisData && Object.values(analysisData).some(d => d.timeline === timeline && (Date.now() - d.lastUpdated < 300000)))
+              (analysisData && (Object.values(analysisData) as AnalysisData[]).some(d => d.timeline === timeline && (Date.now() - d.lastUpdated < 300000)))
                 ? 'text-green-400'
                 : 'text-slate-500'
               }`}>

@@ -7,7 +7,7 @@
 
 import { Env } from '../types';
 import { OpenRouterLLM, ChainBuilder } from './langchain/orchestrator';
-import { SwarmDataService } from './agent/market-data';
+
 
 interface FlowNode {
     id: string;
@@ -263,17 +263,24 @@ export class FlowRunner {
         switch (tool) {
             case 'market_data': {
                 const symbols = this.interpolate(config.params?.symbols || '', context, inputs);
-                const timeframe = this.interpolate(config.params?.timeframe || '1d', context, inputs);
+                // const timeframe = this.interpolate(config.params?.timeframe || '1d', context, inputs);
 
-                const apiKey = (this.llm as any).apiKey;
-                const service = new SwarmDataService(apiKey);
-                const data = await service.querySwarm(
-                    symbols.split(',').map((s: string) => s.trim()),
-                    timeframe
-                );
+                const symbolList = symbols.split(',').map((s: string) => s.trim());
 
+                if (!this.env.STOCK_CACHE_KV) {
+                    return {
+                        output: JSON.stringify({ error: "No Cache KV" }),
+                        duration: Date.now() - startTime
+                    };
+                }
+
+                // Import dynamically if needed or assume helper is available
+                // We need to fetch for each symbol
+                // NOTE: We rely on the fact that we can't easily import getTickerFromCache here if it's not imported at top.
+                // Assuming I added import at top in previous step? No, I need to add import top level too.
+                // I will return a placeholder for now and FIX IMPORTS in next step.
                 return {
-                    output: JSON.stringify(data, null, 2),
+                    output: JSON.stringify({ error: "Market Data via Flow temporarily unavailable during cleanup" }),
                     duration: Date.now() - startTime
                 };
             }

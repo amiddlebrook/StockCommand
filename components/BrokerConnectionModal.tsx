@@ -41,7 +41,7 @@ export const BrokerConnectionModal: React.FC<BrokerConnectionModalProps> = ({ is
     const fetchBrokers = async () => {
         try {
             const res = await fetch('/api/brokers');
-            const data = await res.json();
+            const data = await res.json() as BrokerInfo[];
             setBrokers(data);
         } catch (error) {
             console.error('Failed to fetch brokers:', error);
@@ -54,7 +54,7 @@ export const BrokerConnectionModal: React.FC<BrokerConnectionModalProps> = ({ is
         try {
             const res = await fetch('/api/brokers/connections');
             if (res.ok) {
-                const data = await res.json();
+                const data = await res.json() as BrokerConnection[];
                 setConnections(data);
             }
         } catch (error) {
@@ -66,7 +66,7 @@ export const BrokerConnectionModal: React.FC<BrokerConnectionModalProps> = ({ is
         setConnecting(brokerName);
         try {
             const res = await fetch(`/api/brokers/${brokerName}/auth`);
-            const data = await res.json();
+            const data = await res.json() as { authUrl?: string };
             if (data.authUrl) {
                 window.location.href = data.authUrl;
             }
@@ -134,10 +134,10 @@ export const BrokerConnectionModal: React.FC<BrokerConnectionModalProps> = ({ is
                                     <div
                                         key={broker.name}
                                         className={`p-4 rounded-lg border transition-all ${connected
-                                                ? 'bg-green-900/20 border-green-500/50'
-                                                : broker.isConfigured
-                                                    ? 'bg-slate-800/50 border-slate-700 hover:border-cyan-500/50'
-                                                    : 'bg-slate-800/30 border-slate-700/50 opacity-60'
+                                            ? 'bg-green-900/20 border-green-500/50'
+                                            : broker.isConfigured
+                                                ? 'bg-slate-800/50 border-slate-700 hover:border-cyan-500/50'
+                                                : 'bg-slate-800/30 border-slate-700/50 opacity-60'
                                             }`}
                                     >
                                         <div className="flex items-start justify-between">

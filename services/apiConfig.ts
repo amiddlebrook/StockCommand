@@ -1,3 +1,5 @@
+import { Env } from '../types';
+
 let env: Env | undefined;
 
 export const setEnv = (envConfig: Env) => {

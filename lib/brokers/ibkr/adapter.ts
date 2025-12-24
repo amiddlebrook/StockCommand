@@ -39,7 +39,19 @@ export class IBKRAdapter extends BaseBrokerAdapter {
     constructor(config: IBKRConfig) {
         super();
         this.config = config;
+        this.clientId = config.IBKR_CLIENT_ID || '';
+        this.clientSecret = config.IBKR_CLIENT_SECRET || '';
+        this.redirectUri = config.IBKR_REDIRECT_URI || '';
     }
+
+    protected baseUrl = 'https://api.ibkr.com/v1/api';
+    protected paperBaseUrl = 'https://api.ibkr.com/v1/api';
+    protected clientId: string;
+    protected clientSecret: string;
+    protected redirectUri: string;
+    protected authUrl = 'https://www.interactivebrokers.com/sso/Login';
+    protected tokenUrl = 'https://api.ibkr.com/v1/api/oauth/access_token';
+    protected scopes = ['read_orders', 'read_account'];
 
     // --- Authentication ---
 
@@ -213,5 +225,13 @@ export class IBKRAdapter extends BaseBrokerAdapter {
 
     async getSnapshot(credentials: BrokerCredentials, symbol: string): Promise<Snapshot> {
         throw new Error("Not implemented");
+    }
+
+    validateSymbol(symbol: string): boolean {
+        return /^[A-Z]{1,5}$/.test(symbol);
+    }
+
+    validateOrderRequest(order: OrderRequest): { valid: boolean; errors: string[] } {
+        return { valid: true, errors: [] };
     }
 }

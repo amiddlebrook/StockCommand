@@ -54,7 +54,7 @@ export class OpenRouterLLM {
         return data.choices[0].message.content;
     }
 
-    async stream(messages: { role: string; content: string }[]): AsyncGenerator<string> {
+    async stream(messages: { role: string; content: string }[]) {
         const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
             method: 'POST',
             headers: {

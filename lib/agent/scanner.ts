@@ -1,25 +1,28 @@
-
 import { Env } from '../../types';
-import { SwarmDataService } from './market-data';
+import { getTickerFromCache } from '../../src/lib/caching';
 import { MarketData } from './types';
 
 export async function runMarketScanner(env: Env) {
     console.log("[Scanner] Starting autonomous market scan...");
 
-    // 1. Fetch Real Data via LLM (SwarmDataService)
+    // 1. Fetch Real Data via Cache (was SwarmDataService)
     const apiKey = env.OPENROUTER_DEEPSEEK_NEX_API_KEY;
     if (!apiKey) throw new Error("Missing API Key");
 
-    const swarmService = new SwarmDataService(apiKey);
     const watchlist = ['SPY', 'QQQ', 'NVDA', 'AAPL', 'TSLA', 'AMD'];
 
-    // Use SwarmDataService to get LLM-generated market data
-    const swarmData = await swarmService.querySwarm(watchlist, '1d');
+    // Use Cache to get market data
+    if (!env.STOCK_CACHE_KV) {
+        return "Error: STOCK_CACHE_KV not bound";
+    }
 
-    const dataSummary = watchlist.map(sym => {
-        const data = swarmData[sym] as MarketData | undefined;
-        if (data) {
-            return `${sym}: $${data.price} (${data.changePercent > 0 ? '+' : ''}${data.changePercent.toFixed(2)}%)`;
+    const results = await Promise.all(watchlist.map(sym => getTickerFromCache(env.STOCK_CACHE_KV, sym, 'quote')));
+
+    const dataSummary = watchlist.map((sym, i) => {
+        const res = results[i];
+        const data = res.data;
+        if (data && data.price) {
+            return `${sym}: $${data.price} (${(data.changePercent || 0) > 0 ? '+' : ''}${(data.changePercent || 0).toFixed(2)}%)`;
         }
         return `${sym}: No data`;
     }).join('\n');
