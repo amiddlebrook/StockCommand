@@ -290,6 +290,44 @@ export default {
         }
 
         // =============================================================================
+        // ADMIN SCAN - Manual trigger for cache refresh (same as cron)
+        // =============================================================================
+
+        if (url.pathname === "/api/admin/scan" && request.method === "GET") {
+            const apiKey = env.STOCK_COMMAND_OPENROUTER_API_KEY;
+            if (!apiKey) {
+                return new Response(JSON.stringify({ error: "No API key" }), {
+                    status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" }
+                });
+            }
+
+            // Run same logic as cron - trigger in background
+            ctx.waitUntil((async () => {
+                console.log('[Admin Scan] Starting manual refresh...');
+                try {
+                    // Refresh clocks
+                    const clockResult = await refreshAllClocks(env.STOCK_CACHE_KV, apiKey);
+                    console.log(`[Admin Scan] Clocks: ${clockResult.succeeded}/${clockResult.succeeded + clockResult.failed}`);
+
+                    // Refresh priority tickers
+                    const prioritySymbols = [
+                        'SPY', 'QQQ', 'DIA', 'IWM',
+                        'XLK', 'XLF', 'XLE', 'XLV', 'XLI', 'XLP', 'XLY', 'XLB', 'XLU', 'XLRE', 'XLC',
+                        'NVDA', 'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'META', 'TSLA',
+                    ];
+                    const tickerResult = await refreshTickers(prioritySymbols, env.STOCK_CACHE_KV, apiKey);
+                    console.log(`[Admin Scan] Tickers: ${tickerResult.succeeded}/${tickerResult.succeeded + tickerResult.failed}`);
+                } catch (e: any) {
+                    console.error('[Admin Scan] Error:', e.message);
+                }
+            })());
+
+            return new Response(JSON.stringify({ status: "Scan triggered in background" }), {
+                headers: { ...corsHeaders, "Content-Type": "application/json" }
+            });
+        }
+
+        // =============================================================================
         // QUOTES API - Frontend-facing endpoint
         // =============================================================================
 
