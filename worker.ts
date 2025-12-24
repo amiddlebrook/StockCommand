@@ -370,38 +370,89 @@ Communication style:
 
                 // ROUTER AGENT (Multi-Agent Dispatch)
                 // Determine user intent to select the best specialist model
+                const { ROLE_MODELS } = await import('./src/lib/search');
                 const { routeUserMessage } = await import('./lib/agent/router');
                 const agentType = await routeUserMessage(env, message);
                 console.log(`[Router] Dispatched to: ${agentType} `);
 
-                // Select Model & Tools based on Agent Type
-                let selectedModel = "nex-agi/deepseek-v3.1-nex-n1:free"; // Default Analyst (DeepSeek V3)
+                // Select Model & Specialized System Prompt
+                let selectedModel: string = ROLE_MODELS.ANALYST;
                 let useTools = true;
 
                 if (agentType === 'CODER') {
-                    selectedModel = "kwaipilot/kat-coder-pro:free";
-                    systemPrompt = "You are StockCommand Coder. You help the user write code and fix bugs. Use markdown for code blocks.";
-                    useTools = false; // Coder doesn't need stock tools usually
+                    selectedModel = ROLE_MODELS.CODER;
+                    systemPrompt = `You are StockCommand Coder.
+ROLE: Expert Full-Stack Developer specializing in Cloudflare Workers, React, and TailwindCSS.
+GOAL: Build high-quality, efficient tools and features for the StockCommand application.
+CONTEXT:
+- App is a "Cloudflare Native" financial terminal.
+- Frontend: React + Tailwind + Lucide Icons.
+- Backend: Cloudflare Workers + Durable Objects (AgentSwarmDO).
+- Architecture: "Two-Plane" (Cache-First + Background Refresh).
+
+INSTRUCTIONS:
+1. Write clean, modern, type-safe TypeScript.
+2. Use valid Tailwind classes for UI.
+3. When creating tools, focus on "Creator Features" - enabling users to build their own workflows or visualizations.
+4. Output Markdown code blocks.`;
+                    useTools = false;
+
                 } else if (agentType === 'CHAT') {
-                    selectedModel = "openai/gpt-oss-120b:free"; // Good general chat model
-                    useTools = false; // Pure chat, no heavy tools for speed
+                    selectedModel = ROLE_MODELS.CHAT;
+                    systemPrompt = `You are StockCommand Chat.
+ROLE: Intelligent Financial Companion.
+GOAL: Engage in natural, high-IQ conversation about markets, life, and technology.
+TONE: Professional, insightful, slightly witty.
+INSTRUCTIONS:
+- Do NOT be a robot. Be a companion.
+- If asked about stocks, give a general opinion but defer deep analysis to the Analyst.
+- Keep responses concise (under 2-3 paragraphs unless asked for a monologue).`;
+                    useTools = false;
+                } else {
+                    // ANALYST (Default)
+                    selectedModel = ROLE_MODELS.ANALYST;
+                    // Refined Analyst Prompt
+                    systemPrompt = `You are StockCommand Analyst.
+ROLE: Elite Hedge Fund Analyst & Market Data Specialist.
+GOAL: Provide accurate, data-driven financial insights and real-time market updates.
+CAPABILITIES:
+- You have access to real-time prices, news, and technical indicators via tools.
+- You can analyze complex portfolios and risk factors.
+
+INSTRUCTIONS:
+- ALWAYS cite your data sources (e.g., "According to latest price...").
+- Be objective. "Green" = Bullish, "Red" = Bearish, "Yellow" = Neutral.
+- Focus on the USER'S active tickers if provided.
+- Do NOT hallucinate prices. Use the 'get_stock_quote' tool if you need data.`;
                 }
 
-                // Append context if Analyst
+                // Append context if Analyst (PRUNED)
                 if (agentType === 'ANALYST') {
                     if (context) {
                         if (context.activeTickers && context.activeTickers.length > 0) {
-                            systemPrompt += `\n\nCURRENT ACTIVE TICKERS: ${context.activeTickers.join(', ')} \nFocus your answers on these tickers.`;
+                            systemPrompt += `\n\nACTIVE TICKERS: ${context.activeTickers.slice(0, 5).join(', ')}`;
                         }
+                        // Prune report to last 500 chars
                         if (context.latestReport) {
-                            systemPrompt += `\n\nLATEST PORTFOLIO REPORT: \n${JSON.stringify(context.latestReport)} `;
+                            const reportStr = typeof context.latestReport === 'string'
+                                ? context.latestReport
+                                : JSON.stringify(context.latestReport);
+                            systemPrompt += `\nREPORT_SUMMARY: ${reportStr.substring(0, 500)}...`;
+                        }
+                        // Prune injected agent knowledge
+                        if (context.agentKnowledge) {
+                            systemPrompt += `\nKNOWLEDGE_BASE: ${context.agentKnowledge.substring(0, 1000)}...`;
                         }
                     }
                 }
 
+                // OPTIMIZATION: Truncate history to last 8 messages
+                // This prevents the context window from exploding
+                const recentHistory = (history || []).slice(-8);
+
                 let messages = [
                     { role: "system", content: systemPrompt },
-                    ...(history || []).map((h: any) => ({ role: h.sender === 'user' ? 'user' : 'assistant', content: h.text })),
+                    ...recentHistory.map((h: any) => ({ role: h.sender === 'user' ? 'user' : 'assistant', content: h.text })),
                     { role: "user", content: message }
                 ];
 

@@ -10,22 +10,28 @@ import { complete, parseJsonResponse, OpenRouterConfig } from './openrouter';
 // =============================================================================
 
 export const ALL_MODELS = {
-    // TIER 1: Ultra-fast (<500ms)
-    mimoFlash: 'xiaomi/mimo-v2-flash:free',
+    // SPECIALIZED AGENTS
+    router: 'xiaomi/mimo-v2-flash:free',             // <500ms Classification
+    analyst: 'nex-agi/deepseek-v3.1-nex-n1:free',   // Balanced Analysis
+    coder: 'kwaipilot/kat-coder-pro:free',          // Tool/App Creation
+    chat: 'openai/gpt-oss-120b:free',               // General Chat
+    deepResearch: 'alibaba/tongyi-deepresearch-30b-a3b:free', // Background Deep Dives
 
-    // TIER 2: Fast (<1s)
-    deepseekNex: 'nex-agi/deepseek-v3.1-nex-n1:free',
-    gptOss20b: 'openai/gpt-oss-20b:free',
-    nemotron: 'nvidia/llama-3.1-nemotron-70b-instruct:free',
+    // UTILITY / REASONING
+    reasoning: 'nousresearch/hermes-3-llama-3.1-405b:free', // Complex Logic
+    fastTask: 'nvidia/llama-3.1-nemotron-70b-instruct:free', // Fast Extraction
+    general: 'openai/gpt-oss-20b:free',             // General purpose fast
+} as const;
 
-    // TIER 3: Thorough (1-3s)
-    deepResearch: 'alibaba/tongyi-deepresearch-30b-a3b:free',
-    olmo: 'allenai/olmo-2-0325-32b-instruct:free',
-    gptOss120b: 'openai/gpt-oss-120b:free',
-    katCoder: 'kwaipilot/kat-coder-pro:free',
-
-    // TIER 4: Deep reasoning (2-5s)
-    hermes405b: 'nousresearch/hermes-3-llama-3.1-405b:free',
+// Role-based aliases for clean usage in worker.ts
+export const ROLE_MODELS = {
+    ROUTER: ALL_MODELS.router,
+    ANALYST: ALL_MODELS.analyst,
+    CODER: ALL_MODELS.coder,
+    CHAT: ALL_MODELS.chat,
+    RESEARCHER: ALL_MODELS.deepResearch,
+    REASONING: ALL_MODELS.reasoning,
+    FAST: ALL_MODELS.fastTask,
 } as const;
 
 // Alias for backwards compatibility
@@ -149,14 +155,14 @@ export async function fastClockAnalysis(
 ): Promise<{ status: 'green' | 'yellow' | 'red'; reason: string; confidence: number; latencyMs: number }> {
     const startTime = Date.now();
 
-    // Race TIER 1 + TIER 2 models for fastest response
+    // OPTIMIZATION: Use single model instead of racing to save tokens (DeepSeek V3)
     const result = await raceModels(
         `${CLOCK_PROMPT}\n\nIndicator: ${clockLabel}\nQuery: ${query}`,
         apiKey,
-        [SPEED_MODELS.mimoFlash, SPEED_MODELS.deepseekNex, SPEED_MODELS.nemotron],
+        [ROLE_MODELS.ANALYST], // Single model only
         baseUrl,
-        10000, // Increased timeout for search
-        [{ id: "web" }] // Enable Web Search
+        15000,
+        [{ id: "web" }]
     );
 
     const parsed = parseJsonResponse<{ status: 'green' | 'yellow' | 'red'; reason: string; confidence: number }>(result.content);
@@ -185,14 +191,14 @@ export async function fastTickerAnalysis(
 ): Promise<{ price: number; change: number; changePercent: number; volume: number; bullets: string[]; riskNotes: string[]; sentiment: string; latencyMs: number }> {
     const startTime = Date.now();
 
-    // Race all fast models
+    // OPTIMIZATION: Use single model instead of racing to save tokens (DeepSeek V3)
     const result = await raceModels(
         `${TICKER_PROMPT}\n\nTicker: ${symbol}`,
         apiKey,
-        [SPEED_MODELS.mimoFlash, SPEED_MODELS.deepseekNex, SPEED_MODELS.deepResearch],
+        [ROLE_MODELS.ANALYST], // Single model only
         baseUrl,
-        10000, // Increased timeout for search
-        [{ id: "web" }] // Enable Web Search
+        15000,
+        [{ id: "web" }]
     );
 
     const parsed = parseJsonResponse<{ price: number; change: number; changePercent: number; volume: number; bullets: string[]; riskNotes: string[]; sentiment: string }>(result.content);
