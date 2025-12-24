@@ -380,72 +380,95 @@ const AppContent: React.FC = () => {
   // =============================================================================
   useEffect(() => {
     const initializeData = async () => {
-      console.log('[Auto-Init] Starting automatic data initialization...');
+      console.log('[Auto-Init] Starting FAST batch initialization...');
 
-      // 1. Trigger refresh for all clocks (background, fire-and-forget)
+      // 1. Prepare Batch Request
       const clockCodes = [
         'CLOCK_LIQUIDITY_CYCLE', 'CLOCK_COMMODITY_CYCLE', 'CLOCK_VIX_REGIME',
         'CLOCK_INFLATION_TREND', 'CLOCK_CREDIT_IMPULSE', 'CLOCK_DOLLAR_STRENGTH'
       ];
 
-      // Fire all clock refreshes in parallel (background)
-      clockCodes.forEach(code => {
-        fetch('/api/v2/refresh', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ type: 'clock', id: code })
-        }).catch(e => console.warn(`[Auto-Init] Clock refresh failed for ${code}:`, e));
-      });
+      const batchItems: { type: 'clock' | 'ticker'; id: string }[] = clockCodes.map(id => ({ type: 'clock' as const, id }));
 
-      // 2. Pre-fetch sector ETF quotes for immediate display
-      const sectorSymbols = [...Object.values(SECTOR_ETFS), 'SPY', 'QQQ', 'IWM', 'VIX'];
-      try {
-        const quotesRes = await fetch(`/api/quotes?symbols=${sectorSymbols.join(',')}`);
-        if (quotesRes.ok) {
-          console.log('[Auto-Init] Sector ETF quotes loaded successfully');
-        }
-      } catch (e) {
-        console.warn('[Auto-Init] Sector quotes pre-fetch failed:', e);
-      }
-
-      // 3. Trigger first ticker in watchlist for immediate analysis
+      // Add first ticker if available
       if (symbols.length > 0) {
-        const firstSymbol = symbols[0];
-        fetch('/api/v2/refresh', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ type: 'ticker', id: firstSymbol })
-        }).catch(e => console.warn(`[Auto-Init] Ticker refresh failed for ${firstSymbol}:`, e));
+        batchItems.push({ type: 'ticker' as const, id: symbols[0] });
       }
 
-      // 4. Fetch latest clock states from cache (for immediate UI population)
-      try {
-        const clocksRes = await fetch('/api/v2/clocks');
-        if (clocksRes.ok) {
-          const data = await clocksRes.json() as { clocks: any[] };
-          if (data.clocks && data.clocks.length > 0) {
-            setMarketClocks(prev => {
-              const updated = [...prev];
-              data.clocks.forEach((c: any) => {
-                const idx = updated.findIndex(oc => oc.code === c.code);
-                if (idx >= 0) {
-                  updated[idx] = { ...updated[idx], status: c.status, reason: c.reason, lastUpdated: c.lastUpdated };
-                }
-              });
-              return updated;
-            });
-            console.log('[Auto-Init] Clock states loaded from cache');
-          }
-        }
-      } catch (e) {
-        console.warn('[Auto-Init] Clock state fetch failed:', e);
-      }
+      // Fire Batch Request (Background) - ONE CALL
+      fetch('/api/v2/refresh/batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items: batchItems })
+      }).catch(e => console.warn('[Auto-Init] Batch refresh failed:', e));
 
-      console.log('[Auto-Init] Initialization complete');
+      // 2. Pre-fetch sector ETF quotes (Parallel)
+      const sectorSymbols = [...Object.values(SECTOR_ETFS), 'SPY', 'QQQ', 'IWM', 'VIX'];
+      fetch(`/api/quotes?symbols=${sectorSymbols.join(',')}`)
+        .then(res => res.ok && console.log('[Auto-Init] Sectors loaded'))
+        .catch(e => console.warn('[Auto-Init] Sectors failed:', e));
     };
 
     initializeData();
   }, []); // Run once on mount
+
+  // SMART POLLING: Check for updates every 2s until fresh, then back off
+  useEffect(() => {
+    let pollingInterval = 2000; // Start fast (2s)
+    let errorCount = 0;
+    let timer: any;
+
+    const pollClocks = async () => {
+      try {
+        const res = await fetch('/api/v2/clocks');
+        if (!res.ok) throw new Error("Fetch failed");
+
+        const data = await res.json() as { clocks: any[], needsRefresh: string[] };
+
+        if (data.clocks && data.clocks.length > 0) {
+          setMarketClocks(prev => {
+            // Only update if changed to avoid renders
+            const updated = [...prev];
+            let hasChanges = false;
+
+            data.clocks.forEach((c: any) => {
+              const idx = updated.findIndex(oc => oc.code === c.code);
+              if (idx >= 0) {
+                // If status changed or reason changed, update
+                if (updated[idx].status !== c.status || updated[idx].reason !== c.reason) {
+                  updated[idx] = { ...updated[idx], status: c.status, reason: c.reason, lastUpdated: c.lastUpdated };
+                  hasChanges = true;
+                }
+              } else {
+                updated.push(c);
+                hasChanges = true;
+              }
+            });
+            return hasChanges ? updated : prev;
+          });
+
+          // If all requested clocks are fresh (not in needsRefresh list), slow down
+          // Simple heuristic: if we have data for all initial clocks and they aren't 'initializing', slow down
+          const allFresh = data.clocks.every((c: any) => c.status !== 'gray' && c.reason !== 'Initializing...');
+
+          if (allFresh) {
+            pollingInterval = 30000; // All fresh? 30s poll
+          }
+        }
+        errorCount = 0;
+      } catch (e) {
+        errorCount++;
+        if (errorCount > 5) pollingInterval = 60000; // Back off on errors
+      }
+
+      // Schedule next poll
+      timer = setTimeout(pollClocks, pollingInterval);
+    };
+
+    timer = setTimeout(pollClocks, 1000); // Start polling after 1s
+
+    return () => clearTimeout(timer);
+  }, []); // Independent polling loop
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);

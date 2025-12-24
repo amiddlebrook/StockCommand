@@ -196,6 +196,62 @@ export default {
             }
         }
 
+        // POST /api/v2/refresh/batch - Batch refresh trigger
+        if (url.pathname === "/api/v2/refresh/batch" && request.method === "POST") {
+            try {
+                const { items } = await request.json() as { items: { type: 'clock' | 'ticker'; id: string }[] };
+
+                if (!items || !Array.isArray(items)) {
+                    return new Response(JSON.stringify({ error: "Missing items array" }), { status: 400, headers: corsHeaders });
+                }
+
+                const apiKey = env.STOCK_COMMAND_OPENROUTER_API_KEY || env.OPENROUTER_API_KEY || env.OPENROUTER_DEEPSEEK_NEX_API_KEY;
+                const baseUrl = env.OPENROUTER_API_BASE;
+
+                const results: any[] = [];
+
+                // Process sequentially to check locks (fast), then parallelize actual work
+                await Promise.all(items.map(async (item) => {
+                    const doId = env.ENTITY_LOCK.idFromName(`${item.type}:${item.id}`);
+                    const stub = env.ENTITY_LOCK.get(doId);
+                    const freshnessMs = item.type === 'clock' ? BUCKET_CONFIG.clock.ttlMs : BUCKET_CONFIG.ticker_brief.ttlMs;
+
+                    const lockResult = await stub.fetch(new Request('http://internal/?action=acquire', {
+                        method: 'POST',
+                        body: JSON.stringify({ freshnessMs }),
+                    })).then((r: Response) => r.json());
+
+                    if (lockResult.acquired) {
+                        results.push({ ...item, status: 'started' });
+                        // Start background work
+                        ctx.waitUntil((async () => {
+                            try {
+                                if (item.type === 'clock') {
+                                    await refreshClock(item.id, env.STOCK_CACHE_KV, apiKey, baseUrl);
+                                } else {
+                                    await refreshTicker(item.id, env.STOCK_CACHE_KV, apiKey, baseUrl);
+                                }
+                                await stub.fetch(new Request('http://internal/?action=complete', { method: 'POST' }));
+                            } catch (error: any) {
+                                await stub.fetch(new Request('http://internal/?action=fail', {
+                                    method: 'POST',
+                                    body: JSON.stringify({ error: error.message }),
+                                }));
+                            }
+                        })());
+                    } else {
+                        results.push({ ...item, status: lockResult.status });
+                    }
+                }));
+
+                return new Response(JSON.stringify({ results }), {
+                    headers: { ...corsHeaders, "Content-Type": "application/json" }
+                });
+            } catch (e: any) {
+                return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: corsHeaders });
+            }
+        }
+
         // GET /api/v2/refresh/status - Check refresh job status
         if (url.pathname === "/api/v2/refresh/status" && request.method === "GET") {
             try {
