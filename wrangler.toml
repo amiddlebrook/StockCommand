@@ -97,6 +97,6 @@ max_batch_timeout = 30
 [[analytics_engine_datasets]]
 binding = "ANALYTICS"
 
-# Background Scanner Schedule (Every hour)
+# Anticipatory Intelligence: Aggressive Pre-Warming (Every 5 minutes)
 [triggers]
-crons = ["0 * * * *"]
+crons = ["*/5 * * * *"]
