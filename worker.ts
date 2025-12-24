@@ -167,7 +167,7 @@ export default {
                 }
 
                 // Lock acquired - run refresh in background
-                const apiKey = env.OPENROUTER_API_KEY || env.OPENROUTER_DEEPSEEK_NEX_API_KEY;
+                const apiKey = env.STOCK_COMMAND_OPENROUTER_API_KEY || env.OPENROUTER_API_KEY || env.OPENROUTER_DEEPSEEK_NEX_API_KEY;
                 const baseUrl = env.OPENROUTER_API_BASE;
 
                 ctx.waitUntil((async () => {

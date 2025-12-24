@@ -124,6 +124,13 @@ export interface Env {
   OPENROUTER_RENDER_KEY_2?: string;
   OPENROUTER_EXTRACT_KEY_1?: string;
   OPENROUTER_SYNTH_KEY_1?: string;
+  OPENROUTER_GPT_OSS_API_KEY?: string;
+  OPENROUTER_KATCODER_PRO_API_KEY?: string;
+  OPENROUTER_NEMOTRON_NANO_API_KEY?: string;
+  OPENROUTER_OLMO_THINK_API_KEY?: string;
+
+  // Primary key for all models
+  STOCK_COMMAND_OPENROUTER_API_KEY?: string;
   OPENROUTER_VALID_KEY_1?: string;
 }
 
