@@ -1,118 +1,222 @@
 /**
- * Web Search Adapter
- * Stub with TODO for provider integration (Tavily/Serper/Bing)
+ * OpenRouter-Native Research Service
+ * Uses LLMs with research/knowledge capabilities instead of external search APIs
+ * Multi-model synthesis for higher confidence results
  */
 
-export interface SearchResult {
-    title: string;
-    url: string;
-    snippet: string;
+import { complete, parseJsonResponse, OpenRouterConfig } from './openrouter';
+
+// =============================================================================
+// RESEARCH MODELS (OpenRouter Native)
+// =============================================================================
+
+export const RESEARCH_MODELS = {
+    // Primary research model - Alibaba's DeepResearch (free, research-optimized)
+    deepResearch: 'alibaba/tongyi-deepresearch-30b-a3b:free',
+
+    // Reasoning model - Hermes 405B (free, massive reasoning)
+    hermes405b: 'nousresearch/hermes-3-llama-3.1-405b:free',
+
+    // User's existing models for synthesis
+    deepseek: 'deepseek/deepseek-chat',
+    nemotron: 'nvidia/llama-3.1-nemotron-70b-instruct:free',
+    olmo: 'allenai/olmo-2-0325-32b-instruct:free',
+} as const;
+
+export interface ResearchResult {
+    content: string;
+    model: string;
+    confidence: number;
+    latencyMs: number;
 }
 
-export interface SearchOptions {
-    maxResults?: number;
-    domains?: string[]; // Allowlist
+export interface SynthesizedResearch {
+    summary: string;
+    sources: ResearchResult[];
+    consensus: 'high' | 'medium' | 'low';
+    totalLatencyMs: number;
 }
 
-// TODO: Implement actual provider
-// Environment variables needed:
-// - SEARCH_PROVIDER: 'tavily' | 'serper' | 'bing'
-// - TAVILY_API_KEY, SERPER_API_KEY, or BING_API_KEY
+// =============================================================================
+// SINGLE MODEL RESEARCH
+// =============================================================================
 
-export async function searchWeb(
+const RESEARCH_PROMPT = `You are a financial research analyst with access to extensive market knowledge.
+Provide accurate, up-to-date information based on your training data.
+
+IMPORTANT:
+- Focus on factual, verifiable information
+- Include specific data points when possible (prices, percentages, dates)
+- Cite the type of source if you recall it (earnings report, SEC filing, news)
+- If uncertain, say so and provide your confidence level
+
+Respond in JSON format:
+{
+  "findings": "detailed findings here",
+  "confidence": 0.0-1.0,
+  "dataPoints": ["key fact 1", "key fact 2"],
+  "sentiment": "bullish|bearish|neutral"
+}`;
+
+export async function researchWithModel(
     query: string,
     apiKey: string,
-    options: SearchOptions = {}
-): Promise<SearchResult[]> {
-    const { maxResults = 5, domains } = options;
+    model: string,
+    baseUrl?: string
+): Promise<ResearchResult> {
+    const startTime = Date.now();
 
-    // Stub: Return empty for now, implement provider
-    console.log(`[SEARCH] Query: ${query}, Max: ${maxResults}, Domains: ${domains?.join(',')}`);
-
-    // TODO: Implement Tavily
-    // const response = await fetch('https://api.tavily.com/search', {
-    //   method: 'POST',
-    //   headers: { 'Content-Type': 'application/json' },
-    //   body: JSON.stringify({
-    //     api_key: apiKey,
-    //     query,
-    //     max_results: maxResults,
-    //     include_domains: domains,
-    //   }),
-    // });
-
-    return [];
-}
-
-/**
- * Fetch and clean page content
- */
-export async function fetchPageContent(
-    url: string,
-    maxChars: number = 20000
-): Promise<{ content: string; hash: string } | null> {
     try {
-        const response = await fetch(url, {
-            headers: {
-                'User-Agent': 'StockCommand/1.0 (Financial Research Bot)',
-                'Accept': 'text/html',
-            },
-        });
+        const config: OpenRouterConfig = { apiKey, model, baseUrl };
+        const response = await complete(config, [
+            { role: 'system', content: RESEARCH_PROMPT },
+            { role: 'user', content: query },
+        ], { temperature: 0.3, maxTokens: 1500, jsonMode: true });
 
-        if (!response.ok) return null;
+        const parsed = parseJsonResponse<{ findings: string; confidence: number }>(response);
 
-        const html = await response.text();
-        const content = stripHtml(html, maxChars);
-        const hash = await computeHash(content);
-
-        return { content, hash };
-    } catch (e) {
-        console.error(`[FETCH] Failed: ${url}`, e);
-        return null;
+        return {
+            content: parsed?.findings || response,
+            model,
+            confidence: parsed?.confidence || 0.7,
+            latencyMs: Date.now() - startTime,
+        };
+    } catch (error) {
+        console.error(`Research failed for ${model}:`, error);
+        return {
+            content: '',
+            model,
+            confidence: 0,
+            latencyMs: Date.now() - startTime,
+        };
     }
 }
 
-/**
- * Strip HTML to plain text
- */
-function stripHtml(html: string, maxChars: number): string {
-    // Remove script/style tags completely
-    let text = html
-        .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
-        .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
-        .replace(/<nav[^>]*>[\s\S]*?<\/nav>/gi, '')
-        .replace(/<header[^>]*>[\s\S]*?<\/header>/gi, '')
-        .replace(/<footer[^>]*>[\s\S]*?<\/footer>/gi, '');
+// =============================================================================
+// MULTI-MODEL PARALLEL RESEARCH
+// =============================================================================
 
-    // Remove all HTML tags
-    text = text.replace(/<[^>]+>/g, ' ');
+export async function parallelResearch(
+    query: string,
+    apiKeys: { deepResearch?: string; hermes?: string; deepseek?: string },
+    baseUrl?: string
+): Promise<SynthesizedResearch> {
+    const startTime = Date.now();
+    const promises: Promise<ResearchResult>[] = [];
 
-    // Decode HTML entities
-    text = text
-        .replace(/&nbsp;/g, ' ')
-        .replace(/&amp;/g, '&')
-        .replace(/&lt;/g, '<')
-        .replace(/&gt;/g, '>')
-        .replace(/&quot;/g, '"');
-
-    // Normalize whitespace
-    text = text.replace(/\s+/g, ' ').trim();
-
-    // Truncate
-    if (text.length > maxChars) {
-        text = text.substring(0, maxChars) + '...';
+    // Run multiple models in parallel for consensus
+    if (apiKeys.deepResearch) {
+        promises.push(researchWithModel(query, apiKeys.deepResearch, RESEARCH_MODELS.deepResearch, baseUrl));
+    }
+    if (apiKeys.hermes) {
+        promises.push(researchWithModel(query, apiKeys.hermes, RESEARCH_MODELS.hermes405b, baseUrl));
+    }
+    if (apiKeys.deepseek) {
+        promises.push(researchWithModel(query, apiKeys.deepseek, RESEARCH_MODELS.deepseek, baseUrl));
     }
 
-    return text;
+    const results = await Promise.all(promises);
+    const validResults = results.filter(r => r.content && r.confidence > 0);
+
+    // Determine consensus level
+    const avgConfidence = validResults.length > 0
+        ? validResults.reduce((sum, r) => sum + r.confidence, 0) / validResults.length
+        : 0;
+
+    let consensus: 'high' | 'medium' | 'low' = 'low';
+    if (avgConfidence > 0.8 && validResults.length >= 2) consensus = 'high';
+    else if (avgConfidence > 0.5) consensus = 'medium';
+
+    // Synthesize results
+    const summary = validResults.map(r => r.content).join('\n\n---\n\n');
+
+    return {
+        summary,
+        sources: validResults,
+        consensus,
+        totalLatencyMs: Date.now() - startTime,
+    };
 }
 
-/**
- * Compute content hash for deduplication
- */
-async function computeHash(content: string): Promise<string> {
-    const encoder = new TextEncoder();
-    const data = encoder.encode(content);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('').substring(0, 16);
+// =============================================================================
+// CLOCK-SPECIFIC RESEARCH
+// =============================================================================
+
+export async function researchClockStatus(
+    clockCode: string,
+    clockLabel: string,
+    researchQuery: string,
+    apiKey: string,
+    baseUrl?: string
+): Promise<{ status: 'green' | 'yellow' | 'red'; reason: string; confidence: number }> {
+
+    const prompt = `Research the current market status for: ${clockLabel}
+  
+Query: ${researchQuery}
+
+Based on your knowledge of current market conditions, determine:
+1. Status: green (bullish/favorable), yellow (neutral/mixed), red (bearish/risk-off)
+2. A concise 1-2 sentence explanation
+
+Respond in JSON:
+{
+  "status": "green|yellow|red",
+  "reason": "brief explanation",
+  "confidence": 0.0-1.0
+}`;
+
+    // Use DeepResearch as primary, fall back to other models
+    const result = await researchWithModel(prompt, apiKey, RESEARCH_MODELS.deepResearch, baseUrl);
+
+    const parsed = parseJsonResponse<{ status: 'green' | 'yellow' | 'red'; reason: string; confidence: number }>(result.content);
+
+    return {
+        status: parsed?.status || 'yellow',
+        reason: parsed?.reason || 'Analysis in progress',
+        confidence: parsed?.confidence || result.confidence,
+    };
+}
+
+// =============================================================================
+// TICKER-SPECIFIC RESEARCH
+// =============================================================================
+
+export async function researchTicker(
+    symbol: string,
+    apiKey: string,
+    baseUrl?: string
+): Promise<{ bullets: string[]; riskNotes: string[]; sentiment: string }> {
+
+    const prompt = `Research the stock ${symbol}. Provide:
+1. Key bullet points about recent developments, earnings, news, catalysts
+2. Risk factors to consider
+3. Overall sentiment
+
+Respond in JSON:
+{
+  "bullets": ["bullet 1", "bullet 2", "bullet 3"],
+  "riskNotes": ["risk 1", "risk 2"],
+  "sentiment": "bullish|bearish|neutral",
+  "confidence": 0.0-1.0
+}`;
+
+    // Use parallel research for higher confidence on tickers
+    const results = await parallelResearch(prompt, {
+        deepResearch: apiKey,
+        hermes: apiKey, // Same key works for free models
+    }, baseUrl);
+
+    // Parse best result
+    for (const source of results.sources) {
+        const parsed = parseJsonResponse<{ bullets: string[]; riskNotes: string[]; sentiment: string }>(source.content);
+        if (parsed?.bullets?.length) {
+            return parsed;
+        }
+    }
+
+    return {
+        bullets: ['Analysis pending - refresh to update'],
+        riskNotes: [],
+        sentiment: 'neutral',
+    };
 }

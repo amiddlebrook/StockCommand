@@ -167,17 +167,15 @@ export default {
                 }
 
                 // Lock acquired - run refresh in background
-                const openRouterConfig = {
-                    apiKey: env.OPENROUTER_API_KEY || env.OPENROUTER_DEEPSEEK_NEX_API_KEY,
-                    model: env.OPENROUTER_MODEL_EXTRACT || 'perplexity/llama-3.1-sonar-small-128k-online',
-                };
+                const apiKey = env.OPENROUTER_API_KEY || env.OPENROUTER_DEEPSEEK_NEX_API_KEY;
+                const baseUrl = env.OPENROUTER_API_BASE;
 
                 ctx.waitUntil((async () => {
                     try {
                         if (type === 'clock') {
-                            await refreshClock(id, env.STOCK_CACHE_KV, openRouterConfig);
+                            await refreshClock(id, env.STOCK_CACHE_KV, apiKey, baseUrl);
                         } else {
-                            await refreshTicker(id, env.STOCK_CACHE_KV, openRouterConfig);
+                            await refreshTicker(id, env.STOCK_CACHE_KV, apiKey, baseUrl);
                         }
                         // Mark complete
                         await stub.fetch(new Request('http://internal/?action=complete', { method: 'POST' }));
