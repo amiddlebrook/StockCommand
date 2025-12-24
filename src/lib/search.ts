@@ -1,36 +1,35 @@
 /**
  * MAXIMUM SPEED Agent Swarm
- * Optimized for absolute fastest response times
- * 
- * Strategy:
- * 1. Parallel LLM calls with key pools
- * 2. First-response-wins (don't wait for all)
- * 3. Speculative execution
- * 4. Aggressive caching
+ * 9 FREE OpenRouter LLMs
  */
 
 import { complete, parseJsonResponse, OpenRouterConfig } from './openrouter';
 
 // =============================================================================
-// SPEED-OPTIMIZED MODEL CONFIG
+// 9 FREE OPENROUTER MODELS
 // =============================================================================
 
-// Fastest models first (ordered by latency)
-export const SPEED_MODELS = {
-    // TIER 1: Ultra-fast (<500ms typical)
-    flash: 'xiaomi/mimo-v2-flash:free',
+export const ALL_MODELS = {
+    // TIER 1: Ultra-fast (<500ms)
+    mimoFlash: 'xiaomi/mimo-v2-flash:free',
 
-    // TIER 2: Fast (<1s typical)
-    deepseek: 'deepseek/deepseek-chat',
+    // TIER 2: Fast (<1s)
+    deepseekNex: 'nex-agi/deepseek-v3.1-nex-n1:free',
+    gptOss20b: 'openai/gpt-oss-20b:free',
     nemotron: 'nvidia/llama-3.1-nemotron-70b-instruct:free',
 
-    // TIER 3: Thorough (1-3s typical)
+    // TIER 3: Thorough (1-3s)
     deepResearch: 'alibaba/tongyi-deepresearch-30b-a3b:free',
     olmo: 'allenai/olmo-2-0325-32b-instruct:free',
+    gptOss120b: 'openai/gpt-oss-120b:free',
+    katCoder: 'kwaipilot/kat-coder-pro:free',
 
-    // TIER 4: Deep reasoning (slow but accurate)
+    // TIER 4: Deep reasoning (2-5s)
     hermes405b: 'nousresearch/hermes-3-llama-3.1-405b:free',
 } as const;
+
+// Alias for backwards compatibility
+export const SPEED_MODELS = ALL_MODELS;
 
 // Key pools for horizontal scaling (env var names)
 export const KEY_POOLS = {
@@ -153,7 +152,7 @@ export async function fastClockAnalysis(
     const result = await raceModels(
         `${CLOCK_PROMPT}\n\nIndicator: ${clockLabel}\nQuery: ${query}`,
         apiKey,
-        [SPEED_MODELS.flash, SPEED_MODELS.deepseek, SPEED_MODELS.nemotron],
+        [SPEED_MODELS.mimoFlash, SPEED_MODELS.deepseekNex, SPEED_MODELS.nemotron],
         baseUrl,
         3000 // 3 second timeout
     );
@@ -188,7 +187,7 @@ export async function fastTickerAnalysis(
     const result = await raceModels(
         `${TICKER_PROMPT}\n\nTicker: ${symbol}`,
         apiKey,
-        [SPEED_MODELS.flash, SPEED_MODELS.deepseek, SPEED_MODELS.deepResearch],
+        [SPEED_MODELS.mimoFlash, SPEED_MODELS.deepseekNex, SPEED_MODELS.deepResearch],
         baseUrl,
         4000 // 4 second timeout
     );
