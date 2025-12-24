@@ -38,16 +38,38 @@ export const SystemHealth: React.FC = () => {
     return (
         <div className="space-y-6">
             {/* Global Status Banner */}
-            <div className={`rounded-lg p-6 flex items-center gap-4 bg-emerald-900/20 border border-emerald-500/30`}>
-                <div className={`w-12 h-12 rounded-full flex items-center justify-center bg-emerald-500/20`}>
-                    <Icon icon="check" className="w-6 h-6 text-emerald-500" />
+            <div className={`rounded-lg p-6 flex items-center justify-between gap-4 bg-emerald-900/20 border border-emerald-500/30`}>
+                <div className="flex items-center gap-4">
+                    <div className={`w-12 h-12 rounded-full flex items-center justify-center bg-emerald-500/20`}>
+                        <Icon icon="check" className="w-6 h-6 text-emerald-500" />
+                    </div>
+                    <div>
+                        <h3 className="text-lg font-bold text-emerald-400">ALL SYSTEMS OPERATIONAL</h3>
+                        <p className="text-sm text-slate-400 mt-1">
+                            Last checked: {new Date().toLocaleTimeString()}
+                        </p>
+                    </div>
                 </div>
-                <div>
-                    <h3 className="text-lg font-bold text-emerald-400">ALL SYSTEMS OPERATIONAL</h3>
-                    <p className="text-sm text-slate-400 mt-1">
-                        Last checked: {new Date().toLocaleTimeString()}
-                    </p>
-                </div>
+
+                <button
+                    onClick={async () => {
+                        const btn = document.getElementById('scan-btn');
+                        if (btn) { btn.textContent = 'SCANNING...'; (btn as any).disabled = true; }
+                        try {
+                            await fetch('/api/admin/scan');
+                            window.location.reload(); // Refresh to show new data
+                        } catch (e) {
+                            alert('Scan failed');
+                        } finally {
+                            if (btn) { btn.textContent = 'SYSTEM SCAN'; (btn as any).disabled = false; }
+                        }
+                    }}
+                    id="scan-btn"
+                    className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-4 py-2 rounded shadow-lg shadow-emerald-900/20 transition-all flex items-center gap-2"
+                >
+                    <Icon icon="refresh" className="w-4 h-4" />
+                    SYSTEM SCAN
+                </button>
             </div>
 
             {/* Grid */}
