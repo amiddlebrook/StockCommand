@@ -32,8 +32,15 @@ import { FlowRunner } from './lib/flow-runner';
 import { CostTracker } from './lib/cost-tracker';
 import { OpenRouterLLM, ChainBuilder } from './lib/langchain/orchestrator';
 
-// Export Durable Object for Cloudflare
-export { AgentSwarmDO };
+// Two-Plane Architecture Imports
+import { EntityLockDO } from './src/do/EntityLockDO';
+import { getAllClocksFromCache, getTickerFromCache, batchGetTickers, getUserWatchlist, addToWatchlist } from './src/lib/caching';
+import { refreshClock, refreshAllClocks } from './src/lib/refresh/clock-refresher';
+import { refreshTicker } from './src/lib/refresh/ticker-refresher';
+import { CLOCK_DEFINITIONS, BUCKET_CONFIG } from './src/lib/types/artifacts';
+
+// Export Durable Objects for Cloudflare
+export { AgentSwarmDO, EntityLockDO };
 
 export default {
     async fetch(request: Request, env: any, ctx: any): Promise<Response> {
@@ -71,6 +78,183 @@ export default {
 
             await env.USER_SESSIONS_KV.put(key, (count + 1).toString(), { expirationTtl: windowSec });
         }
+
+        // =============================================================================
+        // V2 API: TWO-PLANE ARCHITECTURE (Cache-First, Sub-100ms)
+        // =============================================================================
+
+        // GET /api/v2/clocks - Get all market clocks from cache (sub-10ms)
+        if (url.pathname === "/api/v2/clocks" && request.method === "GET") {
+            try {
+                const { clocks, needsRefresh } = await getAllClocksFromCache(env.STOCK_CACHE_KV);
+
+                // Transform to frontend-friendly format
+                const clockList = Object.entries(CLOCK_DEFINITIONS).map(([code, def]) => ({
+                    code,
+                    label: def.label,
+                    category: def.category,
+                    status: clocks[code]?.status || 'yellow',
+                    reason: clocks[code]?.reason || 'Initializing...',
+                    lastUpdated: clocks[code]?.createdAt || 0,
+                    needsRefresh: needsRefresh.includes(code),
+                }));
+
+                return new Response(JSON.stringify({
+                    clocks: clockList,
+                    needsRefresh,
+                    cacheHits: Object.keys(clocks).filter(k => clocks[k]).length,
+                }), {
+                    headers: { ...corsHeaders, "Content-Type": "application/json" }
+                });
+            } catch (e: any) {
+                return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: corsHeaders });
+            }
+        }
+
+        // GET /api/v2/tickers/:symbol - Get ticker artifact from cache
+        if (url.pathname.startsWith("/api/v2/tickers/") && request.method === "GET") {
+            try {
+                const symbol = url.pathname.split('/')[3]?.toUpperCase();
+                if (!symbol) {
+                    return new Response(JSON.stringify({ error: "Missing symbol" }), { status: 400, headers: corsHeaders });
+                }
+
+                const kind = (url.searchParams.get('kind') || 'brief') as 'brief' | 'news' | 'quote';
+                const result = await getTickerFromCache(env.STOCK_CACHE_KV, symbol, kind);
+
+                return new Response(JSON.stringify({
+                    ticker: symbol,
+                    data: result.data,
+                    hit: result.hit,
+                    stale: result.stale,
+                    needsRefresh: result.needsRefresh,
+                    ageMs: result.ageMs,
+                }), {
+                    headers: { ...corsHeaders, "Content-Type": "application/json" }
+                });
+            } catch (e: any) {
+                return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: corsHeaders });
+            }
+        }
+
+        // POST /api/v2/refresh - Trigger background refresh (returns immediately)
+        if (url.pathname === "/api/v2/refresh" && request.method === "POST") {
+            try {
+                const { type, id } = await request.json() as { type: 'clock' | 'ticker'; id: string };
+
+                if (!type || !id) {
+                    return new Response(JSON.stringify({ error: "Missing type or id" }), { status: 400, headers: corsHeaders });
+                }
+
+                // Get DO for this entity
+                const doId = env.ENTITY_LOCK.idFromName(`${type}:${id}`);
+                const stub = env.ENTITY_LOCK.get(doId);
+
+                // Try to acquire lock
+                const freshnessMs = type === 'clock' ? BUCKET_CONFIG.clock.ttlMs : BUCKET_CONFIG.ticker_brief.ttlMs;
+                const lockResult = await stub.fetch(new Request('http://internal/?action=acquire', {
+                    method: 'POST',
+                    body: JSON.stringify({ freshnessMs }),
+                })).then((r: Response) => r.json());
+
+                if (!lockResult.acquired) {
+                    return new Response(JSON.stringify({
+                        status: lockResult.status,
+                        message: lockResult.status === 'fresh' ? 'Already fresh' : 'Refresh in progress'
+                    }), {
+                        headers: { ...corsHeaders, "Content-Type": "application/json" }
+                    });
+                }
+
+                // Lock acquired - run refresh in background
+                const openRouterConfig = {
+                    apiKey: env.OPENROUTER_API_KEY || env.OPENROUTER_DEEPSEEK_NEX_API_KEY,
+                    model: env.OPENROUTER_MODEL_EXTRACT || 'perplexity/llama-3.1-sonar-small-128k-online',
+                };
+
+                ctx.waitUntil((async () => {
+                    try {
+                        if (type === 'clock') {
+                            await refreshClock(id, env.STOCK_CACHE_KV, openRouterConfig);
+                        } else {
+                            await refreshTicker(id, env.STOCK_CACHE_KV, openRouterConfig);
+                        }
+                        // Mark complete
+                        await stub.fetch(new Request('http://internal/?action=complete', { method: 'POST' }));
+                    } catch (error: any) {
+                        // Mark failed
+                        await stub.fetch(new Request('http://internal/?action=fail', {
+                            method: 'POST',
+                            body: JSON.stringify({ error: error.message }),
+                        }));
+                    }
+                })());
+
+                return new Response(JSON.stringify({ status: 'started', type, id }), {
+                    headers: { ...corsHeaders, "Content-Type": "application/json" }
+                });
+            } catch (e: any) {
+                return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: corsHeaders });
+            }
+        }
+
+        // GET /api/v2/refresh/status - Check refresh job status
+        if (url.pathname === "/api/v2/refresh/status" && request.method === "GET") {
+            try {
+                const type = url.searchParams.get('type') as 'clock' | 'ticker';
+                const id = url.searchParams.get('id');
+
+                if (!type || !id) {
+                    return new Response(JSON.stringify({ error: "Missing type or id" }), { status: 400, headers: corsHeaders });
+                }
+
+                const doId = env.ENTITY_LOCK.idFromName(`${type}:${id}`);
+                const stub = env.ENTITY_LOCK.get(doId);
+
+                const status = await stub.fetch(new Request('http://internal/?action=status'))
+                    .then((r: Response) => r.json());
+
+                return new Response(JSON.stringify(status), {
+                    headers: { ...corsHeaders, "Content-Type": "application/json" }
+                });
+            } catch (e: any) {
+                return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: corsHeaders });
+            }
+        }
+
+        // POST /api/v2/watchlist - Add ticker to user watchlist
+        if (url.pathname === "/api/v2/watchlist" && request.method === "POST") {
+            try {
+                const { symbol } = await request.json() as { symbol: string };
+                const userId = request.headers.get('X-User-Id') || 'anonymous';
+
+                const watchlist = await addToWatchlist(env.STOCK_CACHE_KV, userId, symbol.toUpperCase());
+
+                return new Response(JSON.stringify({ watchlist }), {
+                    headers: { ...corsHeaders, "Content-Type": "application/json" }
+                });
+            } catch (e: any) {
+                return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: corsHeaders });
+            }
+        }
+
+        // GET /api/v2/watchlist - Get user watchlist
+        if (url.pathname === "/api/v2/watchlist" && request.method === "GET") {
+            try {
+                const userId = request.headers.get('X-User-Id') || 'anonymous';
+                const watchlist = await getUserWatchlist(env.STOCK_CACHE_KV, userId);
+
+                return new Response(JSON.stringify({ watchlist }), {
+                    headers: { ...corsHeaders, "Content-Type": "application/json" }
+                });
+            } catch (e: any) {
+                return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: corsHeaders });
+            }
+        }
+
+        // =============================================================================
+        // LEGACY API (v1) - Kept for backwards compatibility
+        // =============================================================================
 
         // --- AUTH ROUTES ---
 

@@ -69,9 +69,18 @@ index_name = "stockcommand-embeddings"
 name = "AGENT_SWARM"
 class_name = "AgentSwarmDO"
 
+# Durable Object for entity locking (two-plane architecture)
+[[durable_objects.bindings]]
+name = "ENTITY_LOCK"
+class_name = "EntityLockDO"
+
 [[migrations]]
 tag = "v1"
 new_classes = ["AgentSwarmDO"]
+
+[[migrations]]
+tag = "v2"
+new_classes = ["EntityLockDO"]
 
 # Queue for background stock data processing
 [[queues.producers]]

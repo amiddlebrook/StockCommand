@@ -72,7 +72,7 @@ export interface Env {
 
   // OpenRouter API key (primary key for all LLM calls)
   OPENROUTER_API_KEY?: string;
-  
+
   // Legacy OpenRouter keys (deprecated, kept for migration)
   OPENROUTER_DEEPSEEK_NEX_API_KEY?: string;
 
@@ -101,10 +101,19 @@ export interface Env {
   // Durable Objects for agent swarm coordination
   AGENT_SWARM: DurableObjectNamespace;
 
+  // Durable Object for entity locking (two-plane architecture)
+  ENTITY_LOCK: DurableObjectNamespace;
+
   // Queue
   STOCK_DATA_QUEUE: Queue<unknown>;
 
   // Analytics Engine
   ANALYTICS: AnalyticsEngineDataset;
+
+  // Two-Plane Architecture Model Configuration
+  OPENROUTER_MODEL_ROUTER?: string;
+  OPENROUTER_MODEL_RENDER?: string;
+  OPENROUTER_MODEL_EXTRACT?: string;
+  OPENROUTER_API_BASE?: string;
 }
 
