@@ -161,17 +161,17 @@ export async function runAgentWorkflow(
     console.log(`Starting StockCommand Multi-Core Workflow (Scope: ${scope}, Timeline: ${timeline})...`);
 
     const AV_KEY = env.ALPHA_VANTAGE_API_KEY || ''; // Legacy, unused
-    const AGENT_KEY = env.OPENROUTER_DEEPSEEK_NEX_API_KEY || '';
+    const AGENT_KEY = env.OPENROUTER_DEEPSEEK_NEX_API_KEY || env.OPENROUTER_API_KEY || '';
 
     if (!AGENT_KEY) {
-        console.error("Missing OPENROUTER_DEEPSEEK_NEX_API_KEY");
+        console.error("Missing LLM API Key");
         return { analysis: "Error: Missing LLM API Key", actions: [] };
     }
 
     // 1. Refresh Data
     // Fetch data respecting the requested timeline (1m, 1h, etc.)
     const [marketData, portfolio] = await Promise.all([
-        fetchMarketData(AGENT_KEY, scope, target, timeline),
+        fetchMarketData(env, scope, target, timeline),
         fetchPortfolioState()
     ]);
 

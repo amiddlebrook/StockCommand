@@ -256,6 +256,48 @@ export default {
 
         // --- AUTH ROUTES ---
 
+        // GET /api/quotes - Batch get quotes (Legacy/Simple)
+        if (url.pathname === "/api/quotes" && request.method === "GET") {
+            try {
+                const symbolsParam = url.searchParams.get('symbols') || '';
+                const symbols = symbolsParam.split(',').filter(s => s);
+
+                if (symbols.length === 0) {
+                    return new Response(JSON.stringify([]), {
+                        headers: { ...corsHeaders, "Content-Type": "application/json" }
+                    });
+                }
+
+                if (!env.STOCK_CACHE_KV) {
+                    return new Response(JSON.stringify([]), {
+                        headers: { ...corsHeaders, "Content-Type": "application/json" }
+                    });
+                }
+
+                // Use the cache batch getter
+                const quotes = await batchGetTickers(env.STOCK_CACHE_KV, symbols);
+
+                // Format for frontend
+                const formatted = Object.values(quotes).map((q: any) => ({
+                    symbol: q.symbol,
+                    price: q.price,
+                    change: q.change,
+                    changePercent: q.changePercent,
+                    volume: q.volume,
+                    timestamp: q.timestamp || Date.now()
+                }));
+
+                return new Response(JSON.stringify(formatted), {
+                    headers: { ...corsHeaders, "Content-Type": "application/json" }
+                });
+
+            } catch (e: any) {
+                return new Response(JSON.stringify({ error: e.message }), {
+                    status: 500, headers: corsHeaders
+                });
+            }
+        }
+
         // GET /api/agent/scan - Run agent workflow
         if (url.pathname === "/api/agent/scan" && request.method === "POST") {
             try {
@@ -1014,10 +1056,10 @@ export default {
             try {
                 const body = await request.json() as any;
                 const { message, history, context } = body;
-                const apiKey = env.OPENROUTER_DEEPSEEK_NEX_API_KEY;
+                const apiKey = env.OPENROUTER_DEEPSEEK_NEX_API_KEY || env.OPENROUTER_API_KEY;
 
                 if (!apiKey) {
-                    throw new Error("Missing OPENROUTER_DEEPSEEK_NEX_API_KEY");
+                    throw new Error("Missing LLM API Key");
                 }
 
                 // 🛑 HARD-CODED INTERCEPTION: GREETINGS

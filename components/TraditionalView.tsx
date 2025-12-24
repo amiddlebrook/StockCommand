@@ -368,8 +368,16 @@ export const TraditionalView: React.FC<TraditionalViewProps> = ({
     // Fetch chart data when a chart is opened
     useEffect(() => {
         // Intraday data is not yet available from the swarm
-        // In the future this will fetch from /api/v2/tickers/:symbol?kind=history
-        setRealChartData({});
+        // Mark all open charts as "fetched" (empty) to stop loading spinner
+        if (openCharts.length > 0) {
+            setRealChartData(prev => {
+                const next = { ...prev };
+                openCharts.forEach(c => {
+                    if (!next[c.symbol]) next[c.symbol] = [];
+                });
+                return next;
+            });
+        }
     }, [openCharts]);
 
     // Track which charts are loading
