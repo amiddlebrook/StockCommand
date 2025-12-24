@@ -155,7 +155,8 @@ export async function fastClockAnalysis(
         apiKey,
         [SPEED_MODELS.mimoFlash, SPEED_MODELS.deepseekNex, SPEED_MODELS.nemotron],
         baseUrl,
-        3000 // 3 second timeout
+        10000, // Increased timeout for search
+        [{ id: "web" }] // Enable Web Search
     );
 
     const parsed = parseJsonResponse<{ status: 'green' | 'yellow' | 'red'; reason: string; confidence: number }>(result.content);

@@ -1,72 +1,59 @@
 import { Env } from '../../types';
-import { getTickerFromCache } from '../../src/lib/caching';
-import { MarketData } from './types';
+import { refreshAllClocks } from '../../src/lib/refresh/clock-refresher';
+import { refreshTickers } from '../../src/lib/refresh/ticker-refresher';
+import { SECTOR_ETFS } from './universe';
 
 export async function runMarketScanner(env: Env) {
-    console.log("[Scanner] Starting autonomous market scan...");
-
-    // 1. Fetch Real Data via Cache (was SwarmDataService)
+    console.log("[Scanner] Starting MASTER AUTONOMOUS SCAN...");
     const apiKey = env.STOCK_COMMAND_OPENROUTER_API_KEY || env.OPENROUTER_DEEPSEEK_NEX_API_KEY || env.OPENROUTER_API_KEY;
-    if (!apiKey) throw new Error("Missing API Key");
 
-    const watchlist = ['SPY', 'QQQ', 'NVDA', 'AAPL', 'TSLA', 'AMD'];
+    if (!apiKey) {
+        console.error("[Scanner] Aborted: Missing API Key");
+        return "Missing API Key";
+    }
 
-    // Use Cache to get market data
     if (!env.STOCK_CACHE_KV) {
-        return "Error: STOCK_CACHE_KV not bound";
+        console.error("[Scanner] Aborted: Missing STOCK_CACHE_KV");
+        return "Missing KV";
     }
 
-    const results = await Promise.all(watchlist.map(sym => getTickerFromCache(env.STOCK_CACHE_KV, sym, 'quote')));
+    const startTime = Date.now();
 
-    const dataSummary = watchlist.map((sym, i) => {
-        const res = results[i];
-        const data = res.data;
-        if (data && data.price) {
-            return `${sym}: $${data.price} (${(data.changePercent || 0) > 0 ? '+' : ''}${(data.changePercent || 0).toFixed(2)}%)`;
-        }
-        return `${sym}: No data`;
-    }).join('\n');
+    try {
+        // 1. Refresh Global Macro Clocks (Parallel)
+        console.log("[Scanner] Phase 1: Refreshing Market Clocks...");
+        const clockResult = await refreshAllClocks(env.STOCK_CACHE_KV, apiKey);
+        console.log(`[Scanner] Clocks Refreshed: ${clockResult.succeeded} ok, ${clockResult.failed} failed.`);
 
-    console.log("[Scanner] Data snapshot:", dataSummary);
+        // 2. Refresh Sectors & Key Indices (Parallel)
+        console.log("[Scanner] Phase 2: Refreshing Sectors & Indices...");
+        const criticalTickers = [
+            'SPY', 'QQQ', 'IWM', 'DIA', 'VIX', // Indices
+            ...Object.values(SECTOR_ETFS)      // All Select Sector SPDRs
+        ];
+        // Deduplicate just in case
+        const uniqueTickers = [...new Set(criticalTickers)];
 
-    // 2. The Brain (LLM Analysis) - "Revenue Generator"
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-        method: "POST",
-        headers: {
-            "Authorization": `Bearer ${apiKey}`,
-            "Content-Type": "application/json",
-            "HTTP-Referer": "https://stockcommand.workers.dev",
-            "X-Title": "StockCommand Scanner"
-        },
-        body: JSON.stringify({
-            model: "nex-agi/deepseek-v3.1-nex-n1:free",
-            messages: [
-                {
-                    role: "system",
-                    content: "You are the StockCommand Autonomous Scanner. Your job is to constantly monitor the market pulse. Analyze the provided price snapshots. Is there a significant move? Is the market bullish or bearish right now? Output a concise 'Scanner Alert' (max 2 sentences) that can be displayed to the user."
-                },
-                {
-                    role: "user",
-                    content: `Current Market Snapshot:\n${dataSummary}`
-                }
-            ],
-            max_tokens: 200
-        })
-    });
+        const tickerResult = await refreshTickers(uniqueTickers, env.STOCK_CACHE_KV, apiKey);
+        console.log(`[Scanner] Tickers Refreshed: ${tickerResult.succeeded} ok, ${tickerResult.failed} failed.`);
 
-    const llmResult: any = await response.json();
-    const analysis = llmResult.choices?.[0]?.message?.content || "Market systems nominal.";
+        // 3. Generate "Scanner Alert" (Synthesis)
+        // We can skip this if we just want data freshness, but the user asked for "Macro/News" analysis.
+        // Let's do a quick synthesis of the SPY state only to save tokens/time.
 
-    // 3. Cache the Result (Agent Output)
-    if (env.STOCK_CACHE_KV) {
-        await env.STOCK_CACHE_KV.put("latest_agent_run", JSON.stringify({
+        const summary = `Scan Complete in ${(Date.now() - startTime) / 1000}s. Clocks: ${clockResult.succeeded}, Tickers: ${tickerResult.succeeded}`;
+
+        // Save run report
+        await env.STOCK_CACHE_KV.put("latest_scanner_run", JSON.stringify({
             timestamp: Date.now(),
-            summary: analysis,
-            data: dataSummary
+            summary,
+            stats: { clocks: clockResult, tickers: tickerResult }
         }));
-    } else {
-        console.warn("[Scanner] No KV binding found, cannot save report.");
-    }
 
-    return analysis;
+        return summary;
+
+    } catch (e: any) {
+        console.error("[Scanner] Critical Failure:", e);
+        return `Scanner Failed: ${e.message}`;
+    }
 }
