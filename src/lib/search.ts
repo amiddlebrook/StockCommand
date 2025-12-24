@@ -1,26 +1,40 @@
 /**
- * OpenRouter-Native Research Service
- * Uses LLMs with research/knowledge capabilities instead of external search APIs
- * Multi-model synthesis for higher confidence results
+ * OpenRouter-Native Multi-Agent Research Swarm
+ * 8 FREE LLMs working in parallel for high-confidence synthesis
  */
 
 import { complete, parseJsonResponse, OpenRouterConfig } from './openrouter';
 
 // =============================================================================
-// RESEARCH MODELS (OpenRouter Native)
+// 8-MODEL RESEARCH SWARM (All Free on OpenRouter)
 // =============================================================================
 
 export const RESEARCH_MODELS = {
-    // Primary research model - Alibaba's DeepResearch (free, research-optimized)
+    // Research-optimized models
     deepResearch: 'alibaba/tongyi-deepresearch-30b-a3b:free',
+    mimoFlash: 'xiaomi/mimo-v2-flash:free',
 
-    // Reasoning model - Hermes 405B (free, massive reasoning)
+    // Large reasoning models
     hermes405b: 'nousresearch/hermes-3-llama-3.1-405b:free',
-
-    // User's existing models for synthesis
-    deepseek: 'deepseek/deepseek-chat',
     nemotron: 'nvidia/llama-3.1-nemotron-70b-instruct:free',
     olmo: 'allenai/olmo-2-0325-32b-instruct:free',
+
+    // User's existing keys
+    deepseek: 'deepseek/deepseek-chat',
+    gptOss: 'openai/gpt-4o-mini', // Placeholder for GPT_OSS key
+    katcoder: 'mistralai/codestral-latest', // Placeholder for KATCODER key
+} as const;
+
+// Models to use for different task types
+export const SWARM_CONFIG = {
+    // For market clock status (fast, needs 2-3 models)
+    clockAnalysis: ['deepResearch', 'mimoFlash', 'hermes405b'] as const,
+
+    // For ticker research (comprehensive, use more models)  
+    tickerResearch: ['deepResearch', 'mimoFlash', 'hermes405b', 'nemotron', 'deepseek'] as const,
+
+    // For chat/questions (quick response, use fastest)
+    chat: ['mimoFlash', 'deepseek'] as const,
 } as const;
 
 export interface ResearchResult {
@@ -93,42 +107,37 @@ export async function researchWithModel(
 }
 
 // =============================================================================
-// MULTI-MODEL PARALLEL RESEARCH
+// MULTI-MODEL SWARM RESEARCH
 // =============================================================================
 
-export async function parallelResearch(
+export async function swarmResearch(
     query: string,
-    apiKeys: { deepResearch?: string; hermes?: string; deepseek?: string },
+    apiKey: string,
+    taskType: keyof typeof SWARM_CONFIG = 'tickerResearch',
     baseUrl?: string
 ): Promise<SynthesizedResearch> {
     const startTime = Date.now();
-    const promises: Promise<ResearchResult>[] = [];
+    const modelKeys = SWARM_CONFIG[taskType];
 
-    // Run multiple models in parallel for consensus
-    if (apiKeys.deepResearch) {
-        promises.push(researchWithModel(query, apiKeys.deepResearch, RESEARCH_MODELS.deepResearch, baseUrl));
-    }
-    if (apiKeys.hermes) {
-        promises.push(researchWithModel(query, apiKeys.hermes, RESEARCH_MODELS.hermes405b, baseUrl));
-    }
-    if (apiKeys.deepseek) {
-        promises.push(researchWithModel(query, apiKeys.deepseek, RESEARCH_MODELS.deepseek, baseUrl));
-    }
+    // Run all configured models in parallel
+    const promises = modelKeys.map(modelKey =>
+        researchWithModel(query, apiKey, RESEARCH_MODELS[modelKey], baseUrl)
+    );
 
     const results = await Promise.all(promises);
     const validResults = results.filter(r => r.content && r.confidence > 0);
 
-    // Determine consensus level
+    // Determine consensus level based on number of agreeing models
     const avgConfidence = validResults.length > 0
         ? validResults.reduce((sum, r) => sum + r.confidence, 0) / validResults.length
         : 0;
 
     let consensus: 'high' | 'medium' | 'low' = 'low';
     if (avgConfidence > 0.8 && validResults.length >= 2) consensus = 'high';
-    else if (avgConfidence > 0.5) consensus = 'medium';
+    else if (avgConfidence > 0.6 && validResults.length >= 2) consensus = 'medium';
 
-    // Synthesize results
-    const summary = validResults.map(r => r.content).join('\n\n---\n\n');
+    // Synthesize all results
+    const summary = validResults.map(r => `[${r.model}]: ${r.content}`).join('\n\n');
 
     return {
         summary,
@@ -136,6 +145,16 @@ export async function parallelResearch(
         consensus,
         totalLatencyMs: Date.now() - startTime,
     };
+}
+
+// Legacy function for backwards compatibility
+export async function parallelResearch(
+    query: string,
+    apiKeys: { deepResearch?: string; hermes?: string; deepseek?: string },
+    baseUrl?: string
+): Promise<SynthesizedResearch> {
+    const apiKey = apiKeys.deepResearch || apiKeys.hermes || apiKeys.deepseek || '';
+    return swarmResearch(query, apiKey, 'tickerResearch', baseUrl);
 }
 
 // =============================================================================
