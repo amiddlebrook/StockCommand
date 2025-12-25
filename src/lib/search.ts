@@ -189,8 +189,8 @@ export async function fastClockAnalysis(
 // TICKER ANALYSIS (Web Search for Real Data - Runs in BACKGROUND CRON)
 // =============================================================================
 
-const TICKER_PROMPT = `Get current stock data for {SYMBOL}. JSON only:
-{"price":0,"change":0,"changePercent":0,"sentiment":"neutral","bullet":"one line summary"}`;
+const TICKER_PROMPT = `Stock: {SYMBOL}. Provide brief analysis. JSON only:
+{"sentiment":"bullish|bearish|neutral","outlook":"one sentence on near-term outlook","key_factor":"main driver for this stock"}`;
 
 export async function fastTickerAnalysis(
     symbol: string,
@@ -199,25 +199,34 @@ export async function fastTickerAnalysis(
 ): Promise<{ price: number; change: number; changePercent: number; volume: number; bullets: string[]; riskNotes: string[]; sentiment: string; latencyMs: number }> {
     const startTime = Date.now();
 
-    // Use FAST model for ticker analysis
-    // NOTE: Web plugin may not work with free models
+    // Use FAST model for analysis (no web plugin for free models)
     const result = await raceModels(
         TICKER_PROMPT.replace('{SYMBOL}', symbol),
         apiKey,
         [ROLE_MODELS.FAST],
         baseUrl,
         10000,
-        [] // No plugins - free models may not support web plugin
+        [] // No web plugin - free models don't support it
     );
 
-    const parsed = parseJsonResponse<{ price: number; change: number; changePercent: number; sentiment: string; bullet: string }>(result.content);
+    console.log(`[fastTickerAnalysis] ${symbol} raw response:`, result.content.substring(0, 300));
+
+    const parsed = parseJsonResponse<{ sentiment: string; outlook: string; key_factor: string }>(result.content);
+
+    console.log(`[fastTickerAnalysis] ${symbol} parsed:`, parsed);
+
+    // Build analysis bullets from parsed response
+    const bullets: string[] = [];
+    if (parsed?.outlook) bullets.push(parsed.outlook);
+    if (parsed?.key_factor) bullets.push(`Key factor: ${parsed.key_factor}`);
+    if (bullets.length === 0) bullets.push('Analyzing...');
 
     return {
-        price: parsed?.price || 0,
-        change: parsed?.change || 0,
-        changePercent: parsed?.changePercent || 0,
+        price: 0, // LLM can't provide real-time prices
+        change: 0,
+        changePercent: 0,
         volume: 0,
-        bullets: parsed?.bullet ? [parsed.bullet] : ['Analyzing...'],
+        bullets,
         riskNotes: [],
         sentiment: parsed?.sentiment || 'neutral',
         latencyMs: Date.now() - startTime,

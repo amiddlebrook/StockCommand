@@ -97,7 +97,7 @@ export default {
         // GET /api/v2/tickers/:symbol - Get ticker artifact from cache
         if (url.pathname.startsWith("/api/v2/tickers/") && request.method === "GET") {
             try {
-                const symbol = url.pathname.split('/')[3]?.toUpperCase();
+                const symbol = url.pathname.split('/')[4]?.toUpperCase();
                 if (!symbol) {
                     return new Response(JSON.stringify({ error: "Missing symbol" }), { status: 400, headers: corsHeaders });
                 }
