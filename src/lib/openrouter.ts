@@ -32,6 +32,24 @@ export async function complete(
 ): Promise<string> {
     const { temperature = 0.1, maxTokens = 1000, jsonMode = false } = options;
 
+    console.log(`[complete] Calling model: ${config.model}`);
+    console.log(`[complete] API key starts with: ${config.apiKey?.substring(0, 8)}...`);
+
+    const body: any = {
+        model: config.model,
+        messages,
+        temperature,
+        max_tokens: maxTokens,
+    };
+
+    // Only add optional fields if they have values
+    if (jsonMode) {
+        body.response_format = { type: 'json_object' };
+    }
+    if (options.plugins && options.plugins.length > 0) {
+        body.plugins = options.plugins;
+    }
+
     const response = await fetch(config.baseUrl || 'https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -40,24 +58,20 @@ export async function complete(
             'HTTP-Referer': 'https://stockcommand.averymiddlebrook2014.workers.dev',
             'X-Title': 'StockCommand',
         },
-        body: JSON.stringify({
-            model: config.model,
-            messages,
-            temperature,
-            max_tokens: maxTokens,
-            response_format: jsonMode ? { type: 'json_object' } : undefined,
-            plugins: options.plugins,
-        }),
+        body: JSON.stringify(body),
     });
 
     if (!response.ok) {
         const error = await response.text();
+        console.error(`[complete] OpenRouter error: ${response.status} - ${error}`);
         throw new Error(`OpenRouter error: ${response.status} - ${error}`);
     }
 
     const data = await response.json() as any;
+    console.log(`[complete] Response received, content length: ${data.choices?.[0]?.message?.content?.length || 0}`);
     return data.choices?.[0]?.message?.content || '';
 }
+
 
 /**
  * Streaming completion (for user-facing responses)

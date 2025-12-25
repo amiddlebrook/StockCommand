@@ -19,7 +19,7 @@ export const ALL_MODELS = {
 
     // UTILITY / REASONING
     reasoning: 'nousresearch/hermes-3-llama-3.1-405b:free', // Complex Logic
-    fastTask: 'nvidia/llama-3.1-nemotron-70b-instruct:free', // Fast Extraction
+    fastTask: 'nex-agi/deepseek-v3.1-nex-n1:free', // Fast Extraction (same as analyst - confirmed free)
     general: 'openai/gpt-oss-20b:free',             // General purpose fast
 } as const;
 
@@ -96,6 +96,8 @@ export async function raceModels(
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
+    console.log(`[raceModels] Starting with ${models.length} models, plugins:`, plugins);
+
     try {
         // Race all models in parallel
         const result = await Promise.race(
@@ -105,6 +107,8 @@ export async function raceModels(
                     const response = await complete(config, [
                         { role: 'user', content: prompt },
                     ], { temperature: 0.3, maxTokens: 1000, plugins });
+
+                    console.log(`[raceModels] Model ${model} responded: ${response.substring(0, 100)}...`);
 
                     // Only return if we got a valid response
                     if (response && response.length > 10) {
@@ -116,17 +120,19 @@ export async function raceModels(
                         };
                     }
                     // Invalid response, throw to continue racing
-                    throw new Error('Invalid response');
-                } catch (e) {
+                    throw new Error('Invalid response - too short');
+                } catch (e: any) {
                     // This model failed, throw to let others win
+                    console.error(`[raceModels] Model ${model} failed:`, e.message);
                     throw e;
                 }
             })
         );
 
         return result;
-    } catch (e) {
+    } catch (e: any) {
         // All models failed, return fallback
+        console.error(`[raceModels] ALL models failed:`, e.message);
         return {
             content: 'Analysis pending...',
             model: 'fallback',
@@ -137,6 +143,7 @@ export async function raceModels(
         clearTimeout(timeout);
     }
 }
+
 
 // =============================================================================
 // BLAZING FAST CLOCK ANALYSIS
@@ -153,18 +160,22 @@ export async function fastClockAnalysis(
 ): Promise<{ status: 'green' | 'yellow' | 'red'; reason: string; confidence: number; latencyMs: number }> {
     const startTime = Date.now();
 
-    // SPEED MODE: Use FAST model with web search for current data
-    // :online suffix enables web search per OpenRouter docs
+    // SPEED MODE: Use FAST model for analysis
+    // NOTE: Web plugin may not work with free models, so we just prompt for analysis
     const result = await raceModels(
         CLOCK_PROMPT.replace('{LABEL}', clockLabel) + `\nContext: ${query}`,
         apiKey,
-        [`${ROLE_MODELS.FAST}:online`], // :online suffix enables web search
+        [ROLE_MODELS.FAST],
         baseUrl,
         8000,
-        [] // No plugins needed - :online handles it
+        [] // No plugins - free models may not support web plugin
     );
 
+    console.log(`[fastClockAnalysis] Clock: ${clockLabel}, raw response: ${result.content.substring(0, 200)}`);
+
     const parsed = parseJsonResponse<{ status: 'green' | 'yellow' | 'red'; reason: string }>(result.content);
+
+    console.log(`[fastClockAnalysis] Parsed:`, parsed);
 
     return {
         status: parsed?.status || 'yellow',
@@ -188,14 +199,15 @@ export async function fastTickerAnalysis(
 ): Promise<{ price: number; change: number; changePercent: number; volume: number; bullets: string[]; riskNotes: string[]; sentiment: string; latencyMs: number }> {
     const startTime = Date.now();
 
-    // WEB SEARCH via :online suffix - runs in BACKGROUND CRON
+    // Use FAST model for ticker analysis
+    // NOTE: Web plugin may not work with free models
     const result = await raceModels(
         TICKER_PROMPT.replace('{SYMBOL}', symbol),
         apiKey,
-        [`${ROLE_MODELS.FAST}:online`], // :online suffix enables web search
+        [ROLE_MODELS.FAST],
         baseUrl,
         10000,
-        [] // No plugins needed - :online handles it
+        [] // No plugins - free models may not support web plugin
     );
 
     const parsed = parseJsonResponse<{ price: number; change: number; changePercent: number; sentiment: string; bullet: string }>(result.content);

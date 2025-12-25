@@ -306,10 +306,12 @@ export default {
                 console.log('[Admin Scan] Starting manual refresh...');
                 try {
                     // Refresh clocks
+                    console.log('[Admin Scan] Starting clock refresh...');
                     const clockResult = await refreshAllClocks(env.STOCK_CACHE_KV, apiKey);
                     console.log(`[Admin Scan] Clocks: ${clockResult.succeeded}/${clockResult.succeeded + clockResult.failed}`);
 
                     // Refresh priority tickers
+                    console.log('[Admin Scan] Starting ticker refresh...');
                     const prioritySymbols = [
                         'SPY', 'QQQ', 'DIA', 'IWM',
                         'XLK', 'XLF', 'XLE', 'XLV', 'XLI', 'XLP', 'XLY', 'XLB', 'XLU', 'XLRE', 'XLC',
@@ -317,6 +319,7 @@ export default {
                     ];
                     const tickerResult = await refreshTickers(prioritySymbols, env.STOCK_CACHE_KV, apiKey);
                     console.log(`[Admin Scan] Tickers: ${tickerResult.succeeded}/${tickerResult.succeeded + tickerResult.failed}`);
+                    console.log('[Admin Scan] Complete!');
                 } catch (e: any) {
                     console.error('[Admin Scan] Error:', e.message);
                 }
