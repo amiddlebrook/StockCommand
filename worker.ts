@@ -40,10 +40,10 @@ export default {
             "Access-Control-Allow-Credentials": "true"
         };
 
-        // CORS Preflight
-        if (request.method === "OPTIONS") {
-            return new Response(null, { headers: corsHeaders });
-        }
+        return new Response("Under construction", {
+            status: 404,
+            headers: { ...corsHeaders, "Content-Type": "text/plain" }
+        });
 
         // Rate Limiting (IP based)
         const ip = request.headers.get("CF-Connecting-IP") || "unknown";
