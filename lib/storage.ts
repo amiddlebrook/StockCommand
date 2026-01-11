@@ -8,7 +8,8 @@ const STORAGE_KEYS = {
     SETTINGS: 'stockcommand_settings_v2',
     RESEARCH_HISTORY: 'stockcommand_research_history_v1',
     STRATEGIES: 'stockcommand_strategies_v1',
-    USER_WATCHLIST: 'stockcommand_user_watchlist_v1'
+    USER_WATCHLIST: 'stockcommand_user_watchlist_v1',
+    API_KEY: 'stockcommand_openrouter_api_key_v1'
 };
 
 export interface ResearchEntry {
@@ -168,6 +169,31 @@ export const StorageService = {
             return saved ? JSON.parse(saved) : [];
         } catch (e) {
             return [];
+        }
+    },
+
+    saveApiKey: (apiKey: string) => {
+        try {
+            localStorage.setItem(STORAGE_KEYS.API_KEY, apiKey.trim());
+        } catch (e) {
+            console.error("Failed to save API key", e);
+        }
+    },
+
+    loadApiKey: (): string => {
+        try {
+            const saved = localStorage.getItem(STORAGE_KEYS.API_KEY);
+            return saved ? saved.trim() : '';
+        } catch (e) {
+            return '';
+        }
+    },
+
+    clearApiKey: () => {
+        try {
+            localStorage.removeItem(STORAGE_KEYS.API_KEY);
+        } catch (e) {
+            console.error("Failed to clear API key", e);
         }
     },
 

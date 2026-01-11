@@ -36,7 +36,7 @@ export default {
         const corsHeaders = {
             "Access-Control-Allow-Origin": isAllowed ? origin : allowedOrigins[0] || "https://stockcommand.averymiddlebrook2014.workers.dev",
             "Access-Control-Allow-Methods": "GET, POST, OPTIONS, DELETE, PUT",
-            "Access-Control-Allow-Headers": "Content-Type, Authorization",
+            "Access-Control-Allow-Headers": "Content-Type, Authorization, X-OpenRouter-Api-Key",
             "Access-Control-Allow-Credentials": "true"
         };
 
@@ -60,6 +60,16 @@ export default {
             }
 
             await env.USER_SESSIONS_KV.put(key, (count + 1).toString(), { expirationTtl: windowSec });
+        }
+
+        const clientApiKey = request.headers.get("X-OpenRouter-Api-Key")?.trim();
+        const requiresApiKey = url.pathname.startsWith("/api/");
+
+        if (requiresApiKey && !clientApiKey) {
+            return new Response(JSON.stringify({ error: "API key required" }), {
+                status: 401,
+                headers: { ...corsHeaders, "Content-Type": "application/json" }
+            });
         }
 
         // =============================================================================
@@ -150,7 +160,7 @@ export default {
                 }
 
                 // Lock acquired - run refresh in background
-                const apiKey = env.STOCK_COMMAND_OPENROUTER_API_KEY || env.OPENROUTER_API_KEY || env.OPENROUTER_DEEPSEEK_NEX_API_KEY;
+                const apiKey = clientApiKey || env.STOCK_COMMAND_OPENROUTER_API_KEY || env.OPENROUTER_API_KEY || env.OPENROUTER_DEEPSEEK_NEX_API_KEY;
                 const baseUrl = env.OPENROUTER_API_BASE;
 
                 ctx.waitUntil((async () => {
@@ -188,7 +198,7 @@ export default {
                     return new Response(JSON.stringify({ error: "Missing items array" }), { status: 400, headers: corsHeaders });
                 }
 
-                const apiKey = env.STOCK_COMMAND_OPENROUTER_API_KEY || env.OPENROUTER_API_KEY || env.OPENROUTER_DEEPSEEK_NEX_API_KEY;
+                const apiKey = clientApiKey || env.STOCK_COMMAND_OPENROUTER_API_KEY || env.OPENROUTER_API_KEY || env.OPENROUTER_DEEPSEEK_NEX_API_KEY;
                 const baseUrl = env.OPENROUTER_API_BASE;
 
                 const results: any[] = [];
@@ -294,7 +304,7 @@ export default {
         // =============================================================================
 
         if (url.pathname === "/api/admin/scan" && request.method === "GET") {
-            const apiKey = env.STOCK_COMMAND_OPENROUTER_API_KEY;
+            const apiKey = clientApiKey || env.STOCK_COMMAND_OPENROUTER_API_KEY;
             if (!apiKey) {
                 return new Response(JSON.stringify({ error: "No API key" }), {
                     status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" }
@@ -369,7 +379,7 @@ export default {
 
                 // Trigger background refresh for stale/missing data
                 if (needsRefresh.length > 0) {
-                    const apiKey = env.STOCK_COMMAND_OPENROUTER_API_KEY;
+                    const apiKey = clientApiKey || env.STOCK_COMMAND_OPENROUTER_API_KEY;
                     if (apiKey) {
                         ctx.waitUntil(
                             refreshTickers(needsRefresh.slice(0, 10), env.STOCK_CACHE_KV, apiKey)
@@ -398,7 +408,7 @@ export default {
             try {
                 const body = await request.json() as any;
                 const { message, history, context } = body;
-                const apiKey = env.STOCK_COMMAND_OPENROUTER_API_KEY || env.OPENROUTER_DEEPSEEK_NEX_API_KEY || env.OPENROUTER_API_KEY;
+                const apiKey = clientApiKey || env.STOCK_COMMAND_OPENROUTER_API_KEY || env.OPENROUTER_DEEPSEEK_NEX_API_KEY || env.OPENROUTER_API_KEY;
 
                 if (!apiKey) {
                     throw new Error("Missing LLM API Key");
