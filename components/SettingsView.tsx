@@ -3,10 +3,14 @@ import { Icon } from './Icon';
 import { GlassButton } from './ui/GlassButton';
 import { ModelSelector } from './ModelSelector';
 import { SystemHealth } from './SystemHealth';
+import { StorageService } from '../lib/storage';
 
 export const SettingsView: React.FC = () => {
     const [activeSection, setActiveSection] = useState<'GENERAL' | 'MODELS' | 'OPTIMIZER' | 'HEALTH' | 'CREDITS' | 'BILLING'>('MODELS');
     const [isPro, setIsPro] = useState(false); // Mock User State
+    const [apiKeyInput, setApiKeyInput] = useState('');
+    const [apiKeySaved, setApiKeySaved] = useState(() => Boolean(StorageService.loadApiKey()));
+    const [apiKeyMessage, setApiKeyMessage] = useState<string | null>(null);
 
     // Mobile Navigation State
     const [showMobileSidebar, setShowMobileSidebar] = useState(true);
@@ -40,6 +44,26 @@ export const SettingsView: React.FC = () => {
     const handleNavClick = (id: string) => {
         setActiveSection(id as any);
         setShowMobileSidebar(false);
+    };
+
+    const handleSaveApiKey = () => {
+        const trimmed = apiKeyInput.trim();
+        if (!trimmed) {
+            setApiKeyMessage('Enter a valid OpenRouter API key.');
+            return;
+        }
+        StorageService.saveApiKey(trimmed);
+        setApiKeySaved(true);
+        setApiKeyInput('');
+        setApiKeyMessage('API key saved. Profit Engine unlocked.');
+        window.dispatchEvent(new Event('api-key-updated'));
+    };
+
+    const handleClearApiKey = () => {
+        StorageService.clearApiKey();
+        setApiKeySaved(false);
+        setApiKeyMessage('API key removed. Terminal locked.');
+        window.dispatchEvent(new Event('api-key-updated'));
     };
 
     return (
@@ -239,6 +263,49 @@ export const SettingsView: React.FC = () => {
 
                     {activeSection === 'CREDITS' && (
                         <div className="space-y-6">
+                            <div className="p-6 bg-slate-900/30 border border-slate-800 rounded-xl">
+                                <h3 className="text-lg font-bold text-white mb-2 flex items-center gap-2">
+                                    <Icon icon="key" className="w-5 h-5 text-cyan-400" />
+                                    API Key Vault
+                                </h3>
+                                <p className="text-slate-400 text-sm mb-4">
+                                    Add your OpenRouter API key to enable all terminal features and profit generation workflows.
+                                </p>
+                                <div className="flex flex-col md:flex-row gap-3">
+                                    <input
+                                        type="password"
+                                        value={apiKeyInput}
+                                        onChange={(e) => {
+                                            setApiKeyInput(e.target.value);
+                                            if (apiKeyMessage) setApiKeyMessage(null);
+                                        }}
+                                        placeholder={apiKeySaved ? '•••••••••• (saved)' : 'sk-...'}
+                                        className="flex-1 bg-slate-950/60 border border-slate-700 rounded-lg px-4 py-2 text-sm text-slate-200 focus:outline-none focus:border-cyan-500"
+                                    />
+                                    <button
+                                        onClick={handleSaveApiKey}
+                                        className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-semibold text-sm rounded-lg transition-all"
+                                    >
+                                        Save Key
+                                    </button>
+                                    {apiKeySaved && (
+                                        <button
+                                            onClick={handleClearApiKey}
+                                            className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm rounded-lg transition-all"
+                                        >
+                                            Remove Key
+                                        </button>
+                                    )}
+                                </div>
+                                <div className="mt-3 flex items-center gap-2 text-xs">
+                                    <span className={`font-bold ${apiKeySaved ? 'text-emerald-400' : 'text-amber-400'}`}>
+                                        {apiKeySaved ? 'KEY ACTIVE' : 'KEY REQUIRED'}
+                                    </span>
+                                    <span className="text-slate-500">Profit Engine is {apiKeySaved ? 'armed' : 'locked'}.</span>
+                                </div>
+                                {apiKeyMessage && <p className="mt-2 text-xs text-cyan-400">{apiKeyMessage}</p>}
+                            </div>
+
                             <div className="p-6 bg-slate-900/30 border border-slate-800 rounded-xl">
                                 <h3 className="text-lg font-bold text-white mb-2 flex items-center gap-2">
                                     <Icon icon="zap" className="w-5 h-5 text-cyan-400" />

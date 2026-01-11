@@ -64,6 +64,75 @@ export interface AnalysisData {
 
 const DEFAULT_SYMBOLS: string[] = ['AAPL', 'MSFT', 'GOOGL', 'NVDA', 'META', 'AMZN', 'TSLA', 'JPM', 'V', 'UNH'];
 
+const ApiKeyGate: React.FC<{ onUnlock: (apiKey: string) => void }> = ({ onUnlock }) => {
+  const [apiKey, setApiKey] = useState('');
+  const [error, setError] = useState('');
+
+  const handleUnlock = () => {
+    const trimmed = apiKey.trim();
+    if (!trimmed) {
+      setError('Please enter your OpenRouter API key to unlock the terminal.');
+      return;
+    }
+    StorageService.saveApiKey(trimmed);
+    window.dispatchEvent(new Event('api-key-updated'));
+    onUnlock(trimmed);
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center px-6">
+      <div className="w-full max-w-xl bg-slate-900/60 border border-slate-800 rounded-2xl p-8 shadow-2xl">
+        <div className="flex items-center gap-3 mb-6">
+          <Icon icon="command" className="w-8 h-8 text-cyan-400" />
+          <div>
+            <h1 className="text-2xl font-bold tracking-wide">StockCommand Locked</h1>
+            <p className="text-sm text-slate-400">Enter your API key to activate trading intelligence.</p>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <label className="text-xs uppercase tracking-wider text-slate-500 font-bold">OpenRouter API Key</label>
+            <input
+              type="password"
+              value={apiKey}
+              onChange={(e) => {
+                setApiKey(e.target.value);
+                if (error) setError('');
+              }}
+              placeholder="sk-..."
+              className="w-full bg-slate-950/70 border border-slate-700 rounded-lg px-4 py-3 text-sm text-slate-100 focus:outline-none focus:border-cyan-500"
+            />
+            {error && <p className="text-xs text-red-400">{error}</p>}
+          </div>
+
+          <button
+            onClick={handleUnlock}
+            className="w-full py-3 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-slate-950 font-bold rounded-lg transition-all shadow-lg shadow-cyan-500/20"
+          >
+            Unlock Terminal &amp; Generate Profit
+          </button>
+        </div>
+
+        <div className="mt-6 space-y-3 text-xs text-slate-400">
+          <div className="flex items-start gap-2">
+            <span className="text-cyan-400 font-bold">1.</span>
+            <p>Add your OpenRouter key to enable live scans, trading intelligence, and profit generation workflows.</p>
+          </div>
+          <div className="flex items-start gap-2">
+            <span className="text-cyan-400 font-bold">2.</span>
+            <p>All requests stay Cloudflare-native — your key stays in your browser session.</p>
+          </div>
+          <div className="flex items-start gap-2">
+            <span className="text-cyan-400 font-bold">3.</span>
+            <p>Use the Profit Engine button after unlock to generate profit-focused trade ideas.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const AppContent: React.FC = () => {
   const { startJob, activeJobsCount } = useJobContext();
   console.log("AppContent Mounting");
@@ -219,6 +288,7 @@ const AppContent: React.FC = () => {
           else if (target.includes('INFLATION')) query = "US Inflation Trend Breakeven Rates TIPS analysis current";
           else if (target.includes('CREDIT')) query = "Credit Impulse Global Liquidity High Yield Spreads analysis";
           else if (target.includes('DOLLAR')) query = "US Dollar DXY Index Strength analysis 2024 2025 forecast";
+          else if (target.includes('PROFIT_ENGINE')) query = "Highest-probability short-term trading setups in equities and ETFs with clear risk/reward and catalysts";
           else query = `${toolName || target} detailed analysis current market data`;
         }
         const searchRes = await searchWithGrounding(query);
@@ -842,6 +912,15 @@ const AppContent: React.FC = () => {
             <span className="hidden sm:inline">SCAN</span>
           </button>
 
+          <button
+            onClick={() => handleRunAgentScan('TOOL', 'PROFIT_ENGINE', 'Profit Engine')}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded transition-all bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 hover:bg-cyan-500 hover:text-slate-950"
+            title="Generate profit-focused trade ideas"
+          >
+            <Icon icon="zap" className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">PROFIT</span>
+          </button>
+
           {/* Data Freshness Indicator */}
           <div className="flex items-center gap-1.5 mr-3 bg-slate-900/50 px-2 py-1 rounded border border-slate-800/50">
             <div className={`w-2 h-2 rounded-full ${scanningTarget ? 'bg-yellow-400 animate-pulse shadow-[0_0_8px_rgba(250,204,21,0.6)]' :
@@ -1142,6 +1221,49 @@ const AppContent: React.FC = () => {
 };
 
 const App: React.FC = () => {
+  const [apiKey, setApiKey] = useState<string>(() => StorageService.loadApiKey());
+
+  useEffect(() => {
+    const originalFetch = window.fetch.bind(window);
+
+    window.fetch = (input: RequestInfo | URL, init?: RequestInit) => {
+      const key = StorageService.loadApiKey();
+      const url = typeof input === 'string' ? input : (input instanceof URL ? input.toString() : input.url);
+      const isSameOrigin = url.startsWith('/') || url.startsWith(window.location.origin);
+
+      if (!key || !isSameOrigin) {
+        return originalFetch(input, init);
+      }
+
+      const headers = new Headers(init?.headers || (input instanceof Request ? input.headers : undefined));
+      headers.set('X-OpenRouter-Api-Key', key);
+
+      if (input instanceof Request) {
+        return originalFetch(new Request(input, { headers }));
+      }
+
+      return originalFetch(input, { ...init, headers });
+    };
+
+    return () => {
+      window.fetch = originalFetch;
+    };
+  }, [apiKey]);
+
+  useEffect(() => {
+    const handleApiKeyUpdate = () => setApiKey(StorageService.loadApiKey());
+    window.addEventListener('api-key-updated', handleApiKeyUpdate);
+    window.addEventListener('storage', handleApiKeyUpdate);
+    return () => {
+      window.removeEventListener('api-key-updated', handleApiKeyUpdate);
+      window.removeEventListener('storage', handleApiKeyUpdate);
+    };
+  }, []);
+
+  if (!apiKey) {
+    return <ApiKeyGate onUnlock={setApiKey} />;
+  }
+
   return (
     <JobProvider>
       <ErrorBoundary>
