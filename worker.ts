@@ -40,11 +40,6 @@ export default {
             "Access-Control-Allow-Credentials": "true"
         };
 
-        return new Response("Under construction", {
-            status: 404,
-            headers: { ...corsHeaders, "Content-Type": "text/plain" }
-        });
-
         // Rate Limiting (IP based)
         const ip = request.headers.get("CF-Connecting-IP") || "unknown";
         if (env.USER_SESSIONS_KV && env.RATE_LIMIT_REQUESTS) {
