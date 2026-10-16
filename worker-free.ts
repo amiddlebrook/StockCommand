@@ -125,5 +125,21 @@ export default {
       } catch (e) { return json({ error: e instanceof Error ? e.message : "Provider unavailable" }, 503); }
     }
     return json({ error: "Endpoint not found" }, 404);
+  },
+
+  // Cloudflare retains event subscriptions from previous deployed versions.
+  // Preserve pending legacy queue messages until the old queue subscription
+  // can be explicitly retired; never silently acknowledge unknown work.
+  async queue(batch: MessageBatch<unknown>): Promise<void> {
+    for (const message of batch.messages) {
+      console.warn("[StockCommand] Paused legacy queue message:", message.id);
+      message.retry({ delaySeconds: 3600 });
+    }
+  },
+
+  // Legacy cron subscriptions may remain attached during migration.
+  // The revived UI does not run scheduled vendor API calls.
+  async scheduled(): Promise<void> {
+    console.info("[StockCommand] Legacy cron disabled in free tier.");
   }
 } satisfies ExportedHandler<Env>;
