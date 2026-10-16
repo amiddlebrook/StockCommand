@@ -31,7 +31,7 @@ async function fromYahoo(symbol: string): Promise<Quote> {
     return close !== null && close > 0 ? [{ date: new Date(ts * 1000).toISOString().slice(0, 10), close: round(close) }] : [];
   });
   const name = chart.meta?.shortName || chart.meta?.longName || symbol;
-  return quoteFromCandles(symbol, name, history, "Yahoo Finance (unofficial, delayed)", number(chart.meta?.chartPreviousClose) || undefined);
+  return quoteFromCandles(symbol, name, history, "Yahoo Finance (unofficial, delayed)", undefined);
 }
 async function fromStooq(symbol: string): Promise<Quote> {
   const stooqSymbol = symbol.includes(".") ? symbol.toLowerCase() : symbol.toLowerCase() + ".us";
@@ -48,7 +48,7 @@ async function fromStooq(symbol: string): Promise<Quote> {
   });
   return quoteFromCandles(symbol, symbol, history, "Stooq (end-of-day, delayed)");
 }
-async function loadQuote(symbol: string, env: Env): Promise<Quote> {
+async function loadQuote(symbol: string): Promise<Quote> {
   const errors: string[] = [];
   try {
     const cached = await caches.default.match(new Request("https://stockcommand.cache/quotes/" + symbol));
@@ -93,7 +93,7 @@ export default {
       const symbols = [...new Set((url.searchParams.get("symbols") || "").toUpperCase().split(",").map(s => s.trim()).filter(Boolean))];
       if (!symbols.length || symbols.length > 12 || symbols.some(s => !validSymbol(s))) return json({ error: "Provide 1-12 valid stock symbols." }, 400);
       const results = await Promise.all(symbols.map(async symbol => {
-        try { return { symbol, quote: await loadQuote(symbol, env) }; }
+        try { return { symbol, quote: await loadQuote(symbol) }; }
         catch (e) { return { symbol, error: e instanceof Error ? e.message : "Quote unavailable" }; }
       }));
       return json({ quotes: Object.fromEntries(results.filter(x => "quote" in x).map(x => [x.symbol, x.quote])), errors: Object.fromEntries(results.filter(x => "error" in x).map(x => [x.symbol, x.error])), fetchedAt: new Date().toISOString() });
