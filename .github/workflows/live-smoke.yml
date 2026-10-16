@@ -1,0 +1,29 @@
+name: Live Application Smoke Test
+on:
+  workflow_run:
+    workflows: ["Cloudflare Deploy"]
+    types: [completed]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  browserless-smoke:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify homepage and asset shell
+        run: |
+          curl --fail --silent --show-error --retry 5 --retry-all-errors --retry-delay 3 --max-time 30 -o /tmp/index.html https://stockcommand.averymiddlebrook2014.workers.dev/
+          grep -q 'StockCommand' /tmp/index.html
+          echo "Homepage returned StockCommand HTML"
+      - name: Verify health contract
+        run: |
+          curl --fail --silent --show-error --retry 5 --retry-all-errors --retry-delay 3 --max-time 30 https://stockcommand.averymiddlebrook2014.workers.dev/api/health | jq -e '.ok == true and .app == "StockCommand"'
+      - name: Verify market API contract
+        run: |
+          curl --fail --silent --show-error --max-time 40 "https://stockcommand.averymiddlebrook2014.workers.dev/api/market?symbols=AAPL,MSFT" -o /tmp/market.json
+          jq '{quotes: (.quotes | keys), providerErrors: .errors, fetchedAt}' /tmp/market.json
+          jq -e '.quotes != null and .errors != null and .fetchedAt != null' /tmp/market.json
+          if ! jq -e '(.quotes | to_entries | any(.value.price > 0))' /tmp/market.json >/dev/null; then
+            echo "::warning::All free market-data sources unavailable right now; no fake quotes were shown."
+          fi
