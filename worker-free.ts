@@ -1,3 +1,9 @@
+// Retain deployed Durable Object classes without enabling any new bindings.
+// Existing Cloudflare namespaces require these exports during Worker upgrades.
+// No objects are created, deleted or called by the restored free-tier app.
+export { AgentSwarmDO } from "./lib/swarm/AgentSwarmDO";
+export { EntityLockDO } from "./src/do/EntityLockDO";
+
 type Candle = { date: string; close: number };
 type Quote = { symbol: string; name: string; price: number; previousClose: number; change: number; changePercent: number; history: Candle[]; asOf: string; source: string; delayed: boolean };
 interface Env { ASSETS: Fetcher; AI?: { run: (model: string, options: unknown) => Promise<{ response?: string }> } }
