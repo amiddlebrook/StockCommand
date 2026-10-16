@@ -1,102 +1,11 @@
 name = "stockcommand"
-main = "worker.ts"
-compatibility_date = "2025-01-01"
+main = "worker-free.ts"
+compatibility_date = "2026-10-01"
 compatibility_flags = ["nodejs_compat"]
-
 [assets]
 directory = "./dist"
 binding = "ASSETS"
-
+not_found_handling = "single-page-application"
+run_worker_first = ["/api/*"]
 [ai]
 binding = "AI"
-
-# Observability configuration
-[observability.logs]
-enabled = true
-head_sampling_rate = 1
-invocation_logs = true
-persist = true
-
-# Environment variables
-[vars]
-# App configuration
-APP_NAME = "StockCommand"
-APP_VERSION = "2.0.0"
-ENVIRONMENT = "production"
-
-# CORS configuration
-ALLOWED_ORIGINS = "https://stockcommand.averymiddlebrook2014.workers.dev,https://localhost:3000"
-
-# Rate limiting
-RATE_LIMIT_REQUESTS = "100"
-RATE_LIMIT_WINDOW = "60"
-
-# Cache configuration
-CACHE_TTL = "3600"
-
-# OpenRouter API keys (configured in Cloudflare dashboard or via CLI)
-# - OPENROUTER_API_KEY (primary key for all models)
-
-# KV Namespaces for caching
-[[kv_namespaces]]
-binding = "STOCK_CACHE_KV"
-id = "fa0ae101b0174f93a89abf2cfaa68f9f"
-preview_id = "fa0ae101b0174f93a89abf2cfaa68f9f"
-
-[[kv_namespaces]]
-binding = "USER_SESSIONS_KV"
-id = "10f7f3c4a0ed4c069ce1802d06393ca8"
-preview_id = "10f7f3c4a0ed4c069ce1802d06393ca8"
-
-# D1 Database for user data and stock analysis storage
-[[d1_databases]]
-binding = "DB"
-database_name = "stockbrain-db"
-database_id = "4827eede-850e-469c-9ea4-4b17a79408aa"
-
-# R2 Storage for file uploads and images
-[[r2_buckets]]
-binding = "STORAGE"
-bucket_name = "stockbrain-storage"
-
-# Vectorize for RAG embeddings
-[[vectorize]]
-binding = "VECTORIZE"
-index_name = "stockcommand-embeddings"
-
-# Durable Objects for agent swarm coordination
-[[durable_objects.bindings]]
-name = "AGENT_SWARM"
-class_name = "AgentSwarmDO"
-
-# Durable Object for entity locking (two-plane architecture)
-[[durable_objects.bindings]]
-name = "ENTITY_LOCK"
-class_name = "EntityLockDO"
-
-[[migrations]]
-tag = "v1"
-new_classes = ["AgentSwarmDO"]
-
-[[migrations]]
-tag = "v2"
-new_classes = ["EntityLockDO"]
-
-# Queue for background stock data processing
-[[queues.producers]]
-binding = "STOCK_DATA_QUEUE"
-queue = "stockbrain-queue"
-
-# Queue consumer for async processing
-[[queues.consumers]]
-queue = "stockbrain-queue"
-max_batch_size = 10
-max_batch_timeout = 30
-
-# Analytics Engine for usage tracking
-[[analytics_engine_datasets]]
-binding = "ANALYTICS"
-
-# Anticipatory Intelligence: Aggressive Pre-Warming (Every 5 minutes)
-[triggers]
-crons = ["*/5 * * * *"]
