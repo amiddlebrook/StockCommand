@@ -40,6 +40,7 @@ try {
 
   await page.getByRole("button", { name: "AI Research" }).click();
   await page.getByRole("heading", { name: /Research terminal/ }).waitFor();
+  await page.locator(".research-selector select").selectOption("AAPL");
   await page.getByRole("button", { name: "Run analysis" }).click();
   await page.locator(".brief-output").waitFor({ timeout: 60000 });
   assert.ok((await page.locator(".brief-output").innerText()).length > 80, "brief missing narrative and indicators");
