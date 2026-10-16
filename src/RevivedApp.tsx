@@ -168,7 +168,7 @@ function App() {
     <div className="main">
       <header className="topbar">
         <div className="breadcrumbs"><span>Workspace</span><span className="slash">/</span><strong>{view === "overview" ? "Market overview" : view === "portfolio" ? "Paper portfolio" : "AI research"}</strong></div>
-        <div className="top-actions"><div className="top-search"><Search size={16} /><input ref={searchRef} value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === "Enter" && addSymbol()} placeholder="Add ticker..." aria-label="Add ticker" /><kbd>⌘ K</kbd><button title="Add ticker to watchlist" onClick={() => addSymbol()}><Plus size={17} /></button></div><button className="icon-btn refresh-btn" onClick={() => void refresh()} aria-label="Refresh market data" title="Refresh market data" disabled={pending}><RefreshCw size={18} className={pending ? "spinning" : ""} /></button></div>
+        <div className="top-actions"><div className="top-search"><Search size={16} /><input ref={searchRef} value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === "Enter" && addSymbol()} placeholder="Add ticker..." aria-label="Add ticker" /><kbd>⌘ K</kbd><button title="Add ticker to watchlist" onClick={() => addSymbol()}><Plus size={17} /></button></div><button className="icon-btn refresh-btn" onClick={() => void refresh()} aria-label="Refresh market data" title="Refresh market data" disabled={pending}><RefreshCcw size={18} className={pending ? "spinning" : ""} /></button></div>
       </header>
       <main className="content">
         {notice && <div className="notice" role="status"><CircleAlert size={16} /><span>{notice}</span><button onClick={() => setNotice("")} aria-label="Dismiss"><X size={15} /></button></div>}
