@@ -1,171 +1,63 @@
+# StockCommand
 
-# StockCommand - AI Stock Analyzer
+[GitHub Actions](https://github.com/amiddlebrook/StockCommand/actions) · [Production URL](https://stockcommand.averymiddlebrook2014.workers.dev)
 
-[![Deploy to Cloudflare Workers](https://github.com/amiddlebrook/StockCommand/actions/workflows/deploy.yml/badge.svg)](https://github.com/amiddlebrook/StockCommand/actions/workflows/deploy.yml)
-[![CI - Pull Request Checks](https://github.com/amiddlebrook/StockCommand/actions/workflows/pr-checks.yml/badge.svg)](https://github.com/amiddlebrook/StockCommand/actions/workflows/pr-checks.yml)
+StockCommand is a **Cloudflare-native, free-tier market research workspace**. It uses a React single-page app, a Cloudflare Worker for market data, and Cloudflare Workers AI for optional model summaries. No brokerage, payment service, OpenRouter key, database, or paid market-data API is required for the restored app.
 
-An adaptive AI environment where users can analyze stocks and options through natural conversation. The AI generates data tables, divergence counts, visual patterns, and strategy suggestions dynamically.
+## Functional features
 
-**Live App**: https://stockcommand.averymiddlebrook2014.workers.dev/
+- **Market overview**: up to twelve watchlist symbols, 1M / 3M / 1Y historical close chart, movement, as-of date, and source.
+- **Watchlist**: add, select and remove tickers; settings persist locally in the browser.
+- **Paper portfolio**: hypothetical holdings, weighted-average entry price, market value and unrealized P/L. No live orders.
+- **Research**: SMA20, SMA50, RSI14, deterministic market brief, optional Cloudflare Workers AI narrative.
+- **Integrity**: market data is explicitly delayed, source-attributed, and never silently replaced by fictitious prices.
 
-This contains everything you need to run your app locally and deploy to Cloudflare Workers.
+### Market-data caveats
 
-## Run Locally
+Best-effort public daily data comes from the unofficial Yahoo Finance chart endpoint, with Stooq end-of-day CSV as fallback. Neither provider is guaranteed: availability, rate limits, symbol coverage and data licensing may change. Verify data usage rights before operating the app commercially or redistributing market data. This is educational research, not an execution-quality market feed.
 
-**Prerequisites:**  Node.js
+## Local setup
 
+Node.js 22+ is recommended. Clone the repo, then:
 
-1. Install dependencies:
-   `npm install`
-2. Configure API keys in `.env.local` (copy from `.env.local.example`):
-   - At least one AI provider is required (Gemini, OpenAI, Claude, or OpenRouter)
+    npm ci
+    npm run build
+    npx wrangler dev
 
-3. Verify your configuration (optional):
-   `npm run check-config`
-4. Run the app:
-   `npm run dev`
+The built app and API are served at http://127.0.0.1:8787. For frontend hot reload, run npm run dev alongside npx wrangler dev in another terminal; Vite proxies API requests to Wrangler.
 
-## API Configuration
+Useful endpoints:
 
-StockCommand supports multiple AI providers. Configure at least one of the following:
+    GET /api/health
+    GET /api/market?symbols=AAPL,MSFT
+    POST /api/brief   {"symbol":"AAPL"}
 
-### AI Providers (choose one or more)
+## GitHub Actions deployment
 
-- **Google Gemini** (Recommended): Set `VITE_GEMINI_API_KEY`
-- **OpenAI**: Set `VITE_OPENAI_API_KEY`
-- **Anthropic Claude**: Set `VITE_CLAUDE_API_KEY`
-- **OpenRouter Models** (Free tiers available):
-  - Qwen 3 Coder: `VITE_OPENROUTER_QWEN3_CODER_API_KEY`
-  - DeepSeek Chat v3.1: `VITE_OPENROUTER_DEEPSEEK_CHAT_API_KEY`
-  - DeepSeek R1-T2 Chimera: `VITE_OPENROUTER_DEEPSEEK_R1T2_API_KEY`
-  - Minimax M2: `VITE_OPENROUTER_MINIMAX_M2_API_KEY`
-  - GLM 4.5 Air: `VITE_OPENROUTER_GLM_45_AIR_API_KEY`
-  - Qwen 3 235B: `VITE_OPENROUTER_QWEN3_235B_API_KEY`
+1. Create a Cloudflare Free account and enable its workers.dev subdomain.
+2. Create a scoped Cloudflare API token authorized to edit Workers in that account.
+3. Add CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID in the repository's GitHub Actions secrets.
+4. Pull requests run the build and a Wrangler dry-run check.
+5. Merging to main runs the production deployment and a /api/health smoke test.
 
+Manual deployment after logging into Wrangler:
 
+    npm ci
+    npm run build
+    npx wrangler deploy
 
-### Example Configuration
+The Cloudflare Worker name is **stockcommand**. The deployment smoke test assumes the existing account subdomain averymiddlebrook2014.workers.dev; edit the workflow if your actual Cloudflare account subdomain differs.
 
-Copy `.env.local.example` to `.env.local` and add your API keys:
+## Free-tier boundary
 
-```bash
-cp .env.local.example .env.local
-# Edit .env.local with your API keys
-```
+The default wrangler.toml uses only Workers static assets and Workers AI. No Vectorize, R2, Queue, D1, Durable Object, or KV resource needs to be purchased or provisioned. Workers AI currently offers 10,000 free neurons per day on the Workers Free plan. When the AI free allocation is exhausted, the API falls back to a deterministic technical briefing; requests do not silently incur paid-model charges on a Free account.
 
-The app will automatically use the first available provider in order of priority:
-1. Gemini
-2. OpenAI
-3. Claude
-4. OpenRouter models
+Cloudflare's free plan has request and usage caps, and the independent public data providers may stop responding. **Zero cost depends on staying on the free plan and within its allowances**; there is no promise of unlimited service.
 
-## Deploy to Cloudflare Workers
+## Legacy code
 
-StockCommand is configured to deploy to Cloudflare Workers using Wrangler.
+Old agent, brokerage, RAG, collaboration and HUD modules remain in the repository for future porting, but are **not represented as operational in this release**. This revival prioritizes a verifiable functioning core over mocked advanced features.
 
-**Prerequisites:** Wrangler CLI and a Cloudflare account
+## Privacy and risk
 
-1. Install Wrangler globally (if not already installed):
-   ```bash
-   npm install -g wrangler
-   ```
-
-2. Login to your Cloudflare account:
-   ```bash
-   wrangler login
-   ```
-
-3. Build the application:
-   ```bash
-   npm run build
-   ```
-
-4. Configure API secrets (required for external LLM providers):
-   ```bash
-   # Set at least one AI provider API key
-   wrangler secret put OPENAI_API_KEY
-   wrangler secret put GEMINI_API_KEY
-   wrangler secret put CLAUDE_API_KEY
-
-   # Optional: OpenRouter models
-   wrangler secret put OPENROUTER_QWEN3_CODER_API_KEY
-   wrangler secret put OPENROUTER_DEEPSEEK_R1T2_API_KEY
-   wrangler secret put OPENROUTER_DEEPSEEK_CHAT_API_KEY
-   wrangler secret put OPENROUTER_MINIMAX_M2_API_KEY
-   wrangler secret put OPENROUTER_GLM_45_AIR_API_KEY
-   wrangler secret put OPENROUTER_QWEN3_235B_API_KEY
-   ```
-
-   When prompted, paste your API key and press Enter. You only need to configure the providers you plan to use.
-
-5. Deploy to Cloudflare Workers:
-   ```bash
-   wrangler deploy
-   ```
-
-Your app will be deployed to a `*.workers.dev` subdomain. You can configure a custom domain in your Cloudflare dashboard.
-
-### Configuration for Production
-
-StockCommand uses a **secure API proxy architecture** where:
-- **API keys are stored as Cloudflare secrets** (server-side only)
-- The Cloudflare Worker acts as a secure proxy for all AI API calls
-- External LLM providers (OpenAI, Claude, Gemini, OpenRouter) are accessed through the worker
-- API keys are never exposed to the client-side code
-
-#### Required Cloudflare Secrets
-
-Configure at least one AI provider using `wrangler secret put`:
-
-| Secret Name | Provider | Required |
-|------------|----------|----------|
-| `OPENAI_API_KEY` | OpenAI GPT-4o, GPT-4 Turbo | At least one |
-| `GEMINI_API_KEY` | Google Gemini 1.5 Flash | At least one |
-| `CLAUDE_API_KEY` | Anthropic Claude 3.x | At least one |
-| `OPENROUTER_*` | OpenRouter models | Optional |
-
-**Security Benefits:**
-- API keys are never visible in client-side code
-- All API calls are proxied through the worker
-- Secrets are encrypted and managed by Cloudflare
-- No risk of API key exposure in browser DevTools
-
-## CI/CD Pipeline
-
-StockCommand uses GitHub Actions for automated deployment to Cloudflare Workers.
-
-- **Pull Requests:** Automatically build and validate the application
-- **Main Branch:** Automatically build and deploy to production
-- **Manual Deployment:** Trigger deployment via GitHub Actions
-
-For detailed CI/CD setup instructions, see [CI_CD.md](CI_CD.md).
-
-### Required Secrets
-
-Configure these in GitHub repository settings for automated deployment:
-- `CLOUDFLARE_API_TOKEN` - Cloudflare API token with Workers permissions
-- `CLOUDFLARE_ACCOUNT_ID` - Your Cloudflare account ID
-
-# StockCommand Vision & Philosophy
-
-> "Layering mass human intelligence with AI productivity to create the world's most efficient market brain."
-
-## The Problem
-Apps like Robinhood merely take advantage of traders by displaying raw data (graphs) without tools to visualize the "dimension of patterns" beneath. They are passive.
-
-## The Solution: StockCommand
-StockCommand empowers investors by visualizing the intersecting "gears" of the economic system.
-
-### 1. The Agentic Layer ("The Gears")
-- **Abstract Patterns as Colors**: Complex indicators (VIX regime, Liquidity) are simplified into actionable signals (Red/Green/Yellow).
-- **Visualization**: A user sees a "string of green" triggers and acts, bypassing the need to analyze raw raw data manually.
-
-### 2. The Thesis Layer ("The Argument")
-- **Prebuilt Strategy**: Users start with a baseline AI strategy.
-- **Dialectic Process**: Users "argue" with the agent to refine and train their personal portfolio thesis.
-- **Active Management**: This is the process of building/managing behavior, not just picking stocks.
-
-### 3. The Social Layer ("The Hive Mind")
-- **Scale**: 1 million users publishing and competing with strategies.
-- **Synthesis**: Unlike Polymarket (binary predictions), StockCommand aggregates "abstract predictions" (portfolio compositions) for the same question: "What is the optimal portfolio?".
-- **Result**: A synthesis of AI processing and Crowd Wisdom = The Efficient Market Brain.
+Watchlists and hypothetical positions remain in localStorage on the user's device; they are not synced or backed up. No third-party API keys are requested from end users and no real trading takes place. Indicators and AI commentary are not personalized investment advice.
