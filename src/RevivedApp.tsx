@@ -14,16 +14,37 @@ const formatUSD = (n: number) => new Intl.NumberFormat("en-US", { style: "curren
 const compact = (n: number) => new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 2 }).format(n);
 const signed = (n: number) => (n > 0 ? "+" : "") + n.toFixed(2) + "%";
 const fmtDate = (iso: string) => { const d = new Date(iso + "T12:00:00Z"); return Number.isNaN(d.valueOf()) ? iso : d.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" }); };
-function useSaved<T>(key: string, initial: T): [T, React.Dispatch<React.SetStateAction<T>>] {
-  const [value, setValue] = useState<T>(() => { try { const raw = localStorage.getItem(key); return raw ? JSON.parse(raw) as T : initial; } catch { return initial; } });
+const VALID_SYMBOL = /^[A-Z][A-Z0-9.-]{0,9}$/;
+function normalizeWatch(value: unknown): string[] {
+  if (!Array.isArray(value)) return START_SYMBOLS;
+  return [...new Set(value.filter((v): v is string => typeof v === "string").map(v => v.trim().toUpperCase()).filter(v => VALID_SYMBOL.test(v)))].slice(0, 12);
+}
+function normalizePositions(value: unknown): Position[] {
+  if (!Array.isArray(value)) return [];
+  const positions = new Map<string, Position>();
+  for (const item of value.slice(0, 100)) {
+    if (!item || typeof item !== "object") continue;
+    const symbol = typeof item.symbol === "string" ? item.symbol.trim().toUpperCase() : "";
+    const shares = item.shares, cost = item.cost;
+    if (!VALID_SYMBOL.test(symbol) || typeof shares !== "number" || !Number.isFinite(shares) || shares <= 0 || typeof cost !== "number" || !Number.isFinite(cost) || cost <= 0) continue;
+    const previous = positions.get(symbol);
+    if (previous) {
+      const combined = previous.shares + shares;
+      positions.set(symbol, { symbol, shares: combined, cost: (previous.shares * previous.cost + shares * cost) / combined });
+    } else positions.set(symbol, { symbol, shares, cost });
+  }
+  return [...positions.values()];
+}
+function useSaved<T>(key: string, initial: T, normalize: (saved: unknown) => T): [T, React.Dispatch<React.SetStateAction<T>>] {
+  const [value, setValue] = useState<T>(() => { try { const raw = localStorage.getItem(key); return raw === null ? initial : normalize(JSON.parse(raw)); } catch { return initial; } });
   useEffect(() => { try { localStorage.setItem(key, JSON.stringify(value)); } catch {} }, [key, value]);
   return [value, setValue];
 }
 const PriceChange = ({ value }: { value: number }) => <span className={value >= 0 ? "positive" : "negative"}>{value >= 0 ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}{signed(value)}</span>;
 const Empty = ({ icon, title, text }: { icon: React.ReactNode; title: string; text: string }) => <div className="empty">{icon}<strong>{title}</strong><p>{text}</p></div>;
 function App() {
-  const [watch, setWatch] = useSaved<string[]>("stockcommand.watch.v3", START_SYMBOLS);
-  const [positions, setPositions] = useSaved<Position[]>("stockcommand.paper.v3", []);
+  const [watch, setWatch] = useSaved<string[]>("stockcommand.watch.v3", START_SYMBOLS, normalizeWatch);
+  const [positions, setPositions] = useSaved<Position[]>("stockcommand.paper.v3", [], normalizePositions);
   const [view, setView] = useState<View>("overview");
   const [active, setActive] = useState("AAPL");
   const [input, setInput] = useState("");
@@ -39,21 +60,36 @@ function App() {
   const [briefError, setBriefError] = useState("");
   const [notice, setNotice] = useState("");
   const searchRef = useRef<HTMLInputElement>(null);
-  const allSymbols = useMemo(() => [...new Set([...watch, ...positions.map(p => p.symbol), active])].slice(0, 12), [watch, positions, active]);
+  const allSymbols = useMemo(() => [...new Set([...watch, ...positions.map(p => p.symbol), active])], [watch, positions, active]);
   const symbolKey = allSymbols.join(",");
+  const refreshSequence = useRef(0);
   const refresh = useCallback(async () => {
-    if (!symbolKey) return;
+    const symbols = symbolKey.split(",").filter(Boolean);
+    if (!symbols.length) return;
+    const sequence = ++refreshSequence.current;
     setPending(true);
+    const nextQuotes: Record<string, Quote> = {};
+    const nextErrors: Record<string, string> = {};
+    const groups: string[][] = [];
+    for (let offset = 0; offset < symbols.length; offset += 12) groups.push(symbols.slice(offset, offset + 12));
     try {
-      const response = await fetch("/api/market?symbols=" + encodeURIComponent(symbolKey));
-      if (!response.ok) throw new Error("Market API returned " + response.status);
-      const payload = await response.json() as { quotes?: Record<string, Quote>; errors?: Record<string, string> };
-      setQuotes(prev => ({ ...prev, ...payload.quotes }));
-      setErrors(payload.errors || {});
+      await Promise.all(groups.map(async group => {
+        try {
+          const response = await fetch("/api/market?symbols=" + encodeURIComponent(group.join(",")));
+          if (!response.ok) throw new Error("Market API returned " + response.status);
+          const payload = await response.json() as { quotes?: Record<string, Quote>; errors?: Record<string, string> };
+          Object.assign(nextQuotes, payload.quotes || {});
+          Object.assign(nextErrors, payload.errors || {});
+        } catch (error) {
+          for (const symbol of group) nextErrors[symbol] = error instanceof Error ? error.message : "Unable to fetch market data";
+        }
+      }));
+      if (sequence !== refreshSequence.current) return;
+      setQuotes(nextQuotes);
+      setErrors(nextErrors);
       setRefreshed(new Date());
-    } catch (error) {
-      setNotice(error instanceof Error ? error.message : "Unable to fetch market data");
-    } finally { setPending(false); }
+      setNotice(Object.keys(nextQuotes).length ? "" : "Live market feeds are temporarily unavailable. Retry refresh shortly.");
+    } finally { if (sequence === refreshSequence.current) setPending(false); }
   }, [symbolKey]);
   useEffect(() => { void refresh(); }, [refresh]);
   useEffect(() => {
@@ -79,6 +115,7 @@ function App() {
   const invested = positions.reduce((sum, p) => sum + p.shares * p.cost, 0);
   const pnl = valuation - invested;
   const pricedPositions = positions.filter(p => quotes[p.symbol]);
+  const portfolioComplete = positions.length > 0 && pricedPositions.length === positions.length;
   const resolved = ordered.filter(s => quotes[s]).length;
   const gainers = ordered.filter(s => quotes[s]).sort((a, b) => quotes[b].changePercent - quotes[a].changePercent);
   function addSymbol(value = input) {
@@ -140,7 +177,7 @@ function App() {
           <div className="stats-grid">
             <div className="stat-card"><span className="stat-label"><Layers3 size={16} /> Tracked assets</span><strong>{watch.length.toString().padStart(2, "0")}</strong><div className="stat-footer">{resolved} with available market data</div></div>
             <div className="stat-card"><span className="stat-label"><TrendingUp size={16} /> Top mover</span><strong>{gainers[0] && quotes[gainers[0]] ? gainers[0] : "—"}</strong><div className="stat-footer">{gainers[0] && quotes[gainers[0]] ? <PriceChange value={quotes[gainers[0]].changePercent} /> : "Waiting for prices"}</div></div>
-            <div className="stat-card"><span className="stat-label"><Wallet size={16} /> Paper portfolio</span><strong>{pricedPositions.length ? formatUSD(valuation) : positions.length ? "Unavailable" : "No positions"}</strong><div className="stat-footer">{positions.length} saved position{positions.length === 1 ? "" : "s"}</div></div>
+            <div className="stat-card"><span className="stat-label"><Wallet size={16} /> Paper portfolio</span><strong>{portfolioComplete ? formatUSD(valuation) : positions.length ? "Unavailable" : "No positions"}</strong><div className="stat-footer">{positions.length} saved position{positions.length === 1 ? "" : "s"}</div></div>
             <div className="stat-card"><span className="stat-label"><ShieldCheck size={16} /> Data integrity</span><strong className="status-value">DELAYED</strong><div className="stat-footer">Source-attributed, no simulated prices</div></div>
           </div>
           <div className="dashboard-grid">
@@ -163,7 +200,7 @@ function App() {
         </>}
         {view === "portfolio" && <>
           <div className="page-heading"><div><div className="eyebrow"><span className="blue-dot" /> LOCAL SIMULATION</div><h1>Paper portfolio<span className="heading-period">.</span></h1><p>Track hypothetical positions. Nothing here places a real trade.</p></div></div>
-          <div className="stats-grid portfolio-stats"><div className="stat-card"><span className="stat-label">Market value</span><strong>{pricedPositions.length ? formatUSD(valuation) : "—"}</strong><div className="stat-footer">Delayed indicative pricing</div></div><div className="stat-card"><span className="stat-label">Cost basis</span><strong>{positions.length ? formatUSD(invested) : "—"}</strong><div className="stat-footer">Original average purchase prices</div></div><div className="stat-card"><span className="stat-label">Unrealized P/L</span><strong className={pnl >= 0 ? "gain" : "loss"}>{pricedPositions.length === positions.length && positions.length ? formatUSD(pnl) : "—"}</strong><div className="stat-footer">Excludes fees and taxes</div></div><div className="stat-card"><span className="stat-label">Positions</span><strong>{positions.length}</strong><div className="stat-footer">Saved in browser storage</div></div></div>
+          <div className="stats-grid portfolio-stats"><div className="stat-card"><span className="stat-label">Market value</span><strong>{portfolioComplete ? formatUSD(valuation) : "—"}</strong><div className="stat-footer">Delayed indicative pricing</div></div><div className="stat-card"><span className="stat-label">Cost basis</span><strong>{positions.length ? formatUSD(invested) : "—"}</strong><div className="stat-footer">Original average purchase prices</div></div><div className="stat-card"><span className="stat-label">Unrealized P/L</span><strong className={pnl >= 0 ? "gain" : "loss"}>{portfolioComplete ? formatUSD(pnl) : "—"}</strong><div className="stat-footer">Excludes fees and taxes</div></div><div className="stat-card"><span className="stat-label">Positions</span><strong>{positions.length}</strong><div className="stat-footer">Saved in browser storage</div></div></div>
           <div className="portfolio-grid"><section className="panel"><div className="panel-head"><div><span className="eyebrow">SIMULATED HOLDINGS</span><h2>Positions</h2></div></div>{positions.length ? <div className="table-scroll"><table className="stock-table"><thead><tr><th>Symbol</th><th>Shares</th><th>Cost / share</th><th>Market price</th><th>P/L</th><th></th></tr></thead><tbody>{positions.map(p => { const q = quotes[p.symbol]; const value = q ? (q.price - p.cost) * p.shares : null; return <tr key={p.symbol}><td><strong>{p.symbol}</strong></td><td>{compact(p.shares)}</td><td>{formatUSD(p.cost)}</td><td>{q ? formatUSD(q.price) : "—"}</td><td>{value === null ? "—" : <span className={value >= 0 ? "positive" : "negative"}>{formatUSD(value)}</span>}</td><td><button className="tiny-button" onClick={() => setPositions(previous => previous.filter(x => x.symbol !== p.symbol))} aria-label={"Remove " + p.symbol}><Trash2 size={15} /></button></td></tr>; })}</tbody></table></div> : <Empty icon={<Wallet size={28} />} title="No paper positions yet" text="Add a hypothetical position to see cost basis and mark-to-market performance." />}</section>
             <section className="panel"><div className="panel-head"><div><span className="eyebrow">PAPER TRADE</span><h2>Add position</h2></div></div><form className="position-form" onSubmit={addPosition}><label>Selected ticker<select value={active} onChange={e => setActive(e.target.value)}>{allSymbols.map(s => <option key={s}>{s}</option>)}</select></label><label>Number of shares<input type="number" min="0.000001" step="any" value={quantity} onChange={e => setQuantity(e.target.value)} required /></label><label>Average purchase price (USD)<input type="number" min="0.01" step="any" value={cost} onChange={e => setCost(e.target.value)} placeholder="e.g. 175.50" required /></label><button className="btn primary full" type="submit"><Plus size={16} /> Save paper trade</button></form><p className="muted micro-note">Local-only demo. No brokerage connection, orders, or trading permissions.</p></section>
           </div>
