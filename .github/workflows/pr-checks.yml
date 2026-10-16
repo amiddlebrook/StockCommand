@@ -25,8 +25,8 @@ jobs:
 
       - name: Install browser test runner
         run: |
-          npm install --no-save --package-lock=false playwright@1.56.1
-          npx playwright install chromium
+          npm install --prefix scripts --no-save --package-lock=false playwright@1.56.1
+          ./scripts/node_modules/.bin/playwright install chromium
       - name: Start local Cloudflare Worker
         run: |
           nohup npx wrangler dev --local --ip 127.0.0.1 --port 8787 > /tmp/stockcommand-worker.log 2>&1 &
