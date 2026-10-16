@@ -27,3 +27,23 @@ jobs:
           if ! jq -e '(.quotes | to_entries | any(.value.price > 0))' /tmp/market.json >/dev/null; then
             echo "::warning::All free market-data sources unavailable right now; no fake quotes were shown."
           fi
+
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Install browser smoke runner
+        run: |
+          npm ci
+          npm install --no-save --package-lock=false playwright@1.56.1
+          npx playwright install chromium
+      - name: Verify interactive production dashboard
+        run: node scripts/browser-smoke.mjs
+      - name: Save production browser screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stockcommand-production-browser
+          path: test-artifacts/
+          if-no-files-found: ignore
